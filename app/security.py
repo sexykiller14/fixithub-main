@@ -324,5 +324,29 @@ def constant_time_equals(left: str, right: str) -> bool:
     return hmac.compare_digest(left or "", right or "")
 
 
+# Schemes an admin-entered link may use. Anything else, javascript: and
+# data: in particular, would be rendered into an href on every public page.
+_LINK_SCHEMES = ("http://", "https://", "mailto:")
+
+
+def safe_link_url(value: str) -> str:
+    """Return a link that is safe to put in an href, or "" to reject it.
+
+    Two shapes are accepted: an absolute URL with an allowed scheme, and a
+    root-relative path. A relative path has no scheme to check, but must
+    still start at the root so "//evil.example" cannot be used to send the
+    browser to another host while looking local.
+    """
+    candidate = (value or "").strip()
+    if not candidate:
+        return ""
+    lowered = candidate.lower()
+    if lowered.startswith(_LINK_SCHEMES):
+        return candidate
+    if candidate.startswith("/") and not candidate.startswith("//"):
+        return candidate
+    return ""
+
+
 def new_token(length: int = 32) -> str:
     return secrets.token_urlsafe(length)

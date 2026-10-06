@@ -150,18 +150,24 @@ def render_fragment(template_name: str, context: dict[str, Any]) -> str:
     return templates.get_template(template_name).render(context)
 
 
-def _markdown_filter(markdown_text: str) -> str:
+def _markdown_filter(markdown_text: str):
     """Render trusted markdown for display.
 
     Admin-authored prose only. It goes through the same sanitiser as article
     bodies, so a script or event handler in this field is stripped rather than
     rendered.
+
+    The result is wrapped in Markup because the sanitiser has already done the
+    work. Returning a plain str would make Jinja escape it a second time and the
+    reader would see literal tags on the page.
     """
+    from markupsafe import Markup
+
     from .services.markdown import render as render_markdown
 
     if not markdown_text or not markdown_text.strip():
-        return ""
-    return render_markdown(markdown_text).html
+        return Markup("")
+    return Markup(render_markdown(markdown_text).html)
 
 
 templates.env.filters["markdown_safe"] = _markdown_filter

@@ -128,13 +128,33 @@ def client():
         limiter.reset()
 
     # The login lockout is separate state from the sliding-window limiters: it
-    # is a dict of failed attempts keyed by client host. A test that deliberately
-    # signs in with the wrong password would otherwise lock the admin out of
-    # every later test in the session.
-    clear_login_failures("testclient")
+    # is a dict of failed attempts keyed by the same identifier admin_login uses.
+    # A test that deliberately signs in with the wrong password would otherwise
+    # lock the admin out of every later test in the session.
+    #
+    # The key is what security.client_ip() returns for a TestClient request,
+    # not the raw request.client.host: client_ip sanitises the address down to
+    # the characters an IP can contain, and the test host name "testclient"
+    # does not survive that intact. Deriving the key the same way the route
+    # does is the only way to be sure it matches.
+    for key in _test_client_ip_keys():
+        clear_login_failures(key)
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+def _test_client_ip_keys() -> list[str]:
+    """Every key admin_login could record a failure under in the test suite.
+
+    security.client_ip() sanitises an address down to the characters an IP can
+    contain, so the TestClient host "testclient" does not survive that intact
+    and the key the route uses is not the host string. Rather than hardcode the
+    mangled result, run the same sanitiser over the same input the route uses.
+    """
+    from app.security import _sanitise_ip
+
+    return ["testclient", _sanitise_ip("testclient"), "unknown"]
 
 
 @pytest.fixture

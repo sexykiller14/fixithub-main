@@ -309,6 +309,120 @@
     });
   }
 
+  // --------------------------------------------------------- admin shell
+  // The sidebar is a fixed drawer below lg and a sticky column above it; the
+  // CSS owns the transform. This only manages the state attribute, the scrim
+  // and Escape, and it no-ops where the sidebar is already always visible.
+  function setupAdminShell() {
+    var shell = document.querySelector('[data-admin-nav]');
+    if (!shell) return;
+
+    var sidebar = document.getElementById('admin-sidebar');
+    var button = document.getElementById('admin-menu-button');
+    var scrim = document.getElementById('admin-scrim');
+    if (!sidebar || !button) return;
+
+    function setOpen(open) {
+      if (open) {
+        shell.setAttribute('data-sidebar-open', '');
+      } else {
+        shell.removeAttribute('data-sidebar-open');
+      }
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (scrim) {
+        // hidden is the attribute, and [hidden] carries display:none from
+        // preflight, so both are set to cover engines that differ.
+        scrim.hidden = !open;
+        scrim.classList.toggle('hidden', !open);
+      }
+    }
+
+    button.addEventListener('click', function () {
+      setOpen(!shell.hasAttribute('data-sidebar-open'));
+    });
+
+    if (scrim) {
+      scrim.addEventListener('click', function () {
+        setOpen(false);
+      });
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && shell.hasAttribute('data-sidebar-open')) {
+        setOpen(false);
+        // Return focus to the control that opened it, or the next step away
+        // from the sidebar is not obvious.
+        button.focus();
+      }
+    });
+
+    // Following a link inside the drawer should close it, or the next page
+    // loads with the sidebar still covering the content on mobile.
+    sidebar.addEventListener('click', function (event) {
+      if (event.target.closest('a') && !window.matchMedia('(min-width: 1024px)').matches) {
+        setOpen(false);
+      }
+    });
+
+    // Resizing past the breakpoint while open would otherwise leave the
+    // attribute set and the scrim hidden until the next toggle.
+    window.addEventListener('resize', function () {
+      if (window.matchMedia('(min-width: 1024px)').matches) {
+        setOpen(false);
+      }
+    });
+  }
+
+  // --------------------------------------------------- admin profile menu
+  // A dropdown that closes on outside click and on Escape. aria-expanded on
+  // the button carries the state for assistive tech.
+  function setupAdminProfile() {
+    var wrap = document.getElementById('admin-profile');
+    if (!wrap) return;
+
+    var button = document.getElementById('admin-profile-button');
+    var menu = document.getElementById('admin-profile-menu');
+    if (!button || !menu) return;
+
+    function setOpen(open) {
+      menu.classList.toggle('hidden', !open);
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    button.addEventListener('click', function (event) {
+      event.stopPropagation();
+      setOpen(menu.classList.contains('hidden'));
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!wrap.contains(event.target)) setOpen(false);
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !menu.classList.contains('hidden')) {
+        setOpen(false);
+        button.focus();
+      }
+    });
+  }
+
+  // ------------------------------------------------------ confirm dialogs
+  // A form with [data-confirm] asks before submitting. The message lives in the
+  // attribute rather than an inline onsubmit handler, because a title that
+  // contains an apostrophe breaks a JS string literal and silently drops the
+  // confirmation. Reading the attribute as text means the message can contain
+  // any character at all.
+  function setupConfirmForms() {
+    var forms = document.querySelectorAll('form[data-confirm]');
+    Array.prototype.forEach.call(forms, function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!window.confirm(form.getAttribute('data-confirm'))) {
+          event.preventDefault();
+        }
+      });
+    });
+  }
+
   // --------------------------------------------------------------- startup
   function init() {
     setupTheme();
@@ -321,6 +435,9 @@
     setupDumpUpload();
     setupSlugField();
     setupPasswordToggles();
+    setupConfirmForms();
+    setupAdminShell();
+    setupAdminProfile();
   }
 
   if (document.readyState === 'loading') {

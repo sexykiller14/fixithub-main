@@ -1,19 +1,17 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Stop codes - Admin - {{ site_name }}{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% set admin_title = 'Stop codes' %}
+{% set admin_subtitle = stop_codes|length ~ ' bugcheck references loaded into SQLite.' %}
+
+{% block page_actions %}
+<a href="/admin/stop-codes/new" class="admin-button-primary">New stop code</a>
+{% endblock %}
+
 {% block content %}
-<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Stop codes</h1>
-      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{{ stop_codes|length }} bugcheck references loaded into SQLite.</p>
-    </div>
-    <div class="flex gap-2">
-      <a href="/admin/stop-codes/new" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">New stop code</a>
-      <a href="/admin/dashboard" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Dashboard</a>
-    </div>
-  </div>
+<div class="mx-auto max-w-7xl">
+  {{ admin_page_header(stop_codes|length ~ ' bugcheck references loaded into SQLite.') }}
 
   {% if request.query_params.get('saved') %}
   <p class="mt-6 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200" role="status">
@@ -52,7 +50,7 @@
           <td class="px-4 py-3 align-top text-right">
             <a href="/admin/stop-codes/{{ code.name }}/edit" class="font-medium text-brand-700 dark:text-brand-400 hover:underline">Edit</a>
             <form action="/admin/stop-codes/{{ code.name }}/delete" method="post" class="inline"
-                  onsubmit="return confirm('Delete {{ code.name }}?');">
+                  data-confirm="Delete {{ code.name }}?">
               <input type="hidden" name="csrf" value="{{ csrf }}">
               <button type="submit" class="ml-3 font-medium text-red-600 dark:text-red-400 hover:underline">Delete</button>
             </form>

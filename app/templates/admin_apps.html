@@ -1,21 +1,17 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Uploads - {{ site_name }}{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% set admin_title = 'Uploaded tools' %}
+{% set admin_subtitle = 'Binaries you uploaded. Unlike the scripts, a visitor cannot read these before downloading.' %}
+
+{% block page_actions %}
+<a href="/admin/apps/new" class="admin-button-primary">Upload a tool</a>
+{% endblock %}
+
 {% block content %}
-<div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Uploaded tools</h1>
-      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
-        Programs available to download. Unlike the scripts, these are binaries and cannot be read by a visitor.
-      </p>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <a href="/admin/dashboard" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Dashboard</a>
-      <a href="/admin/apps/new" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Upload a tool</a>
-    </div>
-  </div>
+<div class="mx-auto max-w-6xl">
+  {{ admin_page_header('Binaries you uploaded. Unlike the scripts, a visitor cannot read these before downloading.') }}
 
   {% if request.query_params.get('saved') %}
   <p class="mt-6 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
@@ -55,7 +51,9 @@
       </thead>
       <tbody>
         {% for app in apps %}
-        {% set ok = app.integrity_ok() %}
+        {# Computed once per row by the route, which hashes the file once
+           instead of this template hashing it on every render. #}
+        {% set ok = app.integrity %}
         <tr class="border-t border-slate-200 dark:border-slate-800">
           <td class="px-4 py-3">
             <a href="/admin/apps/{{ app.slug }}/edit" class="font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-400">{{ app.title }}</a>
@@ -82,7 +80,8 @@
               <a href="/apps/{{ app.slug }}" class="text-xs text-brand-700 hover:underline dark:text-brand-400">view</a>
               {% endif %}
               <a href="/admin/apps/{{ app.slug }}/edit" class="text-xs text-slate-600 hover:underline dark:text-slate-300">edit</a>
-              <form action="/admin/apps/{{ app.slug }}/delete" method="post" onsubmit="return confirm('Delete {{ app.title }} and remove the file from disk? This cannot be undone.');">
+              <form action="/admin/apps/{{ app.slug }}/delete" method="post"
+                    data-confirm="Delete &quot;{{ app.title }}&quot; and remove the file from disk? This cannot be undone.">
                 <input type="hidden" name="csrf" value="{{ csrf }}">
                 <button type="submit" class="text-xs font-semibold text-red-600 hover:underline dark:text-red-400">delete</button>
               </form>

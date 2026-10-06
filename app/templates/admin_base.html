@@ -1,0 +1,188 @@
+{# The admin shell: sidebar, top bar, and the page slot.
+
+   Every admin page extends this instead of base.html. It extends base.html
+   itself so the head, the theme bootstrap, the announcement banner and the
+   footer stay in one place, and so the admin keeps the public site's dark mode
+   toggle rather than growing a second one.
+
+   Why a sidebar at all: the panel had 21 pages and no shared navigation
+   partial, so every page hand-rolled its own header. That produced seven
+   different container widths, four header shapes and five pages with no way
+   back to the dashboard. One shell fixes all of it at once.
+
+   Pages set:
+     admin_title   - the h1 on the page
+     admin_subtitle- one line under it
+     admin_actions - buttons on the right of the page header
+     admin_width   - 'wide' for tables, 'narrow' for forms, default 'wide'
+#}
+{% extends "base.html" %}
+
+{# A page header: the subtitle on the left, the page's own buttons on the
+   right. The h1 is not here - it lives in the top bar as admin_title - so the
+   page title is stated once rather than twice. #}
+{% macro admin_page_header(subtitle) -%}
+<div class="admin-page-header">
+  <p class="admin-page-subtitle">{{ subtitle }}</p>
+  {% block page_actions %}{% endblock %}
+</div>
+{%- endmacro %}
+
+{% macro admin_icon(name) -%}
+  {# Inline SVG rather than an icon font or a CDN: one fewer request, no
+     flash of missing glyphs, and nothing for the CSP to have to allow. The
+     paths are stroke-based 24x24 so they all share one visual weight. #}
+  {%- set icons = {
+    'dashboard': '<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
+    'articles': '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    'stopcodes': '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>',
+    'apps': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+    'comments': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    'questions': '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>',
+    'ads': '<path d="M3 11l18-5v12L3 13v-2zM11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+    'seo': '<path d="M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35M11 8v6M8 11h6"/>',
+    'settings': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.44.63.8.77H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    'links': '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    'emails': '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/>',
+    'backup': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+    'restore': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    'key': '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/>',
+  } -%}
+  <svg class="admin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{ icons.get(name, icons['settings'])|safe }}</svg>
+{%- endmacro %}
+
+{% block site_header %}
+<div class="admin-shell" data-admin-nav>
+
+  {# ---- sidebar ---- #}
+  <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin sections">
+    <div class="admin-sidebar-brand">
+      <a href="/admin/dashboard" class="flex items-center gap-2.5 min-w-0">
+        <span class="admin-brand-mark" aria-hidden="true">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 1 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 1 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </span>
+        <span class="min-w-0">
+          <span class="block truncate text-sm font-bold text-slate-900 dark:text-white">Admin</span>
+          <span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ site_name }}</span>
+        </span>
+      </a>
+    </div>
+
+    <nav class="admin-nav">
+      {% set groups = [
+        ('Overview', [('/admin/dashboard', 'Dashboard', 'dashboard', none)]),
+        ('Content', [
+          ('/admin/articles', 'Articles', 'articles', none),
+          ('/admin/stop-codes', 'Stop codes', 'stopcodes', none),
+          ('/admin/apps', 'Uploads', 'apps', none),
+        ]),
+        ('Community', [
+          ('/admin/comments', 'Comments', 'comments', pending_comments),
+          ('/admin/questions', 'Questions', 'questions', pending_questions),
+        ]),
+        ('Site', [
+          ('/admin/announcement', 'Announcement', 'articles', none),
+          ('/admin/ads', 'Ads', 'ads', none),
+          ('/admin/seo', 'SEO', 'seo', none),
+          ('/admin/links', 'Links', 'links', none),
+          ('/admin/emails', 'Emails', 'emails', none),
+        ]),
+        ('Data', [
+          ('/admin/backup', 'Backup', 'backup', none),
+          ('/admin/restore', 'Restore', 'restore', none),
+        ]),
+        ('Account', [
+          ('/admin/change-password', 'Change password', 'key', none),
+        ]),
+      ] %}
+
+      {% for group_name, items in groups %}
+      <div class="admin-nav-group">
+        <p class="admin-nav-heading">{{ group_name }}</p>
+        {% for href, label, icon, badge in items %}
+        {% set is_active = request.url.path == href or (href != '/admin/dashboard' and request.url.path.startswith(href)) %}
+        <a href="{{ href }}"
+           class="admin-nav-link {% if is_active %}admin-nav-link-active{% endif %}"
+           {% if is_active %}aria-current="page"{% endif %}>
+          {{ admin_icon(icon) }}
+          <span class="flex-1 truncate">{{ label }}</span>
+          {% if badge %}<span class="admin-badge">{{ badge }}</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </nav>
+
+    {# Sign out lives in the sidebar rather than in a row of buttons on the
+       dashboard, where it used to sit among 14 other links. #}
+    <form action="/admin/logout" method="post" class="admin-sidebar-footer">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="admin-nav-link w-full text-left">
+        {{ admin_icon('key') }}
+        <span class="flex-1 truncate">Sign out</span>
+      </button>
+    </form>
+  </aside>
+
+  {# ---- main column ---- #}
+  <div class="admin-main">
+
+    <div class="admin-topbar">
+      <button type="button" id="admin-menu-button" class="admin-topbar-button lg:hidden"
+              aria-label="Open admin menu" aria-expanded="false" aria-controls="admin-sidebar">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+
+      {# The page title, mirrored from the h1 so the collapsed sidebar still
+         says where you are. #}
+      <h1 class="admin-topbar-title">{{ admin_title|default('Admin') }}</h1>
+
+      <div class="ml-auto flex items-center gap-2">
+        <a href="/" class="admin-topbar-button hidden sm:inline-flex" title="View the public site">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>
+          <span class="sr-only">View the public site</span>
+        </a>
+
+        {# Dark mode. The public site has this in its own header, which the
+           admin does not render, so the admin carries its own copy of the
+           button and reuses the same id and storage key, so the choice is
+           shared between the two rather than fighting. #}
+        <button type="button" id="theme-toggle" class="admin-topbar-button"
+                aria-label="Switch to dark theme" aria-pressed="false" title="Toggle dark mode">
+          <svg class="h-4 w-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>
+          <svg class="h-4 w-4 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+
+        <div class="admin-profile" id="admin-profile">
+          <button type="button" id="admin-profile-button" class="admin-profile-button"
+                  aria-expanded="false" aria-controls="admin-profile-menu" aria-haspopup="true">
+            <span class="admin-avatar" aria-hidden="true">A</span>
+            <span class="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-200">Admin</span>
+            <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div id="admin-profile-menu" class="admin-dropdown hidden" role="menu">
+            <p class="admin-dropdown-heading" role="presentation">Signed in as the site owner</p>
+            <a href="/" role="menuitem" class="admin-dropdown-item">View the public site</a>
+            <a href="/admin/change-password" role="menuitem" class="admin-dropdown-item">Change password</a>
+            <form action="/admin/logout" method="post" role="none">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button type="submit" role="menuitem" class="admin-dropdown-item w-full text-left text-red-600 dark:text-red-400">Sign out</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main id="main-content" class="admin-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{# Clicking the scrim closes the sidebar on mobile. Without it the sidebar
+   covers the page and the only way out is the toggle. #}
+<div id="admin-scrim" class="admin-scrim hidden lg:hidden" hidden></div>
+{% endblock %}
+
+{% block site_main %}{% endblock %}
+{% block site_footer %}{% endblock %}

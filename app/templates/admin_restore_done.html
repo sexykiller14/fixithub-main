@@ -1,15 +1,32 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Restore complete - {{ site_name }}{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% set admin_title = 'Restore complete' %}
+
 {% block content %}
-<div class="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-10">
-  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Restore complete</h1>
-  <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-    The database and admin.json from the uploaded archive have been put in place.
-    A pre-restore snapshot of the previous state was saved to the server as
-    <code class="font-mono text-xs">{{ snapshot_filename }}</code>.
+<div class="mx-auto max-w-2xl">
+  <p class="admin-page-subtitle mb-6">
+    The database from the uploaded archive has been put in place. A pre-restore
+    snapshot of the previous state was saved on the server first, so you can undo
+    this if the restored data turns out to be wrong.
   </p>
-  <a href="/admin/dashboard" class="mt-6 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Go to dashboard</a>
+  <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">
+    <a href="{{ snapshot_download }}" class="font-semibold text-brand-700 hover:underline dark:text-brand-400">
+      Download the pre-restore snapshot
+    </a>
+    <span class="text-slate-500 dark:text-slate-500">({{ snapshot_filename }})</span>
+  </p>
+  {# The admin password hash is deliberately not restored: writing back an
+     older hash would roll the password back and sign you out. #}
+  <p class="mt-4 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+    Your admin password was <span class="font-semibold">not</span> changed by this
+    restore. The snapshot keeps the password hash it had at the time, but restoring
+    an older one would lock you out.
+  </p>
+  <div class="mt-6 flex flex-wrap gap-2">
+    <a href="/admin/dashboard" class="admin-button-primary">Go to dashboard</a>
+    <a href="/admin/restore" class="admin-button-secondary">Restore something else</a>
+  </div>
 </div>
 {% endblock %}

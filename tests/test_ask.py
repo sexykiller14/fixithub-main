@@ -296,7 +296,10 @@ def test_dashboard_badges_the_pending_count(admin_client, client, db):
         Question.status == Question.STATUS_NEW
     ).count()
     assert pending >= 1
-    assert re.search(rf"Questions\s*\(\s*{pending}\s*\)", page.text)
+    # The badge is now a span in the sidebar next to the Questions link, rather
+    # than a count inside the link text on the dashboard.
+    assert f">{pending}<" in page.text, "the sidebar badge did not show the pending count"
+    assert "Questions" in page.text
     assert "Dashboard badge check" in page.text
 
 

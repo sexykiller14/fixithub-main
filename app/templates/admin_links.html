@@ -1,21 +1,23 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Link check - {{ site_name }}{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% set admin_title = 'Broken link check' %}
+{% set admin_subtitle = 'First 50 unique external URLs from article bodies, checked with a 5 second timeout.' %}
+
 {% block content %}
-<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
-  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Broken link check</h1>
-  <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">First 50 unique external URLs from article bodies, checked with a 5 second timeout.</p>
+<div class="mx-auto max-w-5xl">
+  {{ admin_page_header(admin_subtitle) }}
 
   {% if links %}
-  <div class="mt-8 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+  <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
     <table class="w-full text-sm">
       <caption class="sr-only">Link check results</caption>
       <thead class="bg-slate-50 dark:bg-slate-800">
         <tr>
-          <th class="px-4 py-2.5 text-left">URL</th>
-          <th class="px-4 py-2.5 text-left">Source</th>
-          <th class="px-4 py-2.5 text-center">Status</th>
+          <th scope="col" class="px-4 py-2.5 text-left">URL</th>
+          <th scope="col" class="px-4 py-2.5 text-left">Source</th>
+          <th scope="col" class="px-4 py-2.5 text-center">Status</th>
         </tr>
       </thead>
       <tbody>

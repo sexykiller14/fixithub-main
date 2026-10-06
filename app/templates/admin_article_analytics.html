@@ -1,17 +1,25 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}Analytics - {{ article.title }} - {{ site_name }}{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% set admin_title = article.title %}
+{% set admin_subtitle = 'Views per day for the last 30 recorded days.' %}
+
+{% block page_actions %}
+<a href="/admin/articles" class="admin-button-secondary">Back to articles</a>
+<a href="/admin/articles/{{ article.slug }}/edit" class="admin-button-secondary">Edit</a>
+{% endblock %}
+
 {% block content %}
-<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
-  <a href="/admin/articles" class="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">&larr; Articles</a>
-  <h1 class="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{{ article.title }}</h1>
-  <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">Views per day for the last 30 recorded days.</p>
+<div class="mx-auto max-w-4xl">
+  {{ admin_page_header(admin_subtitle) }}
 
   {% if views %}
+  {# Hoisted out of the loop and floored at 1, so an all-zero week cannot
+     divide by zero below. #}
+  {% set max_views = [views|map(attribute='views')|max, 1]|max %}
   <div class="mt-8 space-y-2">
     {% for v in views %}
-    {% set max_views = views|map(attribute='views')|max %}
     <div class="flex items-center gap-3">
       <span class="w-24 shrink-0 font-mono text-xs text-slate-500 dark:text-slate-400">{{ v.view_date }}</span>
       <div class="h-5 rounded bg-brand-500/80 dark:bg-brand-400/70" style="width: {{ (v.views / max_views * 100)|round(0) }}%; min-width: 2rem;"></div>

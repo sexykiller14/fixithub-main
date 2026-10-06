@@ -1,20 +1,18 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 {% block title %}{% if mode == 'new' %}New article{% else %}Edit {{ article.title }}{% endif %} - Admin - {{ site_name }}{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% set admin_title = 'New article' if mode == 'new' else 'Edit article' %}
+
+{% block page_actions %}
+{% if article and article.slug %}
+<a href="/articles/{{ article.slug }}" class="admin-button-secondary">View live page</a>
+{% endif %}
+<a href="/admin/articles" class="admin-button-secondary">Back to list</a>
+{% endblock %}
+
 {% block content %}
-<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
-      {% if mode == 'new' %}New article{% else %}Edit article{% endif %}
-    </h1>
-    <div class="flex gap-2">
-      {% if article and article.slug %}
-      <a href="/articles/{{ article.slug }}" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">View live page</a>
-      {% endif %}
-      <a href="/admin/articles" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Back to list</a>
-    </div>
-  </div>
+<div class="mx-auto max-w-7xl">
 
   {% if form_errors %}
   <div class="mt-6 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4" role="alert">

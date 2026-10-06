@@ -7,14 +7,15 @@ import os
 import re
 import shutil
 import tempfile
+from pathlib import Path
 
 import yaml
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy import delete, desc, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..config import CATEGORIES, CONTENT_DIR, DIFFICULTY_LABELS, settings
 from ..db import create_all, engine, get_db, search
@@ -46,18 +47,20 @@ from ..security import (
     SESSION_COOKIE,
     clear_login_failures,
     clear_session_cookie,
+    client_ip,
     create_session_token,
     generate_csrf,
     hash_password,
     load_admin_hash,
     login_locked_out,
     record_login_failure,
+    safe_link_url,
     save_admin_hash,
     set_session_cookie,
     valid_csrf,
     verify_password,
 )
-from ..services.content import load_article_file, slug_from_filename
+from ..services.content import load_article_file
 from ..services.markdown import render as render_markdown
 from ..services.search import feedback_summary, popular_searches, recent_feedback, zero_result_searches
 from ..services.stopcodes import parse_code_hex
@@ -75,6 +78,25 @@ MAX_BODY = 400_000
 # An admin reply is read in the widget's status line, so it stays short. Longer
 # answers belong in an article the reply can point at.
 MAX_REPLY = 2000
+
+# A backup archive holds the whole database. Read incrementally under this cap
+# rather than buffering whatever the request sends.
+MAX_RESTORE_BYTES = 200 * 1024 * 1024
+
+
+def _read_capped(stream, limit: int) -> bytes | None:
+    """Read at most limit bytes. Returns None if the stream is longer."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        block = stream.read(256 * 1024)
+        if not block:
+            break
+        total += len(block)
+        if total > limit:
+            return None
+        chunks.append(block)
+    return b"".join(chunks)
 
 # Which articles an uploaded app is most likely to sit beside.
 APP_CATEGORIES = {
@@ -108,6 +130,24 @@ def guard_csrf(request: Request, submitted: str) -> bool:
     return valid_csrf(current_session(request), submitted)
 
 
+def _sqlite_db_path() -> str | None:
+    """The on-disk path of the SQLite file, or None on any other backend.
+
+    engine.url.database is the path. str(engine.url) is not: SQLAlchemy
+    percent-encodes the string form, so a Windows path arrives as
+    "C%3A%5C...test.db" and every open() against it fails. Only SQLite has a
+    file to find here, so a non-SQLite URL returns None and the backup and
+    restore routes report that instead of writing to a garbage path.
+    """
+    url = engine.url
+    if not url.drivername.startswith("sqlite"):
+        return None
+    database = url.database
+    if not database or database == ":memory:":
+        return None
+    return str(database)
+
+
 def admin_context(request: Request, db: Session, **extra):
     return build_context(
         request,
@@ -117,8 +157,27 @@ def admin_context(request: Request, db: Session, **extra):
         categories=CATEGORIES,
         difficulty_labels=DIFFICULTY_LABELS,
         counts=total_counts(db),
-        **extra,
+        # Sidebar badges. setdefault rather than a merge: a route that passes
+        # its own pending_comments still wins, and **extra after **badges would
+        # otherwise be a duplicate-keyword TypeError.
+        **{**_pending_counts(db), **extra},
     )
+
+
+# The sidebar badges the two moderation queues. Two COUNT queries on every
+# admin page, which is the cost of showing a count next to a nav link.
+def _pending_counts(db: Session) -> dict:
+    comments = db.scalar(
+        select(func.count())
+        .select_from(Comment)
+        .where(Comment.status == Comment.STATUS_PENDING)
+    )
+    questions = db.scalar(
+        select(func.count())
+        .select_from(Question)
+        .where(Question.status == Question.STATUS_NEW)
+    )
+    return {"pending_comments": comments or 0, "pending_questions": questions or 0}
 
 
 # ------------------------------------------------------------------- login
@@ -201,7 +260,11 @@ def admin_login_post(
     db: Session = Depends(get_db),
 ):
     stored = load_admin_hash()
-    identifier = request.client.host if request.client else "unknown"
+    # client_ip, not request.client.host: behind a reverse proxy the latter is
+    # the proxy's address, so every admin and every attacker would share one
+    # lockout bucket. client_ip honours FIXITHUB_TRUST_PROXY like every other
+    # rate-limited path in the app.
+    identifier = client_ip(request)
 
     def back(error: str, login_error: str = "", code: int = 200):
         token = _mint_login_csrf()
@@ -282,7 +345,6 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             .where(Comment.status == Comment.STATUS_PENDING)
         )
         or 0,
-        "feedback_rows": db.query(Feedback).count(),
         "questions_pending": db.scalar(
             select(func.count())
             .select_from(Question)
@@ -333,7 +395,11 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/admin/logout", name="admin_logout")
 def admin_logout(request: Request, csrf: str = Form("", max_length=200)):
-    if not guard_csrf(request, csrf):
+    # Every other mutating admin route checks the session first. Logging out
+    # does not need it, since the CSRF token is derived from the very cookie
+    # being cleared and an unauthenticated caller has none to present, but the
+    # check is here so this route is not the one exception to the pattern.
+    if not require_auth(request) or not guard_csrf(request, csrf):
         return RedirectResponse("/admin", status_code=303)
     response = RedirectResponse("/admin", status_code=303)
     clear_session_cookie(response)
@@ -694,9 +760,16 @@ def admin_announcement_save(
         row = Announcement()
         db.add(row)
 
+    # The link is rendered into an href on every public page, so a scheme
+    # outside http/https/mailto is refused rather than stored. An empty
+    # field is fine, meaning "no link".
+    if link_url.strip() and not safe_link_url(link_url):
+        return _forbidden(request, db, "The link must start with http://, https://, mailto: or /.")
+    link_url = safe_link_url(link_url)
+
     row.title = title.strip()
     row.body = body.strip()
-    row.link_url = link_url.strip()
+    row.link_url = link_url
     row.enabled = bool(enabled)
     db.commit()
     return RedirectResponse("/admin/announcement?saved=1", status_code=303)
@@ -710,7 +783,9 @@ def admin_backup(request: Request, db: Session = Depends(get_db)):
     import io
     import zipfile
 
-    from ..db import engine
+    db_path = _sqlite_db_path()
+    if db_path is None:
+        return _forbidden(request, db, "Backup needs a SQLite file. This deployment uses another database.")
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -722,7 +797,6 @@ def admin_backup(request: Request, db: Session = Depends(get_db)):
         try:
             # Connect URI form is required so SQLite can open the file in
             # backup mode rather than as a WAL follower.
-            db_path = str(engine.url).replace("sqlite:///", "")
             src = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
             dst = sqlite3.connect(tmp.name)
             with dst:
@@ -771,7 +845,15 @@ def admin_restore(
     import io
     import zipfile
 
-    raw = file.file.read()
+    # Read the archive incrementally under a cap. Reading it whole would let a
+    # single request buffer as much memory as it liked.
+    raw = _read_capped(file.file, MAX_RESTORE_BYTES)
+    if raw is None:
+        return _forbidden(
+            request,
+            db,
+            f"That archive is larger than the {MAX_RESTORE_BYTES // 1024 // 1024} MB limit.",
+        )
     if not raw:
         return _forbidden(request, db, "Upload a backup zip.")
 
@@ -784,10 +866,13 @@ def admin_restore(
     if "fixithub.db" not in names:
         return _forbidden(request, db, "That zip does not contain a database.")
 
-    # Snapshot the live files first. The download URL is returned in the
-    # response so the admin can recover from a bad restore.
-    import tempfile
+    live_db_path = _sqlite_db_path()
+    if live_db_path is None:
+        return _forbidden(request, db, "Restore needs a SQLite file. This deployment uses another database.")
 
+    # Snapshot the live files first, into a directory the admin can download
+    # them back from. The restore replaces the live database in place, so
+    # without this the previous state is unrecoverable.
     snapshot_dir = Path(tempfile.mkdtemp(prefix="fixithub-restore-snapshot-"))
     snapshot = snapshot_dir / "backup-before-restore.zip"
     with zipfile.ZipFile(snapshot, "w") as out:
@@ -796,8 +881,7 @@ def admin_restore(
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         tmp.close()
         try:
-            db_path = str(engine.url).replace("sqlite:///", "")
-            src = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            src = sqlite3.connect(f"file:{live_db_path}?mode=ro", uri=True)
             dst = sqlite3.connect(tmp.name)
             with dst:
                 src.backup(dst)
@@ -810,7 +894,7 @@ def admin_restore(
         if ADMIN_HASH_FILE.is_file():
             out.writestr("admin.json", ADMIN_HASH_FILE.read_bytes())
 
-    # Close the live database, swap the files, then let the engine reconnect.
+    # Close the live database, swap the file, then let the engine reconnect.
     engine.dispose()
     tmp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     tmp_db.close()
@@ -819,12 +903,12 @@ def admin_restore(
         with open(tmp_path, "wb") as out:
             out.write(zf.read("fixithub.db"))
 
-        db_path = Path(str(engine.url).replace("sqlite:///", ""))
-        os.replace(tmp_path, db_path)
+        os.replace(tmp_path, Path(live_db_path))
 
-        if "admin.json" in names:
-            with open(ADMIN_HASH_FILE, "wb") as out:
-                out.write(zf.read("admin.json"))
+        # admin.json is deliberately left alone. A backup taken before a
+        # password change carries the old hash, and writing it back would both
+        # roll the password back and invalidate every current session cookie -
+        # locking the admin out of the panel they are standing in.
 
         # Re-open the engine on the new file so the next request works.
         create_all()
@@ -839,7 +923,35 @@ def admin_restore(
             request,
             db,
             snapshot_filename=snapshot.name,
+            snapshot_download=f"/admin/restore/snapshot/{snapshot_dir.name}",
         ),
+    )
+
+
+@router.get("/admin/restore/snapshot/{directory}", name="admin_restore_snapshot")
+def admin_restore_snapshot(request: Request, directory: str, db: Session = Depends(get_db)):
+    """Download the snapshot taken just before a restore.
+
+    The snapshot lives in a temp directory the admin cannot otherwise reach, so
+    without this route the safety net the handler takes is unreachable and the
+    only copy of the pre-restore state is on a disk they do not control.
+    """
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+
+    # Both parts are matched against fixed patterns, so no separator, dot or
+    # drive letter can appear and the resolved path stays inside the temp dir.
+    if not re.fullmatch(r"fixithub-restore-snapshot-[a-zA-Z0-9_]+", directory or ""):
+        return _forbidden(request, db, "That is not a restore snapshot.")
+
+    path = Path(tempfile.gettempdir()) / directory / "backup-before-restore.zip"
+    if not path.is_file():
+        return _forbidden(request, db, "That snapshot is no longer available.")
+
+    return FileResponse(
+        path,
+        media_type="application/zip",
+        filename=f"fixithub-before-restore-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.zip",
     )
 
 
@@ -1239,8 +1351,6 @@ def admin_article_save(
         handle.write(markdown_text)
 
     # Reload from disk so the stored values match the file exactly.
-    from pathlib import Path
-
     reloaded = load_article_file(Path(path))
     if reloaded is None:
         return _forbidden(request, db, "The article could not be written. Check the folder permissions.")
@@ -1529,15 +1639,45 @@ def admin_apps(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/admin", status_code=303)
 
     rows = list(db.execute(select(AppDownload).order_by(AppDownload.updated_at.desc())).scalars())
+
+    # The checksum check reads and SHA-256s a whole file per row, up to 50 MB
+    # each. Doing that inside the template meant every page view hashed every
+    # uploaded binary, so it is computed here once per app and cached on the
+    # request-scoped row copy rather than recomputed per column.
+    listings = []
+    for row in rows:
+        item = _AppListing(row)
+        item.integrity = row.integrity_ok()
+        listings.append(item)
+
     context = admin_context(
         request,
         db,
-        apps=rows,
+        apps=listings,
         app_categories=APP_CATEGORIES,
         max_app_mb=MAX_APP_BYTES // 1024 // 1024,
         allowed_suffixes=", ".join(ALLOWED_SUFFIXES),
     )
     return render(request, "admin_apps.html", context)
+
+
+class _AppListing:
+    """A view row that carries the integrity result alongside the columns.
+
+    Jinja resolves an attribute before an item of the same name, so
+    ``row.integrity`` finds this attribute and never reaches the property. The
+    template is what used to call integrity_ok() itself, once per row, on every
+    render.
+    """
+
+    __slots__ = ("_row", "integrity")
+
+    def __init__(self, row):
+        self._row = row
+        self.integrity = None
+
+    def __getattr__(self, name):
+        return getattr(self._row, name)
 
 
 @router.get("/admin/apps/new", name="admin_app_new")
@@ -1804,7 +1944,10 @@ def admin_comments(request: Request, status_filter: str = "", db: Session = Depe
 
     wanted = status_filter if status_filter in Comment.STATUSES else ""
 
-    query = select(Comment).order_by(desc(Comment.created_at)).limit(200)
+    # joinedload on Comment.user: the template prints the author's address on
+    # every row, and a lazy relationship there is one SELECT per comment, so
+    # the 200-row page issued 200 extra queries.
+    query = select(Comment).options(joinedload(Comment.user)).order_by(desc(Comment.created_at)).limit(200)
     if wanted:
         query = query.where(Comment.status == wanted)
 

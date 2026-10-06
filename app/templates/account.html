@@ -66,7 +66,7 @@
       unattributed.
     </p>
     <form action="/account/delete" method="post" class="mt-4"
-          onsubmit="return confirm('This permanently deletes your account and your comments. Continue?');">
+          data-confirm="This permanently deletes your account and your comments. Continue?">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <label for="confirm" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Type DELETE to confirm</label>
       <input type="text" id="confirm" name="confirm" required maxlength="40" autocomplete="off"

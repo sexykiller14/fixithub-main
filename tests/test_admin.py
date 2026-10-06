@@ -403,7 +403,9 @@ def test_dashboard_shows_data(client):
     assert login(client)
     response = client.get("/admin/dashboard")
     assert response.status_code == 200
-    assert "Admin dashboard" in response.text
+    # "Dashboard" rather than "Admin dashboard": the page title moved to the
+    # top bar and the sidebar brand now reads "Admin" above it.
+    assert "Dashboard" in response.text
     assert "Popular searches" in response.text
 
 
