@@ -18,7 +18,7 @@
   <p class="mt-6 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-sm text-red-800 dark:text-red-200" role="alert">{{ login_error }}</p>
   {% endif %}
 
-  <form action="/admin/login" method="post" class="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+  <form action="/admin/login" method="post" id="admin-login-form" class="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
     <div>
       <label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
       <input id="password" type="password" name="password" maxlength="200" required autofocus autocomplete="current-password"
@@ -29,6 +29,17 @@
       Sign in
     </button>
   </form>
+
+  {# The login CSRF cookie lives 30 minutes. A form left open past that returns
+     "Your login form expired", which is correct but unhelpful without a way
+     out. This is the only thing /admin/reissue-csrf is for, and it was
+     implemented but never linked from anywhere. #}
+  <div id="login-expired" class="mt-4 hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" role="status">
+    <p>Your login form has expired. This is normal if it sat open for a while.</p>
+    <button type="button" id="login-reissue" class="mt-3 rounded-lg border border-amber-400 px-3 py-1.5 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900">
+      Refresh the form and try again
+    </button>
+  </div>
 
   <div class="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 text-sm text-slate-600 dark:text-slate-400">
     <h2 class="font-semibold text-slate-900 dark:text-white">Setting the password</h2>

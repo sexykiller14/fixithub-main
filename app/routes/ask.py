@@ -43,6 +43,9 @@ MAX_PROMPT = 500
 MIN_PROMPT = 2
 MAX_PAGE_URL = 400
 
+# A field the widget renders but hides. Bots fill in every input they find.
+HONEYPOT_FIELD = "reply_to"
+
 
 def _json_error(message: str, code: int = 400) -> JSONResponse:
     return JSONResponse(status_code=code, content={"ok": False, "error": message})
@@ -74,6 +77,22 @@ async def _payload(request: Request) -> dict:
 @router.post("/api/ask", name="api_ask")
 async def api_ask(request: Request, db: Session = Depends(get_db)):
     """Store a question and hand back the token used to read the reply."""
+    # Honeypot. The widget renders a field a person cannot see and a bot fills
+    # in; anything non-empty is a bot. Checked before the rate limiter is spent
+    # so a crawler cannot use it to lock a real visitor's address out.
+    #
+    # The check is server-side on purpose. A honeypot enforced only in
+    # JavaScript is enforced by whoever chooses to not run JavaScript, which is
+    # exactly the traffic a honeypot is for.
+    body = await _payload(request)
+    if str(body.get(HONEYPOT_FIELD, "")).strip():
+        # Answer as though it worked. A bot that learns it was detected tunes
+        # itself; one that does not costs the owner a rate-limit bucket.
+        return JSONResponse(
+            status_code=200,
+            content={"ok": True, "token": "", "id": 0},
+        )
+
     limited = enforce(
         request,
         ask_limiter,
@@ -83,7 +102,6 @@ async def api_ask(request: Request, db: Session = Depends(get_db)):
     if limited is not None:
         return limited
 
-    body = await _payload(request)
     prompt = str(body.get("prompt", "")).strip()[:MAX_PROMPT]
     if len(prompt) < MIN_PROMPT:
         return _json_error("Please write a little more before sending.")

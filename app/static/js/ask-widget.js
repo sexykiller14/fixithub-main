@@ -314,7 +314,16 @@
         headers: { 'Content-Type': 'application/json' },
         // page_url is stored with the question so an admin can see which page
         // the question came from. The server truncates it.
-        body: JSON.stringify({ prompt: text, page_url: window.location.href })
+        //
+        // reply_to is the honeypot: a real visitor never sees or fills it in,
+        // so the server drops the submission when it arrives non-empty. Kept
+        // here in the payload rather than in a hidden input because the widget
+        // is built entirely in JavaScript.
+        body: JSON.stringify({
+          prompt: text,
+          page_url: window.location.href,
+          reply_to: ''
+        })
       }).then(function (response) {
         if (!response.ok) throw new Error('Request failed with ' + response.status);
         return response.json();

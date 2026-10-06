@@ -406,6 +406,48 @@
     });
   }
 
+  // --------------------------------------------------------- login expiry
+  // The login CSRF cookie lasts 30 minutes, so a form left open on a desk comes
+  // back as "Your login form expired". The endpoint to fix that existed but
+  // nothing ever called it, so this wires up the one place it is useful.
+  function setupLoginReissue() {
+    var notice = document.getElementById('login-expired');
+    var button = document.getElementById('login-reissue');
+    var form = document.getElementById('admin-login-form');
+    if (!notice || !button || !form) return;
+
+    function expiredMessage() {
+      var alert = document.querySelector('#admin-login-form ~ * [role="alert"], [role="alert"]');
+      return alert && /expired/i.test(alert.textContent || '') ? alert : null;
+    }
+
+    // Show the recovery only when the server actually said the form expired.
+    var alert = expiredMessage();
+    if (!alert) return;
+    notice.classList.remove('hidden');
+
+    button.addEventListener('click', function () {
+      button.disabled = true;
+      button.textContent = 'Refreshing...';
+      // The endpoint answers 204 with the new token in a header, and sets the
+      // cookie. fetch is used rather than a form post so the page is not lost.
+      fetch('/admin/reissue-csrf', { credentials: 'same-origin' })
+        .then(function (response) {
+          var token = response.headers.get('X-CSRF-Token');
+          if (!token) throw new Error('no token');
+          var field = form.querySelector('input[name="csrf"]');
+          if (field) field.value = token;
+          notice.classList.add('hidden');
+          var password = form.querySelector('#password');
+          if (password) password.focus();
+        })
+        .catch(function () {
+          button.disabled = false;
+          button.textContent = 'Refresh failed - reload the page';
+        });
+    });
+  }
+
   // ------------------------------------------------------ confirm dialogs
   // A form with [data-confirm] asks before submitting. The message lives in the
   // attribute rather than an inline onsubmit handler, because a title that
@@ -438,6 +480,7 @@
     setupConfirmForms();
     setupAdminShell();
     setupAdminProfile();
+    setupLoginReissue();
   }
 
   if (document.readyState === 'loading') {

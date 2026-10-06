@@ -934,6 +934,7 @@ _PUBLIC_PATHS = [
 def admin_seo(
     request: Request,
     saved: str = "",
+    defaults_saved: str = "",
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
@@ -955,8 +956,37 @@ def admin_seo(
         seo_settings=settings_row,
         paths=_PUBLIC_PATHS,
         saved=saved,
+        defaults_saved=defaults_saved,
     )
     return render(request, "admin_seo.html", context)
+
+
+# The sitemap values that search engines accept. Validated rather than stored
+# verbatim: an invalid priority or changefreq produces a sitemap entry that is
+# silently ignored, and the admin sees no error either way.
+VALID_CHANGEFREQ = {"always", "hourly", "daily", "weekly", "monthly", "yearly", "never"}
+
+
+def _validate_sitemap_defaults(changefreq: str, priority: str) -> tuple[str, str]:
+    """Return valid (changefreq, priority), falling back rather than refusing.
+
+    Falling back rather than erroring is deliberate: these are defaults for
+    every page, and a malformed one should not stop a per-page override from
+    being saved. The audit log records what was actually stored.
+    """
+    clean_freq = (changefreq or "").strip().lower()
+    if clean_freq not in VALID_CHANGEFREQ:
+        clean_freq = "monthly"
+
+    try:
+        clean_priority = float((priority or "").strip())
+    except (TypeError, ValueError):
+        clean_priority = 0.5
+    # The sitemap spec allows 0.0 to 1.0.
+    if not 0.0 <= clean_priority <= 1.0:
+        clean_priority = 0.5
+
+    return clean_freq, f"{clean_priority:g}"
 
 
 @router.post("/admin/seo", name="admin_seo_save")
@@ -968,6 +998,7 @@ def admin_seo_save(
     og_image: str = Form("", max_length=600),
     sitemap_priority: str = Form("", max_length=10),
     sitemap_changefreq: str = Form("", max_length=20),
+    save_defaults: str = Form(""),
     default_changefreq: str = Form("monthly", max_length=20),
     default_priority: str = Form("0.5", max_length=10),
     csrf: str = Form("", max_length=200),
@@ -995,16 +1026,64 @@ def admin_seo_save(
     row.sitemap_priority = sitemap_priority.strip()
     row.sitemap_changefreq = sitemap_changefreq.strip()
 
-    site_row = db.query(SiteSeoSettings).first()
-    if site_row is None:
-        site_row = SiteSeoSettings()
-        db.add(site_row)
-    site_row.default_changefreq = default_changefreq.strip() or "monthly"
-    site_row.default_priority = default_priority.strip() or "0.5"
+    # The per-page and the site-wide defaults used to share one form, so saving
+    # an override silently rewrote the global defaults as a side effect. They
+    # are now separate forms and separate routes, and this one touches only
+    # the override. An explicit opt-in remains available for anyone who wants
+    # to change both at once.
+    if save_defaults:
+        changefreq, priority = _validate_sitemap_defaults(
+            default_changefreq, default_priority
+        )
+        site_row = db.query(SiteSeoSettings).first()
+        if site_row is None:
+            site_row = SiteSeoSettings()
+            db.add(site_row)
+        site_row.default_changefreq = changefreq
+        site_row.default_priority = priority
 
     audit.record(db, "seo.save", target_type="path", target_id=row.path, detail="override written", commit=False)
     db.commit()
     return RedirectResponse("/admin/seo?saved=1", status_code=303)
+
+
+@router.post("/admin/seo/defaults", name="admin_seo_defaults_save")
+def admin_seo_defaults_save(
+    request: Request,
+    default_changefreq: str = Form("monthly", max_length=20),
+    default_priority: str = Form("0.5", max_length=10),
+    csrf: str = Form("", max_length=200),
+    db: Session = Depends(get_db),
+):
+    """Save the site-wide sitemap defaults, and nothing else.
+
+    Split out of admin_seo_save because these two settings were in the same
+    form, which meant saving a page title silently rewrote them.
+    """
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+    if not guard_csrf(request, csrf):
+        return _forbidden(request, db, "Your session expired.")
+
+    from ..models import SiteSeoSettings
+
+    changefreq, priority = _validate_sitemap_defaults(default_changefreq, default_priority)
+
+    site_row = db.query(SiteSeoSettings).first()
+    if site_row is None:
+        site_row = SiteSeoSettings()
+        db.add(site_row)
+    site_row.default_changefreq = changefreq
+    site_row.default_priority = priority
+
+    audit.record(
+        db,
+        "seo.save",
+        target_type="settings",
+        target_id="sitemap-defaults",
+        detail=f"changefreq={changefreq}, priority={priority}",
+    )
+    return RedirectResponse("/admin/seo?defaults_saved=1", status_code=303)
 
 
 @router.post("/admin/seo/{override_id}/delete", name="admin_seo_delete")
