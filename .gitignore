@@ -18,6 +18,12 @@ data/fixithub.db-wal
 data/fixithub.db-shm
 data/admin.json
 
+# The TOTP secret for admin two-factor authentication. This is the shared
+# secret that lets an authenticator app generate valid codes: anyone holding it
+# can sign in as the admin, so it must never reach a repository. Losing it is
+# recoverable with FIXITHUB_DISABLE_2FA=1 plus this file deleted.
+data/admin_2fa.json
+
 # Markdown backups written by the admin panel before overwriting a file.
 content/**/*.bak
 
