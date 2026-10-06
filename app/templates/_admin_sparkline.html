@@ -1,0 +1,37 @@
+{# A small server-rendered bar chart. No chart library: the site's CSP is
+   default-src 'self' plus the Tailwind CDN, so a charting script would mean a
+   third-party allowance in the policy for one sparkline.
+
+   Expects:
+     points  - list of {day, label, views, searches}
+     field   - 'views' or 'searches'
+     total   - the sum, shown in the parent card next to the chart
+
+   Bar colours come from CSS (.admin-spark-bar in site.css) rather than inline
+   fills, because only CSS can respond to the dark theme. A zero day keeps its
+   own muted colour so a quiet day reads as "nothing happened" and not as a
+   missing bar. #}
+
+{% set field = field|default('views') %}
+{% set values = points|map(attribute=field)|list %}
+{% set peak = values|max if values else 0 %}
+
+{% if peak > 0 %}
+<svg viewBox="0 0 {{ points|length }} 100" preserveAspectRatio="none"
+     class="admin-spark h-24 w-full" aria-hidden="true" focusable="false">
+  {% for point in points %}
+  {% set value = point[field] %}
+  {% set bar = (value / peak * 92)|round(1) %}
+  <rect x="{{ loop.index0 }}" y="{{ 100 - (bar if bar > 0 else 2) }}"
+        width="1" height="{{ bar if bar > 0 else 2 }}" rx="0.5"
+        class="admin-spark-bar {% if value == 0 %}admin-spark-bar-zero{% endif %}">
+    <title>{{ point.day }}: {{ value }}</title>
+  </rect>
+  {% endfor %}
+</svg>
+{% else %}
+<p class="admin-spark-empty">
+  Nothing recorded in this window yet. The chart appears once there is a day
+  with data.
+</p>
+{% endif %}

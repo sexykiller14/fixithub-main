@@ -590,6 +590,47 @@
   overflow: hidden;
 }
 
+/* The dashboard bar chart.
+
+   Inline SVG rather than a chart library: the CSP is default-src 'self' plus
+   the Tailwind CDN, so a charting script would mean a third-party allowance
+   for one sparkline. Colours live here rather than on the rects because only
+   CSS can respond to the dark theme. */
+.admin-spark {
+  display: block;
+  overflow: visible;
+}
+.admin-spark-bar {
+  fill: rgb(27 110 245);
+}
+.dark .admin-spark-bar {
+  fill: rgb(88 166 255);
+}
+/* A day with no activity: a baseline tick in a muted colour, so a quiet day
+   reads as "nothing happened" rather than as a gap in the data. */
+.admin-spark-bar-zero {
+  fill: rgb(203 213 225);
+}
+.dark .admin-spark-bar-zero {
+  fill: rgb(51 65 85);
+}
+.admin-spark-empty {
+  display: flex;
+  align-items: center;
+  height: 6rem;
+  justify-content: center;
+  padding: 0 1rem;
+  text-align: center;
+  border-radius: 0.5rem;
+  border: 1px dashed rgb(203 213 225);
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+.dark .admin-spark-empty {
+  border-color: rgb(51 65 85);
+  color: rgb(148 163 184);
+}
+
 /* Admin buttons.
 
    One set of three, so the panel stops drifting: the primary button was
@@ -647,6 +688,149 @@
 }
 .dark .admin-button-danger:hover {
   background: rgb(69 10 10);
+}
+
+/* Stat cards. The value is the point, so it is the largest thing on the card;
+   the label above it is quiet. Hover lifts the linked ones, so an unlinked
+   card (a total with nowhere to go) does not look clickable. */
+.admin-stat {
+  display: block;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  background: #ffffff;
+  transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out,
+    transform 150ms ease-in-out;
+}
+.dark .admin-stat {
+  border-color: rgb(30 41 59);
+  background: rgb(15 23 42);
+}
+.admin-stat-link:hover {
+  border-color: rgb(147 197 253);
+  box-shadow: 0 4px 12px -6px rgb(15 23 42 / 0.2);
+  transform: translateY(-1px);
+}
+.dark .admin-stat-link:hover {
+  border-color: rgb(59 130 246);
+}
+.admin-stat-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(100 116 139);
+}
+.dark .admin-stat-label {
+  color: rgb(148 163 184);
+}
+.admin-stat-value {
+  margin-top: 0.375rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: rgb(15 23 42);
+}
+.dark .admin-stat-value {
+  color: rgb(248 250 252);
+}
+
+/* A stat that needs attention: pending moderation, unanswered questions. */
+.admin-stat-urgent {
+  border-color: rgb(253 224 71);
+  background: rgb(254 252 232);
+}
+.dark .admin-stat-urgent {
+  border-color: rgb(113 63 18);
+  background: rgb(66 44 4);
+}
+.admin-stat-urgent .admin-stat-value {
+  color: rgb(146 64 14);
+}
+.dark .admin-stat-urgent .admin-stat-value {
+  color: rgb(253 224 71);
+}
+
+/* A card holding one table or list. One wrapper for the whole panel rather
+   than a border and a padding repeated per page. */
+.admin-panel {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  background: #ffffff;
+  overflow: hidden;
+}
+.dark .admin-panel {
+  border-color: rgb(30 41 59);
+  background: rgb(15 23 42);
+}
+.admin-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+.dark .admin-panel-header {
+  border-bottom-color: rgb(30 41 59);
+}
+.admin-panel-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(15 23 42);
+}
+.dark .admin-panel-title {
+  color: rgb(248 250 252);
+}
+.admin-panel-note {
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+.dark .admin-panel-note {
+  color: rgb(148 163 184);
+}
+.admin-panel-body {
+  padding: 0.5rem 1rem 1rem;
+}
+.admin-panel-body-flush {
+  padding: 0;
+}
+
+/* Rows inside a panel. The dashboard has five lists of different kinds; this
+   is the one treatment they all share. */
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  font-size: 0.875rem;
+}
+.admin-row + .admin-row {
+  border-top: 1px solid rgb(241 245 249);
+}
+.dark .admin-row + .admin-row {
+  border-top-color: rgb(30 41 59);
+}
+.admin-row-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(51 65 85);
+}
+.dark .admin-row-label {
+  color: rgb(226 232 240);
+}
+.admin-row-meta {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+  font-variant-numeric: tabular-nums;
+}
+.dark .admin-row-meta {
+  color: rgb(148 163 184);
 }
 
 /* The subtitle line under the page title, with room for the page's buttons. */

@@ -6,56 +6,124 @@
 {% set admin_subtitle = 'Content, feedback and search activity.' %}
 
 {% block content %}
-{# The fifteen-button wall that used to sit here is now the sidebar, so the
-   page opens straight onto the numbers. #}
 <div class="mx-auto max-w-7xl">
 
-  {# Seven tiles across four columns. The earlier 5-column grid left a
-     three-cell gap on the second row. #}
+  {# ---- what needs you ----
+
+     Queues first, because they are the only cards on this page that imply an
+     action. Everything else is reference. #}
+  {% set urgent = pending_comments or pending_questions %}
+  {% if urgent %}
+  <section aria-labelledby="needs-attention-heading" class="mb-8">
+    <h2 id="needs-attention-heading" class="sr-only">Waiting for you</h2>
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% if pending_comments %}
+      <a href="/admin/comments?status_filter=pending" class="admin-stat admin-stat-link admin-stat-urgent">
+        <p class="admin-stat-label">Comments to approve</p>
+        <p class="admin-stat-value">{{ pending_comments }}</p>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+          Nothing a reader writes is public until you approve it.
+        </p>
+      </a>
+      {% endif %}
+      {% if pending_questions %}
+      <a href="/admin/questions?status_filter=new" class="admin-stat admin-stat-link admin-stat-urgent">
+        <p class="admin-stat-label">Questions unanswered</p>
+        <p class="admin-stat-value">{{ pending_questions }}</p>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+          Sent through the widget. A reply reaches the visitor in their panel.
+        </p>
+      </a>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ---- the numbers ---- #}
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    {% set tiles = [
+    {% set totals = [
       ('Articles', stats.articles, '/admin/articles'),
       ('Stop codes', stats.stop_codes, '/admin/stop-codes'),
-      ('Uploads', stats.apps, '/admin/apps'),
+      ('Uploaded tools', stats.apps, '/admin/apps'),
       ('Readers', stats.users, '/admin/emails'),
-      ('Pending comments', stats.comments_pending, '/admin/comments?status_filter=pending'),
-      ('Open questions', stats.questions_pending, '/admin/questions?status_filter=new'),
-      ('Dumps analysed', stats.dumps, None),
-      ('Searches', stats.searches|default(0), None),
     ] %}
-    {% for label, value, href in tiles %}
-    <a href="{{ href or '#' }}" {% if not href %}aria-disabled="true" tabindex="-1"{% endif %}
-       class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 {% if href %}hover:border-brand-400 hover:shadow-sm transition-shadow dark:hover:border-brand-500{% endif %}">
-      <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
-      <p class="mt-1.5 text-2xl font-bold text-slate-900 dark:text-white">{{ value }}</p>
+    {% for label, value, href in totals %}
+    <a href="{{ href }}" class="admin-stat admin-stat-link">
+      <p class="admin-stat-label">{{ label }}</p>
+      <p class="admin-stat-value">{{ value }}</p>
     </a>
     {% endfor %}
   </div>
 
-  {# Unanswered questions, with a reply box on the page admins land on. #}
-  <section class="mt-8" aria-labelledby="open-questions-heading">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 id="open-questions-heading" class="text-lg font-bold text-slate-900 dark:text-white">Waiting for a reply</h2>
+  {# ---- traffic, then activity ----
+
+     Charts before lists: a shape over thirty days says at a glance what five
+     separate lists cannot. #}
+  <div class="mt-6 grid gap-4 lg:grid-cols-2">
+    <section class="admin-panel" aria-labelledby="views-chart-heading">
+      <div class="admin-panel-header">
+        <div>
+          <h2 id="views-chart-heading" class="admin-panel-title">Article views</h2>
+          <p class="admin-panel-note">Last {{ series.days }} days</p>
+        </div>
+        <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+          {{ series.total_views }}
+        </p>
+      </div>
+      <div class="p-4">
+        {% with points = series.points, field = 'views' %}
+          {% include "_admin_sparkline.html" %}
+        {% endwith %}
+      </div>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="searches-chart-heading">
+      <div class="admin-panel-header">
+        <div>
+          <h2 id="searches-chart-heading" class="admin-panel-title">Searches</h2>
+          <p class="admin-panel-note">Last {{ series.days }} days</p>
+        </div>
+        <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+          {{ series.total_searches }}
+        </p>
+      </div>
+      <div class="p-4">
+        {% with points = series.points, field = 'searches' %}
+          {% include "_admin_sparkline.html" %}
+        {% endwith %}
+      </div>
+    </section>
+  </div>
+
+  {# ---- unanswered questions, with a reply box on the page admins land on ---- #}
+  <section class="mt-6" aria-labelledby="open-questions-heading">
+    <div class="admin-panel-header rounded-t-xl border border-b-0 border-slate-200 dark:border-slate-800">
+      <h2 id="open-questions-heading" class="admin-panel-title">Waiting for a reply</h2>
       <a href="/admin/questions" class="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">All questions</a>
     </div>
     {% if open_questions %}
-      <div class="mt-3 space-y-4">
+      <div class="space-y-3">
         {% for question in open_questions %}
-          {# Every card here is unanswered, so the badge would be noise. #}
+          {# Every card here is unanswered, so the status badge would be noise. #}
           {% with show_status = false %}{% include "_question_card.html" %}{% endwith %}
         {% endfor %}
       </div>
     {% else %}
-      <p class="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+      <p class="admin-panel admin-panel-body text-sm text-slate-500 dark:text-slate-400">
         Nothing waiting. {{ stats.questions_total }} question{{ '' if stats.questions_total == 1 else 's' }} in total.
       </p>
     {% endif %}
   </section>
 
-  <div class="mt-8 grid gap-6 lg:grid-cols-2">
-    <section aria-labelledby="popular-searches-heading">
-      <h2 id="popular-searches-heading" class="text-lg font-bold text-slate-900 dark:text-white">Popular searches</h2>
-      <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+  {# ---- reference tables and lists ---- #}
+  <div class="mt-6 grid gap-4 lg:grid-cols-2">
+    <section class="admin-panel" aria-labelledby="popular-searches-heading">
+      <div class="admin-panel-header">
+        <h2 id="popular-searches-heading" class="admin-panel-title">Popular searches</h2>
+        <p class="admin-panel-note">Top queries by frequency</p>
+      </div>
+      {% if popular %}
+      <div class="admin-panel-body admin-panel-body-flush overflow-x-auto">
         <table class="w-full text-sm">
           <caption class="sr-only">Most frequent searches</caption>
           <thead class="bg-slate-50 dark:bg-slate-800">
@@ -69,114 +137,121 @@
             {% for row in popular %}
             <tr class="border-t border-slate-200 dark:border-slate-800">
               <td class="px-4 py-2.5 text-slate-800 dark:text-slate-200">{{ row.query }}</td>
-              <td class="px-4 py-2.5 text-right font-mono text-slate-600 dark:text-slate-400">{{ row.hits }}</td>
-              <td class="px-4 py-2.5 text-right font-mono {% if row.result_count == 0 %}text-red-600 dark:text-red-400{% else %}text-slate-600 dark:text-slate-400{% endif %}">{{ row.result_count }}</td>
+              <td class="px-4 py-2.5 text-right font-mono tabular-nums text-slate-600 dark:text-slate-400">{{ row.hits }}</td>
+              <td class="px-4 py-2.5 text-right font-mono tabular-nums {% if row.result_count == 0 %}text-red-600 dark:text-red-400{% else %}text-slate-600 dark:text-slate-400{% endif %}">{{ row.result_count }}</td>
             </tr>
-            {% else %}
-            <tr><td colspan="3" class="px-4 py-4 text-slate-500 dark:text-slate-400">No searches recorded yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% else %}
+      <p class="admin-panel-body text-sm text-slate-500 dark:text-slate-400">No searches recorded yet.</p>
+      {% endif %}
     </section>
 
-    <section aria-labelledby="no-results-heading">
-      <h2 id="no-results-heading" class="text-lg font-bold text-slate-900 dark:text-white">Searches with no results</h2>
-      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">These are content gaps worth filling.</p>
-      <ul class="mt-3 space-y-2">
+    <section class="admin-panel" aria-labelledby="no-results-heading">
+      <div class="admin-panel-header">
+        <div>
+          <h2 id="no-results-heading" class="admin-panel-title">Searches with no results</h2>
+          <p class="admin-panel-note">Content gaps worth filling</p>
+        </div>
+      </div>
+      <div class="admin-panel-body">
         {% for row in no_results %}
-        <li class="flex items-center justify-between rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-2.5 text-sm">
-          <span class="text-red-900 dark:text-red-100">{{ row.query }}</span>
-          <span class="font-mono text-xs text-red-700 dark:text-red-300">{{ row.hits }}&times;</span>
-        </li>
+        <div class="admin-row">
+          <span class="admin-row-label text-red-700 dark:text-red-300">{{ row.query }}</span>
+          <span class="admin-row-meta">{{ row.hits }}&times;</span>
+        </div>
         {% else %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">Every search so far has returned results.</li>
+        <p class="py-2 text-sm text-slate-500 dark:text-slate-400">Every search so far has returned results.</p>
         {% endfor %}
-      </ul>
+      </div>
     </section>
   </div>
 
-  <div class="mt-8 grid gap-6 lg:grid-cols-2">
-    <section aria-labelledby="recent-articles-heading">
-      <h2 id="recent-articles-heading" class="text-lg font-bold text-slate-900 dark:text-white">Recently updated articles</h2>
-      <ul class="mt-3 space-y-2">
+  <div class="mt-4 grid gap-4 lg:grid-cols-2">
+    <section class="admin-panel" aria-labelledby="recent-articles-heading">
+      <div class="admin-panel-header">
+        <h2 id="recent-articles-heading" class="admin-panel-title">Recently updated articles</h2>
+        <a href="/admin/articles" class="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">All articles</a>
+      </div>
+      <div class="admin-panel-body">
         {% for article in articles %}
-        <li class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-4 py-3">
-          <div class="min-w-0">
-            <a href="/admin/articles/{{ article.slug }}/edit" class="block truncate text-sm font-medium text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-400">{{ article.title }}</a>
-            <span class="text-xs text-slate-500 dark:text-slate-400">{{ article.category }} &middot; {{ article.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
-          </div>
-          <span class="shrink-0 text-xs text-slate-500 dark:text-slate-400">{{ article.view_count }} views</span>
-        </li>
+        <div class="admin-row">
+          <a href="/admin/articles/{{ article.slug }}/edit" class="admin-row-label hover:text-brand-700 dark:hover:text-brand-400">{{ article.title }}</a>
+          <span class="admin-row-meta">{{ article.view_count }} views</span>
+        </div>
         {% else %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No articles yet.</li>
+        <p class="py-2 text-sm text-slate-500 dark:text-slate-400">No articles yet.</p>
         {% endfor %}
-      </ul>
+      </div>
     </section>
 
-    <section aria-labelledby="most-viewed-codes-heading">
-      <h2 id="most-viewed-codes-heading" class="text-lg font-bold text-slate-900 dark:text-white">Most viewed stop codes</h2>
-      <ul class="mt-3 space-y-2">
+    <section class="admin-panel" aria-labelledby="most-viewed-codes-heading">
+      <div class="admin-panel-header">
+        <h2 id="most-viewed-codes-heading" class="admin-panel-title">Most viewed stop codes</h2>
+        <a href="/admin/stop-codes" class="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-400">All stop codes</a>
+      </div>
+      <div class="admin-panel-body">
         {% for code in stop_codes %}
-        <li class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 px-4 py-3">
-          <a href="/admin/stop-codes/{{ code.name }}/edit" class="min-w-0 truncate font-mono text-sm text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-400">{{ code.name }}</a>
-          <span class="shrink-0 font-mono text-xs text-slate-500 dark:text-slate-400">{{ code.code_hex }} &middot; {{ code.view_count }}</span>
-        </li>
+        <div class="admin-row">
+          <a href="/admin/stop-codes/{{ code.name }}/edit" class="admin-row-label font-mono hover:text-brand-700 dark:hover:text-brand-400">{{ code.name }}</a>
+          <span class="admin-row-meta">{{ code.view_count }}</span>
+        </div>
         {% else %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No stop codes yet.</li>
+        <p class="py-2 text-sm text-slate-500 dark:text-slate-400">No stop codes yet.</p>
         {% endfor %}
-      </ul>
+      </div>
     </section>
   </div>
 
-  <div class="mt-8 grid gap-6 lg:grid-cols-2">
-    <section aria-labelledby="feedback-heading">
-      <h2 id="feedback-heading" class="text-lg font-bold text-slate-900 dark:text-white">Recent feedback</h2>
-      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
-        {{ stats.feedback.percent }}% of {{ stats.feedback.total_votes }} votes were positive.
-      </p>
-      <ul class="mt-3 space-y-2">
+  <div class="mt-4 grid gap-4 lg:grid-cols-2">
+    <section class="admin-panel" aria-labelledby="feedback-heading">
+      <div class="admin-panel-header">
+        <div>
+          <h2 id="feedback-heading" class="admin-panel-title">Recent feedback</h2>
+          <p class="admin-panel-note">
+            {{ stats.feedback.percent }}% of {{ stats.feedback.total_votes }} votes positive
+          </p>
+        </div>
+      </div>
+      <div class="admin-panel-body">
         {% for item in feedback %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm">
-          <div class="flex items-center justify-between gap-3">
-            <span class="font-medium text-slate-900 dark:text-white">
-              {{ 'Helpful' if item.helpful else 'Not helpful' }}
-              <span class="font-normal text-slate-500 dark:text-slate-400">&middot; {{ item.target_type }} #{{ item.target_id }}</span>
-            </span>
-            <span class="shrink-0 text-xs text-slate-500 dark:text-slate-400">{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-          </div>
+        <div class="admin-row !items-start !flex-col !gap-0.5">
+          <span class="w-full font-medium text-slate-900 dark:text-white">
+            {{ 'Helpful' if item.helpful else 'Not helpful' }}
+            <span class="font-normal text-slate-500 dark:text-slate-400">&middot; {{ item.target_type }} #{{ item.target_id }}</span>
+          </span>
+          <span class="admin-row-meta">{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
           {% if item.comment %}
-          <p class="mt-1.5 text-slate-600 dark:text-slate-400">{{ item.comment }}</p>
+          <p class="w-full text-slate-600 dark:text-slate-400">{{ item.comment }}</p>
           {% endif %}
-        </li>
+        </div>
         {% else %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No feedback yet.</li>
+        <p class="py-2 text-sm text-slate-500 dark:text-slate-400">No feedback yet.</p>
         {% endfor %}
-      </ul>
+      </div>
     </section>
 
-    <section aria-labelledby="uploads-heading">
-      <h2 id="uploads-heading" class="text-lg font-bold text-slate-900 dark:text-white">Recent minidump uploads</h2>
-      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
-        Metadata only. Upload contents are never stored.
-      </p>
-      <ul class="mt-3 space-y-2">
+    <section class="admin-panel" aria-labelledby="uploads-heading">
+      <div class="admin-panel-header">
+        <div>
+          <h2 id="uploads-heading" class="admin-panel-title">Recent minidump uploads</h2>
+          <p class="admin-panel-note">Metadata only; contents are never stored</p>
+        </div>
+      </div>
+      <div class="admin-panel-body">
         {% for upload in uploads %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm">
-          <div class="flex items-center justify-between gap-3">
-            <span class="min-w-0 truncate font-mono text-xs text-slate-900 dark:text-white">{{ upload.filename }}</span>
-            <span class="shrink-0 rounded px-2 py-0.5 text-xs {% if upload.parsed_ok %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-slate-100 text-slate-600 dark:text-slate-300{% endif %}">
-              {{ upload.bugcheck_code or 'not parsed' }}
-            </span>
-          </div>
-          <span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-            {{ upload.signature or 'no signature' }} &middot; {{ (upload.size_bytes / 1024) | round(0) | int }} KB &middot; {{ upload.created_at.strftime('%Y-%m-%d %H:%M') }}
+        <div class="admin-row">
+          <span class="admin-row-label font-mono text-xs">{{ upload.filename }}</span>
+          <span class="shrink-0 rounded px-2 py-0.5 text-xs {% if upload.parsed_ok %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+            {{ upload.bugcheck_code or 'not parsed' }}
           </span>
-        </li>
+        </div>
         {% else %}
-        <li class="rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No uploads yet.</li>
+        <p class="py-2 text-sm text-slate-500 dark:text-slate-400">No uploads yet.</p>
         {% endfor %}
-      </ul>
+      </div>
     </section>
   </div>
 </div>

@@ -323,6 +323,66 @@ def admin_reissue_csrf(request: Request):
     return response
 
 
+# ------------------------------------------------------- dashboard analytics
+
+
+def _daily_series(db: Session, days: int = 30) -> list[dict]:
+    """Views and searches per day for the last N days, oldest first.
+
+    One grouped query per series rather than one per day, and every day in the
+    window is returned including the ones with no rows, so the chart has a
+    continuous x-axis instead of gaps that look like missing data.
+
+    ArticleView.view_date is stored as a YYYY-MM-DD string, which SQLite groups
+    and sorts correctly as text. SearchQuery.created_at is a real timestamp and
+    is grouped by date() in SQLite.
+    """
+    from datetime import timedelta
+
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=days - 1)
+    window = [(start + timedelta(days=offset)).isoformat() for offset in range(days)]
+
+    view_rows = dict(
+        db.execute(
+            select(ArticleView.view_date, func.sum(ArticleView.views))
+            .where(ArticleView.view_date >= start.isoformat())
+            .group_by(ArticleView.view_date)
+        ).all()
+    )
+
+    search_rows = dict(
+        db.execute(
+            select(
+                func.date(SearchQuery.created_at).label("day"),
+                func.count(SearchQuery.id),
+            )
+            .where(SearchQuery.created_at >= start.isoformat())
+            .group_by("day")
+        ).all()
+    )
+
+    points = [
+        {
+            "day": day,
+            "label": day[5:],
+            "views": int(view_rows.get(day) or 0),
+            "searches": int(search_rows.get(day) or 0),
+        }
+        for day in window
+    ]
+
+    # Totals travel with the series so the card can state a number next to the
+    # shape. A window of all zeros would render a flat line that says nothing,
+    # which is why the template checks these before drawing anything.
+    return {
+        "points": points,
+        "total_views": sum(point["views"] for point in points),
+        "total_searches": sum(point["searches"] for point in points),
+        "days": days,
+    }
+
+
 # --------------------------------------------------------------- dashboard
 
 
@@ -335,7 +395,6 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         "articles": db.query(Article).count(),
         "stop_codes": db.query(StopCode).count(),
         "feedback": feedback_summary(db),
-        "searches": db.query(SearchQuery).count(),
         "dumps": db.query(DumpUpload).count(),
         "apps": db.query(AppDownload).count(),
         "users": db.query(User).count(),
@@ -353,6 +412,8 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         or 0,
         "questions_total": db.query(Question).count(),
     }
+
+    series = _daily_series(db, days=30)
 
     articles = list(
         db.execute(select(Article).order_by(desc(Article.updated_at)).limit(10)).scalars()
@@ -379,6 +440,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         request,
         db,
         stats=stats,
+        series=series,
         articles=articles,
         stop_codes=codes,
         uploads=uploads,
