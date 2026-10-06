@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ script.title }} script - {{ site_name }}{% endblock %}
+{% block description %}{{ script.summary }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <nav aria-label="Breadcrumb" class="mb-5 text-sm text-slate-500 dark:text-slate-400">
+    <a href="/scripts" class="hover:text-brand-700 dark:hover:text-brand-400">Scripts</a>
+    <span aria-hidden="true"> / </span>
+    <span class="text-slate-700 dark:text-slate-200">{{ script.title }}</span>
+  </nav>
+
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ script.title }}</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">{{ script.summary }}</p>
+
+  <div class="mt-6 flex flex-wrap items-center gap-3">
+    <a href="/scripts/{{ script.slug }}/download" download="{{ script.filename }}"
+       class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+      Download {{ script.filename }}
+    </a>
+    <button type="button" data-copy-target="script-source"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+      Copy the source
+    </button>
+    <span class="rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-1 font-mono text-xs text-slate-600 dark:text-slate-300">{{ script.filename }}</span>
+  </div>
+
+  <div class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 dark:bg-red-950 p-5" role="note">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">Review this before you run it</h2>
+    <ul class="mt-2 space-y-1.5 text-sm text-red-900 dark:text-red-100">
+      {% for warning in script.warnings %}
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>{{ warning }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div class="min-w-0 space-y-8">
+      <section aria-labelledby="script-source-heading">
+        <h2 id="script-source-heading" class="text-xl font-bold text-slate-900 dark:text-white">
+          Full source, nothing hidden
+        </h2>
+        <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
+          This is exactly what you will get if you download the file.
+        </p>
+        <pre id="script-source" class="mt-4 overflow-x-auto rounded-xl bg-slate-900 p-5 text-xs leading-relaxed text-slate-200 ring-1 ring-slate-800"><code>{{ source }}</code></pre>
+      </section>
+
+      <section aria-labelledby="commands-heading">
+        <h2 id="commands-heading" class="text-xl font-bold text-slate-900 dark:text-white">What each command does</h2>
+        <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
+          Every command the script runs, in plain English.
+        </p>
+
+        <div class="mt-5 space-y-4">
+          {% for item in script.commands %}
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+            <div class="flex flex-wrap items-center gap-2">
+              <code class="rounded bg-slate-100 dark:bg-slate-800 px-2 py-1 font-mono text-xs font-semibold text-slate-900 dark:text-white">{{ item.command }}</code>
+              {% if item.modifies %}
+              <span class="rounded bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200">Changes settings</span>
+              {% else %}
+              <span class="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Read-only</span>
+              {% endif %}
+            </div>
+            <p class="mt-3 text-sm text-slate-700 dark:text-slate-300">{{ item.explanation }}</p>
+            {% if item.warning %}
+            <p class="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-900 dark:text-amber-100">
+              {{ item.warning }}
+            </p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="lg:sticky lg:top-24 lg:self-start space-y-6">
+      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">How to run it</h2>
+        <ol class="mt-3 space-y-2.5 text-sm text-slate-700 dark:text-slate-300">
+          {% for step in how_to_run %}
+          <li class="flex gap-2">
+            <span class="shrink-0 font-semibold text-brand-600 dark:text-brand-400">{{ loop.index }}.</span>
+            <span>{{ step }}</span>
+          </li>
+          {% endfor %}
+        </ol>
+        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">
+          PowerShell blocks most scripts by default. The <code class="font-mono">Set-ExecutionPolicy</code>
+          command above changes that for the current window only, so it reverts when you close it.
+        </p>
+      </div>
+
+      {% if script.purpose %}
+      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">When to use it</h2>
+        <ul class="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+          {% for purpose in script.purpose %}
+          <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>{{ purpose }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if script.requirements %}
+      <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">What you need</h2>
+        <ul class="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+          {% for requirement in script.requirements %}
+          <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>{{ requirement }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if related %}
+      <div class="rounded-xl border border-brand-200 dark:border-brand-900 bg-brand-50 dark:bg-brand-950 p-5">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-800 dark:text-brand-300">Related guides</h2>
+        <ul class="mt-3 space-y-2 text-sm">
+          {% for article in related %}
+          <li>
+            <a href="/articles/{{ article.slug }}" class="font-medium text-brand-800 dark:text-brand-300 hover:underline">{{ article.title }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}

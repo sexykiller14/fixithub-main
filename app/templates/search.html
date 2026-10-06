@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{% if q %}Search results for "{{ q }}"{% else %}Search{% endif %} - {{ site_name }}{% endblock %}
+{% block description %}Search {{ counts.articles }} guides and {{ counts.stop_codes }} blue screen stop codes.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Search</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">
+    Searches guide text, tags and stop codes at the same time. Try a stop code name, a hex value or a symptom.
+  </p>
+
+  <form action="/search" method="get" role="search" class="mt-6 flex flex-col gap-2 sm:flex-row">
+    <label for="search-input" class="sr-only">Search query</label>
+    <input id="search-input" type="search" name="q" value="{{ q }}" maxlength="200" autofocus
+           placeholder="0x0000007E, wifi driver, blue screen, slow boot..."
+           class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+    <button type="submit" class="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700">Search</button>
+  </form>
+
+  {% if search_error %}
+  <p class="mt-4 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-4 text-sm text-amber-800 dark:text-amber-200" role="alert">{{ search_error }}</p>
+  {% elif q %}
+  <p class="mt-5 text-sm text-slate-500 dark:text-slate-400" role="status">
+    {{ results.total }} result{{ '' if results.total == 1 else 's' }} for &ldquo;{{ q }}&rdquo;
+  </p>
+
+  {% if results.stop_codes %}
+  <section class="mt-6" aria-labelledby="codes-heading">
+    <h2 id="codes-heading" class="text-lg font-semibold text-slate-900 dark:text-white">Blue screen stop codes</h2>
+    <ul class="mt-3 space-y-2">
+      {% for code in results.stop_codes %}
+      <li>
+        <a href="/bsod/{{ code.name }}" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-brand-400 dark:hover:border-brand-500 transition">
+          <span class="min-w-0">
+            <span class="font-mono text-sm font-semibold text-slate-900 dark:text-white">{{ code.name }}</span>
+            <span class="ml-2 font-mono text-xs text-slate-400">{{ code.code_hex }}</span>
+            <span class="mt-1 block text-sm text-slate-600 dark:text-slate-400">{{ code.meaning | truncate(140) }}</span>
+          </span>
+          <span class="shrink-0 text-xs text-slate-400">{{ difficulty_labels.get(code.difficulty, code.difficulty) }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if results.articles %}
+  <section class="mt-8" aria-labelledby="articles-heading">
+    <h2 id="articles-heading" class="text-lg font-semibold text-slate-900 dark:text-white">Guides</h2>
+    <div class="mt-3 space-y-3">
+      {% for article in results.articles %}
+      <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-brand-400 dark:hover:border-brand-500 transition">
+        <div class="flex items-center gap-2 text-xs">
+          <a href="/category/{{ article.category }}" class="rounded bg-brand-50 dark:bg-brand-950 px-2 py-0.5 font-medium text-brand-700 dark:text-brand-300">{{ category_names[article.category] }}</a>
+          <span class="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-slate-600 dark:text-slate-300">{{ difficulty_labels[article.difficulty] }}</span>
+        </div>
+        <h3 class="mt-2 font-semibold">
+          <a href="/articles/{{ article.slug }}" class="text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-400">{{ article.title }}</a>
+        </h3>
+        <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{{ article.summary }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if not results.stop_codes and not results.articles %}
+  <div class="mt-8 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
+    <p class="font-medium text-slate-900 dark:text-white">Nothing matched &ldquo;{{ q }}&rdquo;</p>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Try fewer words, or check the spelling of an error message.</p>
+    <div class="mt-5 flex flex-wrap justify-center gap-2">
+      <a href="/bsod" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">BSOD lookup</a>
+      <a href="/wizards" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Guided wizards</a>
+      <a href="/articles" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">All guides</a>
+    </div>
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <h2 class="font-semibold text-slate-900 dark:text-white">Popular searches</h2>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% for hint in ['0x0000007B', 'MEMORY_MANAGEMENT', 'wifi driver', 'slow computer', 'blue screen', 'no sound', 'code 43', 'disk health'] %}
+      <a href="/search?q={{ hint | urlencode }}" class="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-sm text-slate-700 dark:text-slate-300 hover:bg-brand-100 dark:hover:bg-brand-950 hover:text-brand-800 dark:hover:text-brand-300">{{ hint }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

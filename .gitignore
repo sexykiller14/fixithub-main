@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data and secrets. The database and the admin password hash are created
+# by seed.py on whichever machine you run it on, so they are never committed.
+data/fixithub.db
+data/fixithub.db-wal
+data/fixithub.db-shm
+data/admin.json
+
+# Markdown backups written by the admin panel before overwriting a file.
+content/**/*.bak
+
+# Uploaded binaries. These are large, change on every re-upload, and have no
+# business in git history. On a host with a persistent volume, point
+# FIXITHUB_APPS_DIR at that volume instead of committing them here.
+apps_download/
+!apps_download/.gitkeep
+
+# Temporary files
+_tmp_*.txt
+*.log
+*.err
+
+# Environment overrides for docker-compose
+.env
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

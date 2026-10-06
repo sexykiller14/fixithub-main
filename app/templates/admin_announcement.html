@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Announcement - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Announcement banner</h1>
+  <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">Plain text only. Shows at the top of every public page and can be dismissed.</p>
+
+  {% if saved %}<p class="mt-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200" role="status">Announcement saved.</p>{% endif %}
+
+  <form action="/admin/announcement/save" method="post" class="mt-8 space-y-4">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div>
+      <label for="ann-title" class="block text-sm font-medium">Title</label>
+      <input id="ann-title" name="title" type="text" maxlength="200" value="{{ announcement.title if announcement else '' }}" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+    </div>
+    <div>
+      <label for="ann-body" class="block text-sm font-medium">Body</label>
+      <textarea id="ann-body" name="body" rows="3" maxlength="2000" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">{{ announcement.body if announcement else '' }}</textarea>
+    </div>
+    <div>
+      <label for="ann-link" class="block text-sm font-medium">Link URL</label>
+      <input id="ann-link" name="link_url" type="text" maxlength="600" value="{{ announcement.link_url if announcement else '' }}" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+    </div>
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="enabled" value="1" {% if announcement and announcement.enabled %}checked{% endif %}>
+      <span>Enabled</span>
+    </label>
+    <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Save announcement</button>
+  </form>
+</div>
+{% endblock %}

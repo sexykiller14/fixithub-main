@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Driver help - {{ site_name }}{% endblock %}
+{% block description %}Official driver download links, clean uninstall guides and Device Manager error code fixes.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Driver help</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
+    Every link below goes to an official vendor page. There are no third-party driver packs here,
+    because those are how most driver problems start.
+  </p>
+
+  <div class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 dark:bg-red-950 p-5">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">Download drivers from the manufacturer only</h2>
+    <p class="mt-2 text-sm text-red-900 dark:text-red-100">
+      "Driver updater" software and sites that host every driver from every manufacturer install
+      unsigned and mismatched drivers. Windows may refuse to load them, or they may cause crashes
+      and instability. Use the links on this page, or the
+      <a href="https://www.catalog.update.microsoft.com/" class="underline">Microsoft Update Catalog</a>,
+      which is official and hosts signed drivers vendors have withdrawn.
+    </p>
+  </div>
+
+  <section class="mt-10" aria-labelledby="vendors-heading">
+    <h2 id="vendors-heading" class="text-xl font-bold text-slate-900 dark:text-white">Official download pages</h2>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for vendor in vendors %}
+      <div class="flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        <h3 class="font-semibold text-slate-900 dark:text-white">{{ vendor.name }}</h3>
+        <p class="mt-2 flex-1 text-sm text-slate-600 dark:text-slate-400">{{ vendor.note }}</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="{{ vendor.downloads }}" rel="noopener noreferrer nofollow" target="_blank"
+             class="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">Downloads</a>
+          {% if vendor.article_slug %}
+          <a href="/drivers/{{ vendor.key }}" class="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Guide</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-12" aria-labelledby="dm-codes-heading">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <h2 id="dm-codes-heading" class="text-xl font-bold text-slate-900 dark:text-white">Device Manager error codes</h2>
+      <a href="/drivers/device-manager-codes" class="text-sm font-medium text-brand-700 dark:text-brand-400 hover:underline">Full reference</a>
+    </div>
+    <p class="mt-2 text-slate-600 dark:text-slate-400">
+      A yellow exclamation mark on a device always has a numbered code. Look it up here rather than guessing.
+    </p>
+
+    <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+      <table class="w-full min-w-[40rem] text-sm">
+        <caption class="sr-only">Device Manager error codes and their fixes</caption>
+        <thead class="bg-slate-50 dark:bg-slate-800">
+          <tr>
+            <th scope="col" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Code</th>
+            <th scope="col" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Meaning</th>
+            <th scope="col" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">First thing to try</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for code in codes %}
+          <tr class="border-t border-slate-200 dark:border-slate-800">
+            <th scope="row" class="px-4 py-3 align-top font-mono text-slate-900 dark:text-white whitespace-nowrap">
+              {% if code.code == 'no_code' %}exclamation mark{% else %}Code {{ code.code }}{% endif %}
+            </th>
+            <td class="px-4 py-3 align-top text-slate-700 dark:text-slate-300">{{ code.name }}</td>
+            <td class="px-4 py-3 align-top text-slate-600 dark:text-slate-400">{{ code.fixes[0] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

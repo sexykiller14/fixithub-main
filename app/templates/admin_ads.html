@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Ads - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Ads</h1>
+      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
+        Control the Google AdSense script and every ad slot on the site. No code
+        changes are needed to turn ads on or off.
+      </p>
+    </div>
+    <a href="/admin/dashboard" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Dashboard</a>
+  </div>
+
+  {% if error %}
+  <p class="mt-6 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-sm text-red-800 dark:text-red-200" role="alert">{{ error }}</p>
+  {% endif %}
+
+  {% if saved %}
+  <p class="mt-6 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200" role="status">Settings saved.</p>
+  {% endif %}
+
+  {% if unit_saved %}
+  <p class="mt-6 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200" role="status">Ad unit saved.</p>
+  {% endif %}
+
+  <section class="mt-8 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" aria-labelledby="ad-settings-heading">
+    <h2 id="ad-settings-heading" class="text-lg font-bold text-slate-900 dark:text-white">Global settings</h2>
+    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+      These control whether the AdSense script is shipped at all.
+    </p>
+
+    <form action="/admin/ads/settings" method="post" class="mt-5 space-y-4">
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        <input type="checkbox" name="enabled" value="1" {% if ad_settings.enabled %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+        <span class="font-medium">Show ads on the site</span>
+      </label>
+
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        <input type="checkbox" name="auto_ads" value="1" {% if ad_settings.auto_ads %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+        <span class="font-medium">Enable Auto Ads (loads the AdSense script; Google places the units itself)</span>
+      </label>
+
+      <div>
+        <label for="ads-publisher-id" class="block text-sm font-medium text-slate-700 dark:text-slate-300">AdSense Publisher ID</label>
+        <input id="ads-publisher-id" name="publisher_id" type="text" value="{{ ad_settings.publisher_id }}" placeholder="ca-pub-1234567890123456" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800">
+      </div>
+
+      <div>
+        <label for="ads-ads-txt" class="block text-sm font-medium text-slate-700 dark:text-slate-300">ads.txt</label>
+        <textarea id="ads-ads-txt" name="ads_txt" rows="4" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800">{{ ad_settings.ads_txt }}</textarea>
+        <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+          Served verbatim at <code>/ads.txt</code>. Usually one line like
+          <code class="break-all">google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0</code>.
+        </p>
+      </div>
+
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Save settings</button>
+    </form>
+  </section>
+
+  <section class="mt-8 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" aria-labelledby="ad-units-heading">
+    <h2 id="ad-units-heading" class="text-lg font-bold text-slate-900 dark:text-white">Ad units</h2>
+    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+      Each unit renders on a specific placement. In-article and in-feed need the layout key shown when you created that unit in the AdSense console.
+    </p>
+
+    {% if ad_units %}
+    <div class="mt-5 overflow-x-auto">
+      <table class="w-full text-sm">
+        <caption class="sr-only">Ad units</caption>
+        <thead>
+          <tr class="border-b border-slate-200 dark:border-slate-800">
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Label</th>
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Slot ID</th>
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Format</th>
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Placement</th>
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Show on</th>
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Device</th>
+            <th class="pb-2 text-left font-semibold text-slate-700 dark:text-slate-300">Enabled</th>
+            <th class="pb-2 text-right font-semibold text-slate-700 dark:text-slate-300">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in ad_units %}
+          <tr class="border-b border-slate-100 dark:border-slate-800">
+            <td class="py-2 pr-4 text-sm text-slate-700 dark:text-slate-300">{{ u.label or '-' }}</td>
+            <td class="py-2 pr-4 text-sm font-mono text-slate-600 dark:text-slate-400">{{ u.slot_id }}</td>
+            <td class="py-2 pr-4 text-sm text-slate-600 dark:text-slate-400">{{ u.format }}</td>
+            <td class="py-2 pr-4 text-sm text-slate-600 dark:text-slate-400">{{ u.placement }}</td>
+            <td class="py-2 pr-4 text-sm text-slate-600 dark:text-slate-400">{{ u.show_on }}{% if u.show_on == 'selected' %}&nbsp;{{ u.selected_paths }}{% endif %}</td>
+            <td class="py-2 pr-4 text-sm text-slate-600 dark:text-slate-400">{{ u.device }}</td>
+            <td class="py-2 pr-4 text-sm">
+              <form action="/admin/ads/unit/{{ u.id }}/toggle" method="post" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <button type="submit" class="rounded px-2 py-0.5 text-xs font-semibold {% if u.enabled %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400{% endif %}">
+                  {{ 'on' if u.enabled else 'off' }}
+                </button>
+              </form>
+            </td>
+            <td class="py-2 text-right text-sm">
+              <a href="/admin/ads?edit={{ u.id }}" class="text-brand-700 hover:underline dark:text-brand-400">Edit</a>
+              &middot;
+              <form action="/admin/ads/unit/{{ u.id }}/delete" method="post" class="inline" onsubmit="return confirm('Delete this ad unit?');">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <button type="submit" class="text-red-600 hover:underline dark:text-red-400">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="mt-4 text-sm text-slate-500">No ad units yet. Add one below.</p>
+    {% endif %}
+  </section>
+
+  <section class="mt-8 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" aria-labelledby="ad-unit-form-heading">
+    <h2 id="ad-unit-form-heading" class="text-lg font-bold text-slate-900 dark:text-white">
+      {% if editing_unit %}Edit ad unit{% else %}Add ad unit{% endif %}
+    </h2>
+
+    <form action="/admin/ads/unit/save" method="post" class="mt-5 grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="id" value="{{ editing_unit.id if editing_unit else '' }}">
+
+      <div>
+        <label for="unit-label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Label</label>
+        <input id="unit-label" name="label" type="text" value="{{ editing_unit.label if editing_unit else '' }}" placeholder="Mobile header" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+      </div>
+
+      <div>
+        <label for="unit-slot-id" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Ad Slot ID</label>
+        <input id="unit-slot-id" name="slot_id" type="text" value="{{ editing_unit.slot_id if editing_unit else '' }}" placeholder="1234567890" required class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+      </div>
+
+      <div>
+        <label for="unit-format" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Format</label>
+        <select id="unit-format" name="format" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+          {% for f in formats %}
+          <option value="{{ f }}" {% if editing_unit and editing_unit.format == f %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="unit-placement" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Placement</label>
+        <select id="unit-placement" name="placement" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+          {% for p in placements %}
+          <option value="{{ p }}" {% if editing_unit and editing_unit.placement == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="unit-nth" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Nth paragraph</label>
+        <input id="unit-nth" name="nth_paragraph" type="number" min="1" max="50" value="{{ editing_unit.nth_paragraph if editing_unit else 2 }}" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Only used for inside-content placement.</p>
+      </div>
+
+      <div>
+        <label for="unit-layout-key" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Layout key</label>
+        <input id="unit-layout-key" name="layout_key" type="text" value="{{ editing_unit.layout_key if editing_unit else '' }}" placeholder="required for in-article / in-feed" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+      </div>
+
+      <div>
+        <label for="unit-show-on" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Show on</label>
+        <select id="unit-show-on" name="show_on" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+          {% for s in show_on_options %}
+          <option value="{{ s }}" {% if editing_unit and editing_unit.show_on == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="unit-paths" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Selected paths</label>
+        <input id="unit-paths" name="selected_paths" type="text" value="{{ editing_unit.selected_paths if editing_unit else '' }}" placeholder="/, /articles" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Comma-separated; only used when show-on is "selected".</p>
+      </div>
+
+      <div>
+        <label for="unit-device" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Device</label>
+        <select id="unit-device" name="device" class="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+          {% for d in devices %}
+          <option value="{{ d }}" {% if editing_unit and editing_unit.device == d %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="sm:col-span-2">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Save unit</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+    <p class="font-semibold">Before turning ads on</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li>Never click your own ads. That is a Google AdSense policy violation and will get the account banned.</li>
+      <li>Keep placements clear of navigation and buttons. Google requires ads to never sit where a visitor could mistake them for page UI.</li>
+      <li>If visitors are in the EU or UK, a certified consent-management message is required before AdSense loads. The site does not ship one, so adding AdSense without one does not satisfy those rules.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

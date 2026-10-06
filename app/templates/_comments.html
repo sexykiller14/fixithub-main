@@ -1,0 +1,81 @@
+{#
+  Shared comment section for articles, stop codes and tools.
+
+  Bodies are rendered with Jinja autoescaping, never through the markdown
+  renderer, so a comment cannot inject markup into the page. Approved comments
+  come from `comments`; the author's own pending ones from `pending_comments`.
+#}
+<section class="mt-12 border-t border-slate-200 pt-8 dark:border-slate-800" aria-labelledby="comments-heading">
+  <h2 id="comments-heading" class="text-xl font-bold text-slate-900 dark:text-white">
+    Comments
+    <span class="ml-1 text-sm font-normal text-slate-500 dark:text-slate-400">({{ comment_counts.approved }})</span>
+  </h2>
+
+  {% if comment_notice == 'submitted' %}
+  <p class="mt-4 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+    Thanks. Your comment is waiting for approval and will appear once someone has read it.
+  </p>
+  {% elif comment_notice == 'too-short' %}
+  <p class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+    That comment was too short to post. Please add a little more detail.
+  </p>
+  {% endif %}
+
+  {% for comment in pending_comments %}
+  <p class="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+    <span class="font-medium">Your comment is awaiting approval:</span>
+    {{ comment.body }}
+  </p>
+  {% endfor %}
+
+  {% for comment in comments %}
+  <article class="mt-5 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+    <header class="flex flex-wrap items-baseline justify-between gap-2">
+      <h3 class="font-semibold text-slate-900 dark:text-white">
+        {{ comment.user.email.split('@')[0] if comment.user else 'Reader' }}
+      </h3>
+      <time class="text-xs text-slate-400" datetime="{{ comment.created_at.isoformat() }}">
+        {{ comment.created_at.strftime('%Y-%m-%d') }}
+      </time>
+    </header>
+    {# Whitespace is preserved so pasted steps keep their line breaks, and
+       escaping is automatic, so no markup in the body can be interpreted. #}
+    <p class="mt-2 whitespace-pre-line text-sm text-slate-700 dark:text-slate-300">{{ comment.body }}</p>
+  </article>
+  {% else %}
+  {% if not pending_comments %}
+  <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">No comments yet.</p>
+  {% endif %}
+  {% endfor %}
+
+  {% if current_user %}
+  <form action="/comments" method="post" class="mt-8 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="target_type" value="{{ comment_target_type }}">
+    <input type="hidden" name="target_id" value="{{ comment_target_id }}">
+
+    <label for="comment-body" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      Add a comment
+    </label>
+    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      Signed in as {{ current_user.email }}. Plain text, so there is no formatting to preview.
+      Comments are read before they appear.
+    </p>
+    <textarea id="comment-body" name="body" rows="4" required minlength="10" maxlength="4000"
+              placeholder="What worked for you, or what you are stuck on."
+              class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"></textarea>
+    <button type="submit" class="mt-3 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+      Post comment
+    </button>
+  </form>
+  {% elif registration_open %}
+  <p class="mt-8 rounded-xl border border-slate-200 p-5 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+    <a href="/signup" class="font-medium text-brand-700 hover:underline dark:text-brand-400">Create an account</a>
+    to comment. Everything on this page is readable without one.
+  </p>
+  {% else %}
+  <p class="mt-8 rounded-xl border border-slate-200 p-5 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+    Comments are closed at the moment. Everything on this page is readable without an account.
+  </p>
+  {% endif %}
+</section>

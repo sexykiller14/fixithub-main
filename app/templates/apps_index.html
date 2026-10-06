@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Free diagnostic tools - {{ site_name }}{% endblock %}
+{% block description %}Free Windows diagnostic tools uploaded by the FixIT Hub team, each with its SHA-256 checksum and size shown before you download.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Diagnostic tools</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
+    These are programs, not scripts. You cannot read their source, so each page tells you who
+    publishes them, what version it is, and the SHA-256 checksum so you can confirm you received
+    the exact file we uploaded.
+  </p>
+
+  <div class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 dark:bg-red-950 p-5">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">Windows will warn you before you open one of these</h2>
+    <p class="mt-2 text-sm text-red-900 dark:text-red-100">
+      Microsoft Defender and Windows SmartScreen flag programs downloaded from sites they do not
+      recognise, because almost all malware arrives this way. A warning here is expected for any
+      file on this page. It means Windows does not know this publisher, not that we know the file
+      is unsafe. Read the checksum, and prefer the vendor's own download page when one is linked.
+    </p>
+  </div>
+
+  <div class="mt-6 rounded-lg border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950 p-5">
+    <h2 class="font-semibold text-amber-900 dark:text-amber-200">We host these as a convenience, and prefer vendors</h2>
+    <p class="mt-2 text-sm text-amber-900 dark:text-amber-100">
+      Where a tool has an official download, that is almost always the better place to get it. The
+      vendor signs their installer, so Windows recognises them, and you get their own update
+      mechanism. Use a copy here when the vendor site is awkward to reach.
+    </p>
+  </div>
+
+  {% if apps %}
+  <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for app in apps %}
+    <a href="/apps/{{ app.slug }}" class="flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <div class="relative aspect-video w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800">
+        {% if app.has_screenshot %}
+        <img src="/apps/{{ app.slug }}/screenshot"
+             alt="Screenshot of {{ app.title }}"
+             loading="lazy"
+             width="480" height="270"
+             class="h-full w-full object-cover">
+        {% else %}
+        {# No screenshot yet, so a neutral panel rather than a broken image. #}
+        <div class="flex h-full w-full items-center justify-center px-4 text-center">
+          <span class="text-xs text-slate-400 dark:text-slate-500">No screenshot yet</span>
+        </div>
+        {% endif %}
+        <span class="absolute right-2 top-2 rounded bg-slate-900/80 px-2 py-0.5 font-mono text-xs uppercase text-white">{{ app.suffix }}</span>
+      </div>
+
+      <div class="flex flex-1 flex-col p-4">
+        <h2 class="font-semibold text-slate-900 dark:text-white">{{ app.title }}</h2>
+        <p class="mt-0.5 text-xs text-slate-400">
+          {{ app_categories.get(app.category, app.category) }}
+          {% if app.vendor %}&middot; {{ app.vendor }}{% endif %}
+          {% if app.version %}&middot; version {{ app.version }}{% endif %}
+        </p>
+        {# Clamped so every card is the same height. The full text is on the tool's own page. #}
+        <p class="mt-2 line-clamp-3 text-sm text-slate-600 dark:text-slate-400">{{ app.summary }}</p>
+        <p class="mt-auto pt-3 font-mono text-xs text-slate-400">
+          {{ app.size_display }} &middot; SHA-256 {{ app.hash_display }}&hellip;
+        </p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-slate-500">
+    No tools have been published yet.
+  </p>
+  {% endif %}
+
+  <div class="mt-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <h2 class="font-semibold text-slate-900 dark:text-white">Scripts are a safer starting point</h2>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+      The <a href="/scripts" class="text-brand-700 hover:underline dark:text-brand-400">diagnostic scripts</a>
+      on this site are plain text. You can open one in Notepad and read every line before running it,
+      and each page explains what each command does. If a script covers what you need, prefer it over
+      an unfamiliar program.
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Questions - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Questions</h1>
+      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
+        Sent through the "Ask us anything" widget. Your reply appears in the visitor's
+        panel the next time it is opened or polled.
+      </p>
+    </div>
+    <a href="/admin/dashboard" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Dashboard</a>
+  </div>
+
+  <div class="mt-8 grid gap-4 sm:grid-cols-2">
+    {% for state, count in question_counts.items() %}
+    <a href="/admin/questions{% if state != 'new' %}?status_filter={{ state }}{% endif %}"
+       class="rounded-xl border p-5 {% if active_status == state %}border-brand-500 bg-brand-50 dark:bg-brand-950{% else %}border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900{% endif %}">
+      <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ state }}</p>
+      <p class="mt-1.5 text-2xl font-bold text-slate-900 dark:text-white">{{ count }}</p>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if questions %}
+  <div class="mt-8 space-y-4">
+    {% for question in questions %}
+      {% include "_question_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="mt-8 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+    No questions{% if active_status %} with that status{% endif %} yet.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

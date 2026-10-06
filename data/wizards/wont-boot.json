@@ -1,0 +1,350 @@
+{
+  "id": "wont-boot",
+  "title": "My PC won't boot",
+  "summary": "Nothing happens when you press power, or Windows fails to start. Works through power, memory and boot-repair causes in order of likelihood.",
+  "icon": "power",
+  "estimated_minutes": 8,
+  "start": "power",
+  "nodes": {
+    "power": {
+      "question": "What happens when you press the power button?",
+      "help": "Count how many times the case lights blink or the fans spin. Fans that spin briefly and stop point to power or memory.",
+      "options": [
+        {
+          "label": "Nothing at all: no lights, no fans, no beep",
+          "next": "no_power_dead",
+          "tag": "no power"
+        },
+        {
+          "label": "Fans spin and lights come on, but no display",
+          "next": "power_on_no_display",
+          "tag": "no display"
+        },
+        {
+          "label": "It powers on, then Windows fails to start or restarts in a loop",
+          "next": "boot_loop",
+          "tag": "boot failure"
+        },
+        {
+          "label": "It beeps repeatedly",
+          "next": "beeping",
+          "tag": "beep codes"
+        }
+      ]
+    },
+    "no_power_dead": {
+      "question": "Does the power supply fan spin at all, even briefly?",
+      "help": "Some desktop power supplies switch on briefly as a self-test before stopping.",
+      "options": [
+        {
+          "label": "Yes, the PSU fan starts then stops",
+          "next": "psu_or_dram",
+          "tag": "psu test"
+        },
+        {
+          "label": "No, nothing moves",
+          "next": "result_power_supply",
+          "tag": "power"
+        }
+      ]
+    },
+    "psu_or_dram": {
+      "question": "Did you recently add or change any RAM, a GPU, or a new power supply?",
+      "help": "Adding memory is the most common trigger. Power supplies switching off after a self-test also commonly mean bad RAM or a failed PSU.",
+      "options": [
+        {
+          "label": "Yes, I added or changed hardware",
+          "next": "result_reseat_hardware",
+          "tag": "hardware change"
+        },
+        {
+          "label": "No, the PC has been like this for a while",
+          "next": "result_power_supply",
+          "tag": "power"
+        }
+      ]
+    },
+    "power_on_no_display": {
+      "question": "Do the fans spin and stay on, and are any motherboard or case lights lit?",
+      "help": "If fans spin briefly and stop, treat this as the no-power case instead.",
+      "options": [
+        {
+          "label": "Fans stay running steadily",
+          "next": "display_cable_check",
+          "tag": "no display"
+        },
+        {
+          "label": "Fans spin briefly then stop",
+          "next": "psu_or_dram",
+          "tag": "psu test"
+        }
+      ]
+    },
+    "display_cable_check": {
+      "question": "Have you tried a different display cable and a different port on the monitor?",
+      "help": "A failed HDMI or DisplayPort cable is surprisingly common and costs nothing to replace.",
+      "options": [
+        {
+          "label": "No, still using the original cable and port",
+          "next": "result_cable",
+          "tag": "cable"
+        },
+        {
+          "label": "Yes, tried a different cable and port",
+          "next": "integrated_gpu_test",
+          "tag": "no display"
+        }
+      ]
+    },
+    "integrated_gpu_test": {
+      "question": "Does your PC have a dedicated graphics card, and does it have video output built into the motherboard?",
+      "help": "If the CPU has integrated graphics, you can test by moving the monitor cable to the motherboard's video output and removing the graphics card.",
+      "options": [
+        {
+          "label": "Yes, there is a separate GPU and the motherboard also has video output",
+          "next": "result_gpu_or_slot",
+          "tag": "gpu"
+        },
+        {
+          "label": "No dedicated GPU, or no built-in video output",
+          "next": "result_ram_then_boot",
+          "tag": "memory"
+        }
+      ]
+    },
+    "boot_loop": {
+      "question": "Does Windows show the automatic repair screen, or restart repeatedly before the desktop appears?",
+      "help": "If you see a stop code on a blue screen, search this site for it first, since the code tells you exactly which part to test.",
+      "options": [
+        {
+          "label": "Yes, it restarts in a loop or shows a blue screen with a stop code",
+          "next": "stop_code_known",
+          "tag": "bsod"
+        },
+        {
+          "label": "No, it powers on and shuts straight back off",
+          "next": "power_on_no_display",
+          "tag": "power"
+        }
+      ]
+    },
+    "stop_code_known": {
+      "question": "Do you know the stop code shown on the blue screen?",
+      "help": "Stop codes look like 0x0000007B or CRITICAL_PROCESS_DIED. We have lookup guides for over 90 of them.",
+      "options": [
+        {
+          "label": "Yes, I have the stop code",
+          "next": "result_stop_code_lookup",
+          "tag": "bsod"
+        },
+        {
+          "label": "No, I only see a blue screen with sad face",
+          "next": "result_recovery_environment",
+          "tag": "boot repair"
+        }
+      ]
+    },
+    "beeping": {
+      "question": "How many beeps do you hear, and is the pattern short and regular or long and irregular?",
+      "help": "Post codes differ between brands. Three short beeps usually means memory; a single long beep followed by two short ones usually means video.",
+      "options": [
+        {
+          "label": "One long beep followed by two or three short ones",
+          "next": "result_video_check",
+          "tag": "video"
+        },
+        {
+          "label": "Three or four regular short beeps",
+          "next": "result_ram_test",
+          "tag": "memory"
+        },
+        {
+          "label": "Beeps repeat continuously or vary randomly",
+          "next": "result_ram_then_board",
+          "tag": "memory"
+        }
+      ]
+    },
+    "result_power_supply": {
+      "type": "result",
+      "title": "Start with the power supply",
+      "diagnosis": "If nothing happens at all, the power supply or the cable from it to the motherboard is the most likely cause.",
+      "steps": [
+        "Unplug everything and check the power cable is fully clicked into the back of the PSU, at both ends",
+        "Check the PSU's power switch at the back is set to I, not O",
+        "Test the wall outlet with a lamp or phone charger, since a dead outlet looks exactly like a dead PC",
+        "Disconnect all drives and expansion cards except the motherboard, then try again with only the CPU, one RAM stick and the CPU cooler",
+        "If it still does nothing, borrow a known-good power supply of the same wattage and form factor and test with it",
+        "Only once a good PSU is confirmed should you suspect the motherboard"
+      ],
+      "warnings": [
+        "Never open a power supply. The capacitors inside hold a lethal charge even when unplugged.",
+        "Do not use a power supply from another PC unless the wattage and connectors match exactly."
+      ],
+      "article_slug": "psu-failure-symptoms",
+      "difficulty": "moderate"
+    },
+    "result_reseat_hardware": {
+      "type": "result",
+      "title": "Reseat the hardware you just changed",
+      "diagnosis": "New RAM or a new card that is not fully seated is the single most common cause of a machine that will not start.",
+      "steps": [
+        "Switch off the PC, unplug it, and hold the power button for 10 seconds to drain residual power",
+        "Wear an anti-static wrist strap, or touch a bare metal part of the case before touching components",
+        "Remove and reseat every RAM stick firmly until the side clips snap shut",
+        "Reseat the graphics card and any power cables plugged into it",
+        "Reseat the CPU cooler, since a cooler that is not mounted tightly can trigger an immediate shutdown",
+        "Power on and test. If the problem started with a specific part, test without that part first"
+      ],
+      "warnings": [
+        "Take anti-static precautions before touching RAM, the CPU or the graphics card. Static can damage parts invisibly.",
+        "If you fitted a CPU cooler yourself, check it did not over-tighten the screws, which can crack the motherboard."
+      ],
+      "article_slug": "test-ram-memory-errors",
+      "difficulty": "moderate"
+    },
+    "result_cable": {
+      "type": "result",
+      "title": "Rule out the cable before anything else",
+      "diagnosis": "A failed display cable or a monitor input set to the wrong source produces exactly the same symptom as a dead graphics card.",
+      "steps": [
+        "Power off and swap the video cable for a known-good one",
+        "Try a different port on the monitor, then use the monitor's input menu to select that port manually",
+        "Test the monitor with another device, such as a laptop, to confirm the monitor itself works",
+        "If the PC has integrated graphics on the CPU, move the cable to the motherboard's video output",
+        "On a desktop with a dedicated GPU, confirm the cable is plugged into the GPU, not the motherboard"
+      ],
+      "warnings": [
+        "Do not assume the graphics card is dead until the cable and monitor have been ruled out."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "easy"
+    },
+    "result_gpu_or_slot": {
+      "type": "result",
+      "title": "Test the graphics card and its slot",
+      "diagnosis": "With fans running but no display, the graphics card, its power cables or the PCIe slot are the usual suspects.",
+      "steps": [
+        "Move the monitor cable to the motherboard's video output to see if the CPU has integrated graphics and can drive the display",
+        "If it works, the graphics card or its power cables are at fault, so reseat the card and every power connector on it",
+        "If there is still no display, reseat the card in the PCIe slot and check the slot latch is closed",
+        "Update the GPU driver once you can get a display, using a clean install if you have one",
+        "Try the card in a different slot or another PC to confirm whether the card itself has failed",
+        "Check the PSU has enough wattage and the right connectors for the card"
+      ],
+      "warnings": [
+        "Never force a graphics card into a slot. If it does not seat easily with the latch open, something is misaligned.",
+        "Check for a source-specific post code manual from your motherboard vendor before assuming the card is faulty."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "moderate"
+    },
+    "result_ram_test": {
+      "type": "result",
+      "title": "Test your memory",
+      "diagnosis": "Regular short beeps almost always mean RAM. Three beeps is memory on most desktop boards; the exact pattern varies by brand.",
+      "steps": [
+        "Power off, unplug, and hold the power button for 10 seconds",
+        "Remove all RAM sticks and reseat them one at a time, testing with only one stick installed at a time",
+        "Test each stick in each slot, since a faulty slot can cause the same beeps as a faulty stick",
+        "Check the slots for bent or dirty contacts and clean them gently with a soft brush or a dry eraser",
+        "If the machine boots with one stick in one slot, the fault is one of the sticks or the empty slots",
+        "Run MemTest86 for at least two full passes to confirm"
+      ],
+      "warnings": [
+        "Memory must be seated firmly until both side clips click shut. A stick that is not fully seated can damage the slot over time.",
+        "Do not mix memory kits of different speeds unless you are prepared to run at the slower common speed."
+      ],
+      "article_slug": "test-ram-memory-errors",
+      "difficulty": "easy"
+    },
+    "result_ram_then_boot": {
+      "type": "result",
+      "title": "Check memory, then rebuild the boot files",
+      "diagnosis": "Fans on with no display and no separate GPU points first at memory, then at boot files on a corrupted drive.",
+      "steps": [
+        "Reseat RAM, then test with a single stick in a single slot",
+        "Run MemTest86 for two full passes",
+        "If memory is clean, boot from Windows install media and choose Repair > Command Prompt",
+        "Run bootrec /fixmbr, then bootrec /fixboot, then bootrec /rebuildbcd",
+        "Run chkdsk C: /f /r /x to repair the filesystem",
+        "Check the drive's SMART health, since a failing drive cannot hold repaired boot files"
+      ],
+      "warnings": [
+        "Create a Windows install USB on another working PC before starting, so you always have boot media available."
+      ],
+      "article_slug": "fix-boot-recovery-loop",
+      "difficulty": "moderate"
+    },
+    "result_ram_then_board": {
+      "type": "result",
+      "title": "Isolate memory, then suspect the board",
+      "diagnosis": "Continuous or random beeping after memory tests come back clean points at the motherboard or CPU rather than a single stick.",
+      "steps": [
+        "Remove all RAM and install one known-good stick in the slot closest to the CPU",
+        "Confirm that stick passes MemTest86",
+        "Load BIOS defaults, which clears any overclock or unstable memory timing",
+        "Check the CPU cooler is mounted firmly and its fan spins",
+        "Update BIOS firmware to the latest version from the board vendor",
+        "If it still beeps with known-good memory and default settings, the motherboard or CPU has likely failed"
+      ],
+      "warnings": [
+        "Update BIOS carefully: a power cut during a flash can leave the board unbootable. Use a UPS or a laptop battery if you have one.",
+        "Do not force the CPU socket lever or touch the pins."
+      ],
+      "article_slug": "fix-high-cpu-temperature",
+      "difficulty": "hard"
+    },
+    "result_video_check": {
+      "type": "result",
+      "title": "Check the video card",
+      "diagnosis": "One long beep followed by two or three short ones is the standard video post code on most desktop boards.",
+      "steps": [
+        "Reseat the graphics card and every power cable plugged into it",
+        "Try a different cable and a different port on the monitor",
+        "Test with the card in a different PCIe slot if the board has more than one",
+        "On a laptop with integrated graphics, hold the video brightness key to cycle displays, which can show a hidden image on the internal panel",
+        "Update or cleanly reinstall the GPU driver once you have a display",
+        "Test the card in another PC to confirm whether the card itself has failed"
+      ],
+      "warnings": [
+        "Never assume a graphics card is dead until you have tested the cable, monitor and slot."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "moderate"
+    },
+    "result_stop_code_lookup": {
+      "type": "result",
+      "title": "Look up your stop code",
+      "diagnosis": "The stop code names the exact driver or hardware area at fault, which saves hours of guessing.",
+      "steps": [
+        "Write down the full stop code and the four parameters at the bottom of the blue screen",
+        "Search this site's BSOD lookup for the code or its name",
+        "Follow the ordered fix steps for that specific code, which are ordered by likelihood",
+        "Upload the minidump file from C:\\Windows\\Minidump and we will extract the bugcheck code and parameters for you",
+        "If the code repeats after all the listed steps, the 'when to seek professional help' note for that code explains what hardware to test"
+      ],
+      "warnings": [],
+      "article_slug": "read-bsod-stop-code",
+      "difficulty": "easy"
+    },
+    "result_recovery_environment": {
+      "type": "result",
+      "title": "Use the Windows Recovery Environment",
+      "diagnosis": "Startup problems that are not stop codes are usually fixed by repairing boot files from the Recovery Environment.",
+      "steps": [
+        "Wait for the automatic repair to fail three times, which forces Recovery Environment, or hold Shift while clicking Restart",
+        "Choose Troubleshoot > Advanced > Startup Repair, and let it run",
+        "If that fails, choose Command Prompt and run DISM /Online /Cleanup-Image /RestoreHealth",
+        "Then run sfc /scannow to repair system files",
+        "Run bootrec /fixmbr, bootrec /fixboot and bootrec /rebuildbcd",
+        "Check disk SMART data, because a failing drive cannot hold repaired boot files"
+      ],
+      "warnings": [
+        "Back up your files before major repairs if the drive is failing. Repairs can fail partway and change what is recoverable."
+      ],
+      "article_slug": "fix-boot-recovery-loop",
+      "difficulty": "moderate"
+    }
+  }
+}

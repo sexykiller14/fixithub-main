@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Minidump analysis result - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Minidump analysis</h1>
+
+  <dl class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">File</dt>
+      <dd class="mt-1 truncate font-mono text-sm text-slate-900 dark:text-white">{{ analysis.filename }}</dd>
+    </div>
+    <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Size</dt>
+      <dd class="mt-1 text-sm text-slate-900 dark:text-white">{{ '%.1f' | format(analysis.size_bytes / 1024) }} KB</dd>
+    </div>
+    <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Signature</dt>
+      <dd class="mt-1 font-mono text-sm text-slate-900 dark:text-white">{{ analysis.signature }}</dd>
+    </div>
+    <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Parser</dt>
+      <dd class="mt-1 text-sm text-slate-900 dark:text-white">{{ analysis.parse_method or 'n/a' }}</dd>
+    </div>
+  </dl>
+
+  {% if analysis.warnings %}
+  <div class="mt-6 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-4">
+    <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Privacy notes</h2>
+    <ul class="mt-2 space-y-1 text-sm text-amber-900 dark:text-amber-100">
+      {% for warning in analysis.warnings %}
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>{{ warning }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if analysis.bugcheck %}
+  {% set bug = analysis.bugcheck %}
+  <section class="mt-8" aria-labelledby="bugcheck-heading">
+    <h2 id="bugcheck-heading" class="text-xl font-bold text-slate-900 dark:text-white">Bugcheck found</h2>
+
+    <div class="mt-4 rounded-xl border border-brand-300 dark:border-brand-800 bg-brand-50 dark:bg-brand-950 p-6">
+      <p class="font-mono text-2xl font-bold text-brand-800 dark:text-brand-300">{{ bug.hex_code }}</p>
+      {% if bug.name != 'UNKNOWN_STOP_CODE' %}
+      <p class="mt-1 font-mono text-lg font-semibold text-brand-900 dark:text-brand-200">{{ bug.name }}</p>
+      {% endif %}
+      {% if bug.os_version %}
+      <p class="mt-3 text-sm text-brand-800 dark:text-brand-300">Recorded on {{ bug.os_version }}</p>
+      {% endif %}
+      {% if bug.name != 'UNKNOWN_STOP_CODE' %}
+      <a href="/bsod/{{ bug.name }}" class="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Read the full fix guide</a>
+      {% endif %}
+    </div>
+
+    {% if bug.parameters %}
+    <h3 class="mt-6 font-semibold text-slate-900 dark:text-white">Bugcheck parameters</h3>
+    <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
+      These are written for engineers. Where we know what a parameter means, it is shown alongside.
+    </p>
+    <div class="mt-3 overflow-x-auto">
+      <table class="w-full min-w-[36rem] border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-slate-300 dark:border-slate-700 text-left">
+            <th scope="col" class="py-2 pr-4 font-semibold text-slate-700 dark:text-slate-300">#</th>
+            <th scope="col" class="py-2 pr-4 font-semibold text-slate-700 dark:text-slate-300">Value</th>
+            <th scope="col" class="py-2 font-semibold text-slate-700 dark:text-slate-300">What it means</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in bug.parameter_rows() %}
+          <tr class="border-b border-slate-200 dark:border-slate-800 align-top">
+            <td class="py-2.5 pr-4 font-mono text-slate-500">{{ row.index }}</td>
+            <td class="py-2.5 pr-4 font-mono text-xs text-slate-900 dark:text-white">{{ row.hex }}</td>
+            <td class="py-2.5 text-slate-600 dark:text-slate-400">
+              {{ row.hint or 'Parameter meaning not documented for this code.' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  {% if matched %}
+  <section class="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6" aria-labelledby="matched-heading">
+    <h2 id="matched-heading" class="text-lg font-semibold text-slate-900 dark:text-white">{{ matched.name }} in short</h2>
+    <p class="mt-3 text-slate-700 dark:text-slate-300">{{ matched.meaning }}</p>
+
+    <h3 class="mt-5 font-semibold text-slate-900 dark:text-white">Fix it in this order</h3>
+    <ol class="mt-3 space-y-3">
+      {% for step in matched.fix_steps %}
+      <li class="flex gap-3">
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-950 text-xs font-bold text-brand-800 dark:text-brand-200" aria-hidden="true">{{ loop.index }}</span>
+        <span class="text-sm text-slate-700 dark:text-slate-300">{{ step }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+
+    {% if matched.when_to_call_pro %}
+    <div class="mt-5 rounded-lg border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950 p-4">
+      <h4 class="text-sm font-semibold text-amber-900 dark:text-amber-200">When to see a professional</h4>
+      <p class="mt-1.5 text-sm text-amber-900 dark:text-amber-100">{{ matched.when_to_call_pro }}</p>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% else %}
+  <div class="mt-8 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
+    <p class="font-medium text-slate-900 dark:text-white">No bugcheck code could be read from this file.</p>
+    {% for note in analysis.notes %}
+    <p class="mx-auto mt-3 max-w-xl text-sm text-slate-600 dark:text-slate-400">{{ note }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if analysis.notes %}
+  <div class="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+    <h2 class="text-sm font-semibold text-slate-900 dark:text-white">Notes</h2>
+    <ul class="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+      {% for note in analysis.notes %}
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>{{ note }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if related %}
+  <section class="mt-8" aria-labelledby="result-related-heading">
+    <h2 id="result-related-heading" class="text-lg font-semibold text-slate-900 dark:text-white">Related guides</h2>
+    <ul class="mt-3 grid gap-2 sm:grid-cols-3">
+      {% for article in related %}
+      <li>
+        <a href="/articles/{{ article.slug }}" class="block rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white hover:border-brand-400 dark:hover:border-brand-500">{{ article.title }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <p class="mt-10">
+    <a href="/bsod/analyze" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Analyze another file</a>
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Articles - Admin - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Articles</h1>
+      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
+        Saving writes the markdown file to <code class="font-mono text-xs">content/</code> and rebuilds the search index.
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/admin/articles/new" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">New article</a>
+      <a href="/admin/dashboard" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Dashboard</a>
+    </div>
+  </div>
+
+  {% if request.query_params.get('saved') %}
+  <p class="mt-6 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200" role="status">
+    Saved &ldquo;{{ request.query_params.get('saved') }}&rdquo;. The markdown file and search index are up to date.
+  </p>
+  {% endif %}
+  {% if request.query_params.get('deleted') %}
+  <p class="mt-6 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-4 text-sm text-amber-900 dark:text-amber-100" role="status">
+    Article deleted from the database and its markdown file removed.
+  </p>
+  {% endif %}
+
+  <div class="mt-8 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+    <table class="w-full min-w-[52rem] text-sm">
+      <caption class="sr-only">All articles</caption>
+      <thead class="bg-slate-50 dark:bg-slate-800">
+        <tr>
+          <th scope="col" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Title</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Category</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Difficulty</th>
+          <th scope="col" class="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">Views</th>
+          <th scope="col" class="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">Helpful</th>
+          <th scope="col" class="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for article in articles %}
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <th scope="row" class="px-4 py-3 align-top">
+            <a href="/articles/{{ article.slug }}" class="font-medium text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-400">{{ article.title }}</a>
+            <span class="block font-mono text-xs text-slate-400">{{ article.slug }}</span>
+          </th>
+          <td class="px-4 py-3 align-top text-slate-600 dark:text-slate-400">{{ category_names[article.category] }}</td>
+          <td class="px-4 py-3 align-top text-slate-600 dark:text-slate-400">{{ difficulty_labels[article.difficulty] }}</td>
+          <td class="px-4 py-3 align-top text-right font-mono text-slate-600 dark:text-slate-400">{{ article.view_count }}</td>
+          <td class="px-4 py-3 align-top text-right font-mono {% if article.helpful_percent < 60 and article.helpful_total > 3 %}text-red-600 dark:text-red-400{% else %}text-slate-600 dark:text-slate-400{% endif %}">
+            {{ article.helpful_percent }}%
+          </td>
+          <td class="px-4 py-3 align-top text-right font-mono text-slate-600 dark:text-slate-400">
+            {{ article.body | striptags | wordcount }}
+            {% set words = article.body | striptags | wordcount %}
+            {% if words < 300 or words > 5000 %}
+            <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900 dark:text-amber-200">audit</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 align-top text-right">
+            <a href="/admin/articles/{{ article.slug }}/edit" class="font-medium text-brand-700 dark:text-brand-400 hover:underline">Edit</a>
+            <a href="/admin/articles/{{ article.slug }}/analytics" class="ml-3 font-medium text-brand-700 dark:text-brand-400 hover:underline">Analytics</a>
+            <form action="/admin/articles/{{ article.slug }}/delete" method="post" class="inline"
+                  onsubmit="return confirm('Delete {{ article.title | replace("'", "\\'") }}? This removes the markdown file from content/ too.');">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button type="submit" class="ml-3 font-medium text-red-600 dark:text-red-400 hover:underline">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

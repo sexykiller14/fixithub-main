@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ error_title | default('Something went wrong') }} - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 py-20 text-center">
+  <p class="font-mono text-6xl font-bold text-slate-300 dark:text-slate-700">{{ status_code | default(500) }}</p>
+  <h1 class="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{{ error_title | default('Something went wrong') }}</h1>
+  <p class="mt-3 text-slate-600 dark:text-slate-400">
+    {{ error_message | default('An unexpected error occurred. It has been logged.') }}
+  </p>
+
+  <div class="mt-8 flex flex-wrap justify-center gap-3">
+    <a href="/" class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Home page</a>
+    <a href="/search" class="rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Search instead</a>
+  </div>
+
+  <p class="mt-10 text-sm text-slate-500 dark:text-slate-400">
+    If this keeps happening, the site administrator will find it in the server log.
+  </p>
+</div>
+{% endblock %}

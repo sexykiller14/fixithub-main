@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Hardware diagnostics - {{ site_name }}{% endblock %}
+{% block description %}Test RAM, check drive health, watch temperatures, identify beep codes and assess PSU and battery problems.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Hardware diagnostics</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
+    Guides for testing and understanding each piece of hardware, written so you can tell the
+    difference between a fault and a setting.
+  </p>
+
+  <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for topic in topics %}
+    <a href="/hardware/{{ topic.slug }}" class="flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-semibold text-slate-900 dark:text-white">{{ topic.title }}</h2>
+        {% if topic.script_row %}
+        <span class="shrink-0 rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">script</span>
+        {% endif %}
+      </div>
+      <p class="mt-2 flex-1 text-sm text-slate-600 dark:text-slate-400">{{ topic.blurb }}</p>
+      <p class="mt-4 rounded-lg bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">{{ topic.warning }}</p>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <h2 class="font-semibold text-slate-900 dark:text-white">Before you open your PC</h2>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Unplug everything and hold the power button for 10 seconds to drain residual power.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Ground yourself by touching bare metal on the case before touching any component. Static can damage parts invisibly.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Never open a power supply. The capacitors inside hold a lethal charge even when unplugged.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Note which cable went where before disconnecting anything, and take photos as you go.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>If a fix involves opening the case and you are not confident, stop. A technician is cheaper than a damaged motherboard.</span></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

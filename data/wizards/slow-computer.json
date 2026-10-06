@@ -1,0 +1,307 @@
+{
+  "id": "slow-computer",
+  "title": "My computer is slow",
+  "summary": "Works out whether the bottleneck is startup, disk, memory, background software or simply a machine that is too old.",
+  "icon": "gauge",
+  "estimated_minutes": 7,
+  "start": "when",
+  "nodes": {
+    "when": {
+      "question": "When is your computer slow?",
+      "help": "Slow at startup, slow everywhere, and slow only under load have completely different causes.",
+      "options": [
+        {
+          "label": "Slow to start up and sign in",
+          "next": "startup_items",
+          "tag": "startup"
+        },
+        {
+          "label": "Slow all the time, including when idle",
+          "next": "disk_health_check",
+          "tag": "disk"
+        },
+        {
+          "label": "Slow only when opening apps or heavy work",
+          "next": "memory_pressure",
+          "tag": "memory"
+        },
+        {
+          "label": "It was fast and then became slow",
+          "next": "disk_health_check",
+          "tag": "disk"
+        }
+      ]
+    },
+    "startup_items": {
+      "question": "Does it eventually become usable, or does it stay slow afterwards too?",
+      "help": "If it recovers after a few minutes, startup software is the cause. If it stays slow, something worse is happening.",
+      "options": [
+        {
+          "label": "It becomes usable after a couple of minutes",
+          "next": "result_startup_tune",
+          "tag": "startup"
+        },
+        {
+          "label": "It stays slow even once I am signed in",
+          "next": "disk_health_check",
+          "tag": "disk"
+        }
+      ]
+    },
+    "disk_health_check": {
+      "question": "Does Task Manager show high disk usage, often near 100%, when it is slow?",
+      "help": "A drive running at 100% with low CPU means the disk is the bottleneck, which usually means a failing drive rather than a software problem.",
+      "options": [
+        {
+          "label": "Yes, disk usage is near 100%",
+          "next": "result_disk_bottleneck",
+          "tag": "disk"
+        },
+        {
+          "label": "No, disk usage is low",
+          "next": "cpu_or_memory",
+          "tag": "cpu"
+        },
+        {
+          "label": "I have not checked Task Manager",
+          "next": "result_hdd_to_ssd",
+          "tag": "upgrade"
+        }
+      ]
+    },
+    "cpu_or_memory": {
+      "question": "In Task Manager, is CPU or Memory the higher percentage?",
+      "help": "Look at the Processes tab and sort by CPU or Memory to see which program is responsible.",
+      "options": [
+        {
+          "label": "CPU is high",
+          "next": "cpu_top_consumer",
+          "tag": "cpu"
+        },
+        {
+          "label": "Memory is high",
+          "next": "memory_pressure",
+          "tag": "memory"
+        },
+        {
+          "label": "Both are low",
+          "next": "result_trim_and_maintenance",
+          "tag": "maintenance"
+        }
+      ]
+    },
+    "cpu_top_consumer": {
+      "question": "Is the top CPU consumer a program you recognise, or a process name you have never heard of?",
+      "help": "Sort Task Manager by CPU. Names ending in .exe are programs. Names with no .exe, such as System, are Windows components.",
+      "options": [
+        {
+          "label": "It is a program I installed",
+          "next": "result_background_software",
+          "tag": "software"
+        },
+        {
+          "label": "It is a Windows process like System or Antimalware Service Executable",
+          "next": "result_windows_update",
+          "tag": "updates"
+        },
+        {
+          "label": "I have no idea what it is",
+          "next": "result_malware_scan",
+          "tag": "malware"
+        }
+      ]
+    },
+    "memory_pressure": {
+      "question": "How much RAM does the computer have, and is memory above 85% while you are using it?",
+      "help": "A 4 GB machine running Windows 11 is underpowered no matter what you uninstall. More RAM needs a hardware upgrade, not a software fix.",
+      "options": [
+        {
+          "label": "4 GB or less",
+          "next": "result_upgrade_ram",
+          "tag": "upgrade"
+        },
+        {
+          "label": "8 GB or more, and memory is above 85%",
+          "next": "result_memory_apps",
+          "tag": "memory"
+        },
+        {
+          "label": "8 GB or more, and memory is fine",
+          "next": "result_hdd_to_ssd",
+          "tag": "upgrade"
+        }
+      ]
+    },
+    "result_startup_tune": {
+      "type": "result",
+      "title": "Trim what starts with Windows",
+      "diagnosis": "Software that launches at startup is the most common cause of slow sign-in that recovers after a few minutes.",
+      "steps": [
+        "Open Task Manager with Ctrl plus Shift plus Esc, then go to the Startup apps tab",
+        "Disable anything you do not recognise or use daily, especially chat clients, game launchers, cloud sync and printer utilities",
+        "Do not disable antivirus, your chipset driver, storage driver, or anything from Windows Update",
+        "Check Settings > Apps > Startup for additional entries, which covers some apps Task Manager does not show",
+        "Restart and time the sign-in to confirm improvement",
+        "If you want a clean baseline, use our system report script to see exactly what is starting"
+      ],
+      "warnings": [
+        "Disabling a driver rather than an app can stop hardware working. Only disable entries that are clearly applications.",
+        "Avoid 'PC optimiser' and registry cleaner tools. They commonly slow machines down further and can break Windows."
+      ],
+      "article_slug": "speed-up-slow-windows-pc",
+      "difficulty": "easy"
+    },
+    "result_disk_bottleneck": {
+      "type": "result",
+      "title": "Your disk is the bottleneck",
+      "diagnosis": "Disk at 100% with low CPU means the drive cannot keep up. A mechanical hard drive is the usual reason.",
+      "steps": [
+        "Open Task Manager > Performance > Disk and check whether the drive is HDD or SSD",
+        "If it is an HDD, replacing it with an SSD is the single biggest speed improvement you can make, often 5 to 10 times faster",
+        "Run our disk health script to get a SMART summary and a chkdsk scan",
+        "Check free space: keep at least 15 to 20 percent free on the drive, since a full drive slows down badly",
+        "In Task Manager, identify which process is using the disk and see whether it is a known program",
+        "Check the drive's health, because a failing drive both slows down and risks your files"
+      ],
+      "warnings": [
+        "Back up your files before cloning or replacing a drive. Cloning to a failing drive can fail partway and leave you with neither.",
+        "Do not run chkdsk with /f repeatedly on a failing drive, since repair writes can destroy the remaining readable data. Check SMART first."
+      ],
+      "article_slug": "check-disk-health-ssd-hdd",
+      "difficulty": "moderate"
+    },
+    "result_hdd_to_ssd": {
+      "type": "result",
+      "title": "Replace the drive with an SSD",
+      "diagnosis": "If the machine has a mechanical hard drive, no amount of software tuning will make it fast. An SSD is the right fix.",
+      "steps": [
+        "Confirm your current drive type in Task Manager > Performance > Disk, or by opening This PC and checking the model number",
+        "If it is an HDD, buy an SSD of the same form factor: 2.5 inch SATA for most laptops and desktops, M.2 NVMe if the board has an M.2 slot",
+        "Clone the old drive to the new one using your vendor's cloning tool, or a free tool such as Clonezilla or Macrium Reflect",
+        "Check the new drive's health and drive letters in Disk Management after the first boot",
+        "If the drive is an HDD and you want the biggest speed gain, also add an M.2 NVMe SSD and move your games and documents onto it",
+        "Enable TRIM, which Windows does automatically for SSDs, and confirm it is on in the drive's properties"
+      ],
+      "warnings": [
+        "Cloning replaces the destination completely. Double-check the source and destination drives before starting, since choosing the wrong one erases data.",
+        "If your BIOS is in Legacy or CSM mode, an NVMe drive may not be visible. Switch the BIOS to UEFI mode, which requires a clean reinstall of Windows."
+      ],
+      "article_slug": "hdd-to-ssd-upgrade-guide",
+      "difficulty": "moderate"
+    },
+    "result_background_software": {
+      "type": "result",
+      "title": "Reduce what runs in the background",
+      "diagnosis": "Heavy background programs use CPU constantly even when you are not looking at them.",
+      "steps": [
+        "Open Task Manager > Processes and sort by CPU to find the heaviest programs",
+        "Uninstall anything you do not use from Settings > Apps > Installed apps",
+        "Disable the ones you want to keep in Task Manager > Startup apps",
+        "Turn off background app permissions in Settings > Apps > Installed apps > each app > Advanced options",
+        "Pause OneDrive syncing in its own settings if you do not need continuous synchronisation",
+        "Update the software, since some bugs cause runaway CPU use in older versions"
+      ],
+      "warnings": [
+        "Do not end 'Antimalware Service Executable' or 'Service Host' processes in Task Manager. They are Windows components and ending them can cause instability.",
+        "Some security software will reinstall itself and re-enable itself if you only disable its startup entry."
+      ],
+      "article_slug": "speed-up-slow-windows-pc",
+      "difficulty": "easy"
+    },
+    "result_windows_update": {
+      "type": "result",
+      "title": "Let Windows Update finish, and check its health",
+      "diagnosis": "Windows components using heavy CPU in the background are usually updating, indexing or searching.",
+      "steps": [
+        "Open Settings > Windows Update and let any pending updates install, ideally while the PC is plugged in",
+        "Avoid using the PC during a major update, since restarting mid-update can cause problems",
+        "Check whether Search indexing is running: Settings > Privacy & security > Windows Search > Indexing options",
+        "Limit indexing to your user folder and Program Files, and leave Windows, System32 and the whole drive root unindexed",
+        "If the same Windows process is heavy every day with no updates pending, run DISM /Online /Cleanup-Image /RestoreHealth then sfc /scannow",
+        "Use our system report script to capture what is running so you can compare over time"
+      ],
+      "warnings": [
+        "Do not stop an update mid-way. If you must, use the pause option rather than shutting down the PC.",
+        "Turning indexing off entirely makes search slower, so restrict it rather than disabling it."
+      ],
+      "article_slug": "fix-windows-update-failing",
+      "difficulty": "easy"
+    },
+    "result_malware_scan": {
+      "type": "result",
+      "title": "Check for malware",
+      "diagnosis": "Unrecognised processes using heavy CPU are worth checking for malware, especially if the machine has been slow since browsing unfamiliar sites.",
+      "steps": [
+        "Open Windows Security from the Start menu and run a Full scan",
+        "Run a second opinion scan with Microsoft Defender Offline, which boots into a separate environment",
+        "Check Task Manager for processes in unusual locations, since malware often runs from AppData or Temp",
+        "Install Malwarebytes for a second opinion, run a full scan, then uninstall it",
+        "Update Windows and your browser, since most malware arrives through unpatched software",
+        "Change important passwords from a different, trusted device if you suspect a real infection"
+      ],
+      "warnings": [
+        "Never install antivirus from a pop-up or a website you reached by clicking an ad. Use Windows Security or a vendor's official site.",
+        "Avoid 'free PC optimisation' bundles advertised by pop-ups. They are a common malware delivery method."
+      ],
+      "article_slug": "fix-high-cpu-usage",
+      "difficulty": "easy"
+    },
+    "result_memory_apps": {
+      "type": "result",
+      "title": "Close what is using memory",
+      "diagnosis": "Above 85% memory use means Windows is constantly writing to the page file on disk, which makes everything feel slow.",
+      "steps": [
+        "In Task Manager > Processes, sort by Memory to see the heaviest users",
+        "Close browser tabs you are not using, since each tab can hold a large amount of memory",
+        "Close applications that are running in the system tray but not being used",
+        "Ensure the page file is set to system-managed: System > Advanced system settings > Performance > Settings > Advanced > Virtual memory",
+        "If you use many browser tabs, install a memory-saving extension or use a browser with a tab suspend feature",
+        "Consider adding RAM if you regularly run many applications at once"
+      ],
+      "warnings": [
+        "Do not disable the page file entirely. Windows needs it, and setting it to zero can cause blue screens."
+      ],
+      "article_slug": "fix-slow-pc-after-upgrade",
+      "difficulty": "easy"
+    },
+    "result_upgrade_ram": {
+      "type": "result",
+      "title": "Add RAM",
+      "diagnosis": "Windows 11 officially supports 4 GB, but in practice 4 GB makes a modern PC feel slow no matter what you tune.",
+      "steps": [
+        "Check how much RAM you have in Settings > System > About > Installed RAM",
+        "Check the maximum your motherboard supports in its specifications, and whether it has free slots",
+        "Buy a matched kit of two identical sticks rather than two different sticks, which run at the slower speed",
+        "With the PC off and unplugged, open the case and slot the new RAM in with the clips snapping shut",
+        "Power on and confirm the new amount appears in Task Manager > Performance > Memory",
+        "Only then enable XMP or EXPO in BIOS, and test stability before leaving it enabled"
+      ],
+      "warnings": [
+        "Take anti-static precautions before handling RAM. Ground yourself on bare metal first.",
+        "Check the RAM type your board supports: DDR4 and DDR5 are not interchangeable. Using the wrong type can damage the slots.",
+        "An XMP or EXPO profile that is not stable causes random crashes. If the machine becomes unstable, disable it and run at the default speed."
+      ],
+      "article_slug": "upgrade-ram-laptop-desktop",
+      "difficulty": "moderate"
+    },
+    "result_trim_and_maintenance": {
+      "type": "result",
+      "title": "Maintenance that actually helps",
+      "diagnosis": "With low CPU and low memory use, the remaining software-side fixes are modest but real.",
+      "steps": [
+        "Keep at least 15 to 20 percent of the system drive free, and empty the Recycle Bin",
+        "Run the built-in cleanup: search Disk Cleanup, choose the drive, and tick System files to free update leftovers",
+        "Run DISM /Online /Cleanup-Image /StartComponentCleanup to remove superseded component versions",
+        "Run sfc /scannow to verify system files are intact",
+        "Restart monthly, which clears temporary memory and driver state",
+        "If nothing helps and the drive is an HDD, replacing it with an SSD remains the biggest improvement available"
+      ],
+      "warnings": [
+        "Avoid third-party 'cleaners'. Many delete files Windows needs and cause slowdowns and update failures.",
+        "Do not use defrag on an SSD. TRIM is the correct tool and Windows handles it automatically."
+      ],
+      "article_slug": "speed-up-slow-windows-pc",
+      "difficulty": "easy"
+    }
+  }
+}

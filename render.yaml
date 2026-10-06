@@ -1,0 +1,74 @@
+# Render blueprint for FixIT Hub.
+#
+# This app needs a persistent writable filesystem: SQLite lives in data/ and the
+# admin panel writes article markdown back into content/. Platforms with an
+# ephemeral, read-only filesystem cannot run it as written. Render gives us a
+# real disk, so the Dockerfile and the file-backed admin panel work unchanged.
+#
+# Deploy with: New > Blueprint, or set the repo's Render dashboard to read
+# render.yaml. Secrets are NOT in this file. Set them in the dashboard under
+# Environment, or with `render env set` from a checkout.
+
+services:
+  - type: web
+    name: fixithub
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter          # the free plan is ephemeral and loses the database
+    healthCheckPath: /healthz
+    # One worker, because the rate limiter and the login throttle keep their
+    # counters inside the process. More workers would multiply both limits.
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+
+    envVars:
+      - key: FIXITHUB_SITE_URL
+        sync: false        # set to your deployed origin, e.g. https://fixithub.onrender.com
+      - key: FIXITHUB_SECRET_KEY
+        generateValue: true   # signs sessions and CSRF tokens
+      - key: FIXITHUB_ADMIN_PASSWORD
+        sync: false        # set this in the dashboard; it is never committed
+      # Render terminates TLS and forwards to the container, so cookies must be
+      # secure and the forwarded client IP can be trusted for rate limiting.
+      - key: FIXITHUB_SECURE_COOKIES
+        value: "1"
+      - key: FIXITHUB_TRUST_PROXY
+        value: "1"
+      - key: FIXITHUB_DATABASE_URL
+        value: sqlite:////app/data/fixithub.db
+      # Uploaded binaries are large and never belong in git. Pointing this at
+      # the volume means admin uploads survive a redeploy. Without it, uploads
+      # live in the container filesystem and disappear on the next build.
+      - key: FIXITHUB_APPS_DIR
+        value: /app/data/apps
+      - key: FIXITHUB_DEBUG
+        value: "0"
+      # Reader accounts are off unless you turn them on. Turning this on means
+      # accepting comments from strangers, so it should be a deliberate choice.
+      - key: FIXITHUB_ALLOW_REGISTRATION
+        value: "0"
+      # Verification email. Leave these unset and accounts still work; the admin
+      # confirms addresses by hand from the moderation queue.
+      - key: FIXITHUB_SMTP_HOST
+        sync: false
+      - key: FIXITHUB_SMTP_PORT
+        value: "587"
+      - key: FIXITHUB_SMTP_USER
+        sync: false
+      - key: FIXITHUB_SMTP_PASSWORD
+        sync: false
+      - key: FIXITHUB_SMTP_FROM
+        sync: false
+
+    disk:
+      # The database, its WAL files, the admin hash and any uploaded binaries
+      # live here. Without this every deploy starts from an empty database.
+      name: fixithub-data
+      mountPath: /app/data
+      sizeGB: 1
+
+    # Seeding is a one-off rather than a startup step, because running it on
+    # every boot would race with itself and rewrite a live database. Trigger it
+    # from a shell on the running service:
+    #   render ssh fixithub -- python seed.py --rebuild-search
+    # or from a one-off job. See the README.

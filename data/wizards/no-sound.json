@@ -1,0 +1,535 @@
+{
+  "id": "no-sound",
+  "title": "I have no sound",
+  "summary": "Covers muted devices, wrong output selection, disabled enhancements, driver problems and faulty audio hardware.",
+  "icon": "volume",
+  "estimated_minutes": 5,
+  "start": "scope",
+  "nodes": {
+    "scope": {
+      "question": "Is there no sound at all, or does it work sometimes?",
+      "help": "Complete silence points to output selection or drivers; intermittent sound often means a loose jack or a physical fault.",
+      "options": [
+        {
+          "label": "Completely silent everywhere",
+          "next": "output_device",
+          "tag": "output"
+        },
+        {
+          "label": "Sound works sometimes, or cuts out",
+          "next": "intermittent",
+          "tag": "connection"
+        },
+        {
+          "label": "Sound works but quality is bad, distorted or crackly",
+          "next": "audio_quality",
+          "tag": "quality"
+        },
+        {
+          "label": "Sound works on headphones but not speakers, or the reverse",
+          "next": "headphone_speaker_test",
+          "tag": "connection"
+        }
+      ]
+    },
+    "output_device": {
+      "question": "In Windows sound settings, which device is set as the output?",
+      "help": "Windows often switches output automatically when you plug in headphones and forgets to switch back.",
+      "options": [
+        {
+          "label": "It is set to my speakers or headphones",
+          "next": "volume_state",
+          "tag": "volume"
+        },
+        {
+          "label": "It is set to something else, such as a monitor or HDMI output",
+          "next": "result_wrong_output",
+          "tag": "output"
+        },
+        {
+          "label": "There are no output devices listed at all",
+          "next": "device_present",
+          "tag": "hardware"
+        },
+        {
+          "label": "I cannot find the sound settings",
+          "next": "open_sound_settings",
+          "tag": "howto"
+        }
+      ]
+    },
+    "open_sound_settings": {
+      "question": "Open Sound settings with the Windows key plus I, then Control Panel. What do you see under Output?",
+      "help": "Win plus I opens Settings. Then choose System > Sound.",
+      "options": [
+        {
+          "label": "My output device is listed there",
+          "next": "volume_state",
+          "tag": "output"
+        },
+        {
+          "label": "No output device is listed",
+          "next": "device_present",
+          "tag": "hardware"
+        }
+      ]
+    },
+    "volume_state": {
+      "question": "Is the volume slider at zero, and is the selected device muted?",
+      "help": "Per-application volume and exclusive mode can also silence a device while the main slider is high.",
+      "options": [
+        {
+          "label": "It was muted or at zero",
+          "next": "result_volume_fixed",
+          "tag": "volume"
+        },
+        {
+          "label": "The volume is high and not muted",
+          "next": "enhancements",
+          "tag": "enhancements"
+        },
+        {
+          "label": "I checked and it is unmuted and high",
+          "next": "app_test",
+          "tag": "software"
+        }
+      ]
+    },
+    "enhancements": {
+      "question": "Are audio enhancements or spatial sound enabled on the device?",
+      "help": "Enhancements, spatial sound and exclusive mode apps all cause silence on otherwise working hardware.",
+      "options": [
+        {
+          "label": "Yes, enhancements or spatial sound are on",
+          "next": "result_disable_enhancements",
+          "tag": "enhancements"
+        },
+        {
+          "label": "No, they are off",
+          "next": "result_audio_driver",
+          "tag": "driver"
+        },
+        {
+          "label": "I have not checked",
+          "next": "result_disable_enhancements",
+          "tag": "enhancements"
+        }
+      ]
+    },
+    "app_test": {
+      "question": "Do you hear sound from Windows test sounds, such as the sample in sound settings?",
+      "help": "The Test button plays a sound through the selected device, which tells you whether Windows or the device is at fault.",
+      "options": [
+        {
+          "label": "Yes, the test sound plays",
+          "next": "result_per_app_volume",
+          "tag": "software"
+        },
+        {
+          "label": "No, the test sound is also silent",
+          "next": "result_audio_driver",
+          "tag": "driver"
+        },
+        {
+          "label": "Only some apps are silent",
+          "next": "result_per_app_volume",
+          "tag": "software"
+        }
+      ]
+    },
+    "device_present": {
+      "question": "Does the audio device appear in Device Manager under Sound, video and game controllers?",
+      "help": "A missing or disabled device is a driver or hardware problem rather than a settings one.",
+      "options": [
+        {
+          "label": "It shows a yellow exclamation mark",
+          "next": "result_device_manager_code",
+          "tag": "device manager"
+        },
+        {
+          "label": "It is greyed out",
+          "next": "result_enable_device",
+          "tag": "device manager"
+        },
+        {
+          "label": "It is not listed at all",
+          "next": "result_missing_device",
+          "tag": "hardware"
+        },
+        {
+          "label": "It is there and looks normal",
+          "next": "result_audio_driver",
+          "tag": "driver"
+        }
+      ]
+    },
+    "intermittent": {
+      "question": "Does it cut out in a regular pattern, or completely at random?",
+      "help": "Regular patterns usually mean interference or a driver bug; random cutouts usually mean a physical connection or hardware fault.",
+      "options": [
+        {
+          "label": "Regularly, such as every few minutes",
+          "next": "result_driver_interference",
+          "tag": "driver"
+        },
+        {
+          "label": "Completely at random",
+          "next": "loose_connection",
+          "tag": "connection"
+        },
+        {
+          "label": "Only when I move the laptop or cable",
+          "next": "loose_connection",
+          "tag": "connection"
+        }
+      ]
+    },
+    "loose_connection": {
+      "question": "Is this a laptop or do you use external speakers or a headset?",
+      "help": "Headphone jacks and ports get worn, and internal laptop speakers rely on small connectors that can work loose.",
+      "options": [
+        {
+          "label": "I use headphones, earbuds or external speakers with a cable",
+          "next": "result_plug_and_jack",
+          "tag": "connection"
+        },
+        {
+          "label": "It is a laptop with built-in speakers",
+          "next": "result_internal_speakers",
+          "tag": "hardware"
+        },
+        {
+          "label": "Desktop speakers plugged into a rear port",
+          "next": "result_rear_port",
+          "tag": "connection"
+        }
+      ]
+    },
+    "audio_quality": {
+      "question": "Is the problem crackling, distortion, low volume, or a delay compared with the video?",
+      "help": "Each symptom points at something different, from sample rate mismatch to a failing speaker.",
+      "options": [
+        {
+          "label": "Crackling, popping or distortion",
+          "next": "result_sample_rate",
+          "tag": "quality"
+        },
+        {
+          "label": "Audio is out of sync with video",
+          "next": "result_bluetooth_latency",
+          "tag": "bluetooth"
+        },
+        {
+          "label": "It is just very quiet",
+          "next": "result_quiet_audio",
+          "tag": "quality"
+        }
+      ]
+    },
+    "headphone_speaker_test": {
+      "question": "If you plug headphones into the same port that the speakers used, do they work?",
+      "help": "This isolates whether the port works at all and whether the fault is the speaker or the audio path.",
+      "options": [
+        {
+          "label": "Headphones work in that port",
+          "next": "result_speaker_problem",
+          "tag": "speakers"
+        },
+        {
+          "label": "Headphones are silent too",
+          "next": "output_device",
+          "tag": "output"
+        },
+        {
+          "label": "Headphones and speakers use different ports",
+          "next": "output_device",
+          "tag": "output"
+        }
+      ]
+    },
+    "result_wrong_output": {
+      "type": "result",
+      "title": "Select the right output device",
+      "diagnosis": "Connecting a monitor or TV over HDMI makes it the default output, which leaves speakers silent without any error.",
+      "steps": [
+        "Press Win plus I and go to System > Sound > Output",
+        "Choose your speakers or headphones from the device list",
+        "Test with the Test button to confirm sound",
+        "Also check the volume mixer: Win plus I > Sound > Volume mixer, and confirm the right device is not muted",
+        "For Bluetooth, pair the device again in Bluetooth settings and set it as the output",
+        "To stop Windows switching automatically, open Device Manager, open the output device's Properties, and untick Allow applications to take exclusive control of this device"
+      ],
+      "warnings": [],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_volume_fixed": {
+      "type": "result",
+      "title": "Volume and mute settings",
+      "diagnosis": "Muted outputs and per-application volume sliders explain a surprising number of 'no sound' reports.",
+      "steps": [
+        "Check the main volume slider in Settings > System > Sound and drag it up",
+        "Check the device is not muted by clicking the speaker icon in the taskbar",
+        "Open the volume mixer and check each application, since browsers have their own sliders",
+        "Check the device's own physical volume buttons or knob, if it has one",
+        "Run the Test button in sound settings to confirm the device produces sound at all",
+        "If you use Bluetooth, check the device's own volume, since some headsets have a separate Bluetooth volume"
+      ],
+      "warnings": [],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_disable_enhancements": {
+      "type": "result",
+      "title": "Turn off enhancements and spatial sound",
+      "diagnosis": "Audio enhancements, spatial sound and mono audio are designed features that can silence a working device.",
+      "steps": [
+        "Open Settings > System > Sound, then click on your output device and Device properties",
+        "Open the Enhancements tab and tick Disable all enhancements, or untick each individual enhancement",
+        "Turn spatial sound off, or try the Windows Sonic option instead of the hardware setting",
+        "In Device properties > Advanced, untick Allow applications to take exclusive control of this device",
+        "Turn off Mono audio, which is often left on after accessibility adjustments",
+        "Restart Windows and test again"
+      ],
+      "warnings": [
+        "Mono audio makes everything play through one channel. If it seems stuck on, check Settings > Accessibility > Audio."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_per_app_volume": {
+      "type": "result",
+      "title": "Check per-application and exclusive mode settings",
+      "diagnosis": "If Windows test sounds work but your applications are silent, the problem is per-app volume or exclusive mode control.",
+      "steps": [
+        "Open the volume mixer and raise the level for the affected application, and unmute it",
+        "Click the Properties button for that application and untick Mute for its output device",
+        "In Device Manager, open your audio device's Properties > Advanced and untick Allow applications to take exclusive control",
+        "Restart the affected application, since some only read audio settings at launch",
+        "Check the browser's own audio settings, since browsers mute tabs separately",
+        "Test with a different application to narrow down whether it is one app or all of them"
+      ],
+      "warnings": [
+        "Some professional audio software needs exclusive mode. If you use it, re-enable exclusive control afterwards."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_audio_driver": {
+      "type": "result",
+      "title": "Clean reinstall the audio driver",
+      "diagnosis": "A corrupt Realtek audio driver is one of the most common causes of Windows silence.",
+      "steps": [
+        "Open Device Manager and expand Sound, video and game controllers",
+        "Right-click the audio device and choose Uninstall device, ticking Delete the driver software",
+        "Restart and let Windows install a basic driver so sound works again",
+        "Then install the official driver from your PC vendor, or download the Realtek driver from our driver section",
+        "Update the chipset driver as well, since the audio driver depends on it",
+        "If you have an onboard HDMI audio device, make sure it is not set as the output instead"
+      ],
+      "warnings": [
+        "After removing the driver you may have no sound until Windows reinstalls it. Have the installer downloaded beforehand.",
+        "Do not use third-party driver updater software, which commonly installs unsigned or mismatched drivers."
+      ],
+      "article_slug": "realtek-audio-network-drivers",
+      "difficulty": "moderate"
+    },
+    "result_device_manager_code": {
+      "type": "result",
+      "title": "Read the Device Manager code",
+      "diagnosis": "Device Manager gives a specific code, and each one has a defined fix.",
+      "steps": [
+        "Open Device Manager and expand Sound, video and game controllers",
+        "Double-click the device with the yellow exclamation mark",
+        "Read the code on the General tab, such as Code 10, 28, 43 or 31",
+        "Look it up in our Device Manager error guide for the exact fix",
+        "Code 28 means no driver at all, so install from your PC vendor",
+        "Use Scan for hardware changes from the Action menu if you have just connected audio hardware"
+      ],
+      "warnings": [],
+      "article_slug": "windows-device-manager-error-codes",
+      "difficulty": "easy"
+    },
+    "result_enable_device": {
+      "type": "result",
+      "title": "Enable the audio device",
+      "diagnosis": "A greyed-out device in Device Manager is simply disabled and needs enabling rather than any repair.",
+      "steps": [
+        "Right-click the greyed-out device and choose Enable device",
+        "If the option is missing, choose Uninstall device, restart, and let Windows reinstall it",
+        "Check hidden devices with View > Show hidden devices, since disabled devices appear greyed out there",
+        "On a laptop, confirm the audio device is not disabled by a function key",
+        "Restart after enabling, since the driver loads at startup"
+      ],
+      "warnings": [],
+      "article_slug": "windows-device-manager-error-codes",
+      "difficulty": "easy"
+    },
+    "result_missing_device": {
+      "type": "result",
+      "title": "The audio hardware is not detected",
+      "diagnosis": "A completely missing audio device points to hardware, BIOS or firmware rather than drivers.",
+      "steps": [
+        "Enter BIOS with Del or F2 and check whether an onboard audio device is listed and enabled",
+        "Some BIOS settings disable onboard audio when a discrete sound card is detected",
+        "In BIOS, load defaults in case the audio setting was changed",
+        "Update BIOS firmware, since older firmware can fail to detect newer audio chips",
+        "If a USB audio interface or headset is used, try a different port, preferably a rear motherboard port",
+        "If the device is still missing, the onboard audio chip or its connection has failed and needs hardware repair"
+      ],
+      "warnings": [
+        "On a laptop, the internal speaker connector or codec can fail. That is a repair, not a driver fix."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "moderate"
+    },
+    "result_plug_and_jack": {
+      "type": "result",
+      "title": "Check the plug and the jack",
+      "diagnosis": "Worn headphone jacks and cables cause sound that cuts out when the cable moves slightly.",
+      "steps": [
+        "Push the plug fully in until it clicks, and wiggle it gently at the jack to see whether sound cuts out",
+        "Try a different pair of headphones or earbuds to rule out the cable",
+        "Check the jack for lint or debris, and clean it gently with a soft brush or compressed air",
+        "Move to the next jack if the device has several, since some are disabled for headphone detect",
+        "Avoid hanging the cable by its plug, which is the most common cause of jack failure",
+        "Replace a cable that cuts out when moved; internal headphone wiring breaks at the connector"
+      ],
+      "warnings": [
+        "Do not use metal objects to clean a jack; you can short the contacts and damage the audio chip.",
+        "Do not hang headphones from the plug or yank the cable out, both of which destroy the connector."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_internal_speakers": {
+      "type": "result",
+      "title": "Test the laptop's internal speakers",
+      "diagnosis": "A laptop that loses sound when moved usually has a loose internal speaker connector.",
+      "steps": [
+        "Check the volume mixer to confirm the speakers are not muted for the laptop's own output",
+        "Run the Windows test sound with the lid open, since some laptops mute when closed",
+        "Test with headphones; if they work, the speakers or their connector are at fault",
+        "Move the laptop gently and listen for cutting, which indicates a loose internal connector",
+        "Open the laptop and reseat the speaker connector, only if you are comfortable doing so",
+        "Otherwise a repair centre can reseat it cheaply and it is a common laptop repair"
+      ],
+      "warnings": [
+        "Opening a laptop risks damaging ribbon cables and the battery connector. Disconnect the battery first if you do.",
+        "Some laptops mute when the lid is closed by design, which is not a fault."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "moderate"
+    },
+    "result_rear_port": {
+      "type": "result",
+      "title": "Try the other rear ports",
+      "diagnosis": "Desktop speakers on the wrong rear port, or in the speaker-out port instead of line-out, are extremely common mistakes.",
+      "steps": [
+        "Plug the speakers into the green line-out port, not the pink microphone port or the black rear speaker port",
+        "On a desktop with a graphics card with its own audio outputs, use the ports on the card rather than the motherboard",
+        "If sound plays on the wrong port, choose that port as the output in sound settings, or change the cable",
+        "Try a different rear port to rule out a faulty one",
+        "Check the speaker power LED and that the volume knob on the speakers is turned up",
+        "Confirm the correct output is selected in Settings > System > Sound > Output"
+      ],
+      "warnings": [
+        "Connecting microphones or line-in to speakers can produce very loud noise or damage the microphone. Check the colour coding."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_speaker_problem": {
+      "type": "result",
+      "title": "The speakers themselves are faulty",
+      "diagnosis": "Headphones working in the same port proves the audio path is fine, so the speakers or their power are at fault.",
+      "steps": [
+        "Check the speaker power LED is on and the volume knob is turned up",
+        "Confirm the correct input on the speakers, which is often a source selector button",
+        "Swap the left and right cables at the back, since speakers with two inputs need the correct one",
+        "Test the speakers with a phone or another device to confirm they work at all",
+        "Replace any power supply brick that feels warm, buzzes or smells burnt",
+        "Check for a blown driver by playing something with heavy bass, since small drivers do not handle low frequencies well"
+      ],
+      "warnings": [
+        "Disconnect the speakers from the PC before testing them with another device, to rule out the PC as the source of damage.",
+        "Do not leave a buzzing power supply connected, and never open it."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_sample_rate": {
+      "type": "result",
+      "title": "Fix crackling and distortion",
+      "diagnosis": "Crackling usually comes from a sample rate mismatch or exclusive mode contention rather than broken hardware.",
+      "steps": [
+        "Open Settings > System > Sound > your output device > Device properties > Advanced",
+        "Untick Allow applications to take exclusive control of this device",
+        "Set the default format to 16 bit, 44100 Hz, which is the most compatible setting",
+        "Change the format to 24 bit, 48000 Hz if you handle video or music production, and test for crackling",
+        "Test with all audio enhancements off",
+        "If using Bluetooth, connect with the higher-quality codec option available in the device properties"
+      ],
+      "warnings": [
+        "Do not set an unusual sample rate if you are not sure your hardware supports it. Wrong rates cause crackling or silence."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_bluetooth_latency": {
+      "type": "result",
+      "title": "Reduce Bluetooth audio delay",
+      "diagnosis": "Bluetooth audio always has some delay. Large delays usually mean the wrong codec is being used.",
+      "steps": [
+        "In Settings > Bluetooth & devices > Devices, open your headset's properties",
+        "Choose the high-quality audio codec option, such as aptX or AAC, instead of the legacy SBC codec",
+        "Switch between the available codecs and test the delay for each",
+        "Update the headset's firmware if the manufacturer provides an app for it",
+        "Reduce the distance and remove obstructions between the PC and the headset",
+        "Switch to 2.4 GHz with a dongle if you need near-zero latency for video or gaming"
+      ],
+      "warnings": [
+        "Bluetooth audio codecs are licensed, so options vary by headset and Windows version.",
+        "Switching to 2.4 GHz uses more USB bandwidth and can conflict with other 2.4 GHz devices."
+      ],
+      "article_slug": "fix-bluetooth-windows-11",
+      "difficulty": "easy"
+    },
+    "result_quiet_audio": {
+      "type": "result",
+      "title": "Fix quiet audio",
+      "diagnosis": "Several separate volume controls multiply together, and any one of them set low will cause quiet output.",
+      "steps": [
+        "Raise the main volume slider in Settings > System > Sound",
+        "Raise the level for the specific application in the volume mixer",
+        "Turn up the volume on the speaker or headset itself",
+        "Check Windows Loudness Equalization in Sound properties > Enhancements, which can make quiet sources audible",
+        "Check per-app volume settings in Settings > System > Sound > Volume mixer for a separate control",
+        "Update the audio driver, since some versions scale volume incorrectly"
+      ],
+      "warnings": [
+        "Loudness Equalization is a software boost, so raising it can sound harsh or introduce distortion at high levels."
+      ],
+      "article_slug": "fix-no-sound-windows",
+      "difficulty": "easy"
+    },
+    "result_driver_interference": {
+      "type": "result",
+      "title": "Find the interference",
+      "diagnosis": "Regularly repeating cutouts usually mean a driver conflict or an audio enhancement process competing for the device.",
+      "steps": [
+        "Uninstall audio enhancements and disable spatial sound in the output device properties",
+        "Turn off exclusive mode control for the audio device",
+        "Close communication apps such as Discord, Teams and Zoom, which hook the microphone and speaker",
+        "Uninstall or disable third-party virtual audio drivers, such as those from screen recorders or voice changers",
+        "Update the Realtek audio driver and chipset drivers from your PC vendor",
+        "Check whether the pattern follows a specific app by testing playback in the Windows Media Player"
+      ],
+      "warnings": [
+        "If you rely on a virtual audio device for recording, remove competing virtual audio software rather than removing your recording tool."
+      ],
+      "article_slug": "realtek-audio-network-drivers",
+      "difficulty": "moderate"
+    }
+  }
+}

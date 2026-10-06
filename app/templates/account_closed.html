@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Registration is closed - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-lg px-4 py-12 text-center">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ error_title }}</h1>
+  <p class="mt-3 text-slate-600 dark:text-slate-400">{{ error_message }}</p>
+  <p class="mt-8">
+    <a href="/" class="font-medium text-brand-700 hover:underline dark:text-brand-400">Back to the home page</a>
+  </p>
+</div>
+{% endblock %}

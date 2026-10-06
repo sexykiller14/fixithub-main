@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}TCP latency test - {{ site_name }}{% endblock %}
+{% block description %}Measure TCP connect latency to a host, with minimum, average, median and jitter figures.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+  <nav aria-label="Breadcrumb" class="mb-5 text-sm text-slate-500 dark:text-slate-400">
+    <a href="/tools" class="hover:text-brand-700 dark:hover:text-brand-400">Network tools</a>
+    <span aria-hidden="true"> / </span>
+    <span class="text-slate-700 dark:text-slate-200">Latency test</span>
+  </nav>
+
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Latency test</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">
+    Measures TCP connect latency over four attempts. This uses TCP rather than ICMP ping, so it
+    works without elevated privileges on Windows.
+  </p>
+
+  <form action="/tools/latency" method="post" data-tool-form class="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+      <div>
+        <label for="latency-host" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Host</label>
+        <input id="latency-host" type="text" name="host" value="{{ host }}" maxlength="253" required autofocus
+               placeholder="example.com"
+               class="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+      </div>
+      <div>
+        <label for="latency-port" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Port</label>
+        <input id="latency-port" list="latency-port-options" type="text" name="port" value="{{ port }}" maxlength="8" required
+               class="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <datalist id="latency-port-options">
+          {% for value, label in port_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </datalist>
+      </div>
+    </div>
+    <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+      {{ rate_limit_max }} tests per {{ rate_limit_window }} seconds per IP address. Only common ports are permitted.
+    </p>
+    <button type="submit" class="mt-4 rounded-lg bg-brand-600 px-5 py-2 font-semibold text-white hover:bg-brand-700">Run test</button>
+  </form>
+
+  {% if error %}
+  <div class="mt-6 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4" role="alert">
+    <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  {% if result %}
+  {% set d = result.data %}
+  <section class="mt-8" aria-labelledby="latency-result-heading" aria-live="polite">
+    <h2 id="latency-result-heading" class="sr-only">Latency results</h2>
+
+    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+      <p class="font-mono text-lg font-bold text-slate-900 dark:text-white">{{ d.host }}:{{ d.port }}</p>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        {{ d.service }} &middot; resolved to {{ d.ip }} &middot; {{ d.attempts }} attempts via {{ d.method }} connect
+        {% if d.failures %} &middot; {{ d.failures }} failed{% endif %}
+      </p>
+
+      <dl class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {% for label, value, key in [('Minimum', d.min_ms, 'min'), ('Average', d.avg_ms, 'avg'), ('Median', d.median_ms, 'median'), ('Jitter', d.jitter_ms, 'jitter')] %}
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
+          <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</dt>
+          <dd class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ value }} ms</dd>
+        </div>
+        {% endfor %}
+      </dl>
+
+      <p class="mt-5 rounded-lg bg-brand-50 dark:bg-brand-950 p-4 text-sm text-brand-900 dark:text-brand-200">
+        {{ d.verdict }}
+      </p>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Jitter matters more than the average</h3>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        Calls and games suffer more from variation than from a consistently high number. A steady
+        90 ms is comfortable; a connection swinging between 10 ms and 300 ms is not, even though
+        the average looks better. High jitter usually means Wi-Fi congestion, a congested uplink,
+        or bufferbloat on a saturated connection.
+      </p>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

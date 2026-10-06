@@ -1,0 +1,39 @@
+services:
+  app:
+    build: .
+    image: fixithub:latest
+    container_name: fixithub
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Set a long random value. Without it, sessions reset on every restart.
+      FIXITHUB_SECRET_KEY: "${FIXITHUB_SECRET_KEY:?set FIXITHUB_SECRET_KEY in .env or the environment}"
+      # Hashed on the fly at startup. Convenient for a first run; prefer
+      # `docker compose exec app python seed.py --set-admin-password` afterwards.
+      FIXITHUB_ADMIN_PASSWORD: "${FIXITHUB_ADMIN_PASSWORD:-}"
+      FIXITHUB_SITE_URL: "${FIXITHUB_SITE_URL:-http://localhost:8000}"
+      FIXITHUB_DEBUG: "0"
+      # Set to 1 only when served over HTTPS.
+      FIXITHUB_SECURE_COOKIES: "${FIXITHUB_SECURE_COOKIES:-0}"
+      # Set to 1 only behind a reverse proxy you control.
+      FIXITHUB_TRUST_PROXY: "${FIXITHUB_TRUST_PROXY:-0}"
+    volumes:
+      # Keeps the database and admin password hash across rebuilds.
+      - fixithub-data:/app/data
+      # Keeps admin-uploaded binaries across rebuilds.
+      - fixithub-apps:/app/apps_download
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  fixithub-data:
+  fixithub-apps:

@@ -1,0 +1,397 @@
+{
+  "id": "no-internet",
+  "title": "I have no internet",
+  "summary": "Separates Wi-Fi, cable, DNS and router causes, and tells you which to fix first without wasting time on the wrong one.",
+  "icon": "wifi",
+  "estimated_minutes": 6,
+  "start": "scope",
+  "nodes": {
+    "scope": {
+      "question": "What exactly is failing?",
+      "help": "Distinguishing 'no network' from 'connected but no web pages' points you at completely different parts of the system.",
+      "options": [
+        {
+          "label": "No network icon, or it says no internet access",
+          "next": "wifi_or_cable",
+          "tag": "connection"
+        },
+        {
+          "label": "Connected to Wi-Fi or a cable, but web pages will not load",
+          "next": "dns_check",
+          "tag": "dns"
+        },
+        {
+          "label": "Only some sites or apps will not work",
+          "next": "partial_access",
+          "tag": "dns"
+        }
+      ]
+    },
+    "wifi_or_cable": {
+      "question": "Are you using Wi-Fi or an Ethernet cable?",
+      "help": "The two have almost no shared failure modes, so identifying which you use saves a lot of time.",
+      "options": [
+        {
+          "label": "Wi-Fi",
+          "next": "wifi_strong",
+          "tag": "wifi"
+        },
+        {
+          "label": "Ethernet cable",
+          "next": "cable_link_lights",
+          "tag": "ethernet"
+        },
+        {
+          "label": "Both are available and both fail",
+          "next": "result_router_or_isp",
+          "tag": "router"
+        }
+      ]
+    },
+    "wifi_strong": {
+      "question": "Does the Wi-Fi show a strong signal with a password, and does another device on the same network have internet?",
+      "help": "If other devices work, the router and internet connection are fine and the fault is on this PC.",
+      "options": [
+        {
+          "label": "Strong signal, connected, but other devices work fine",
+          "next": "wifi_driver_state",
+          "tag": "driver"
+        },
+        {
+          "label": "Weak signal, or keeps disconnecting",
+          "next": "wifi_range",
+          "tag": "signal"
+        },
+        {
+          "label": "No Wi-Fi adapter appears at all",
+          "next": "wifi_missing_adapter",
+          "tag": "hardware"
+        }
+      ]
+    },
+    "wifi_driver_state": {
+      "question": "Do other devices on the same Wi-Fi network have internet right now?",
+      "help": "This is the key test. Working other devices mean the router and ISP are fine.",
+      "options": [
+        {
+          "label": "Yes, other devices work",
+          "next": "result_tcp_ip_reset",
+          "tag": "tcp/ip"
+        },
+        {
+          "label": "No, nothing in the house works",
+          "next": "result_router_or_isp",
+          "tag": "router"
+        }
+      ]
+    },
+    "wifi_range": {
+      "question": "Does the signal improve if you move closer to the router?",
+      "help": "Weak signal is usually a placement, interference or adapter problem rather than an internet problem.",
+      "options": [
+        {
+          "label": "Yes, it improves when I move closer",
+          "next": "result_signal_strength",
+          "tag": "signal"
+        },
+        {
+          "label": "No, the signal is weak right next to the router",
+          "next": "result_wifi_driver",
+          "tag": "driver"
+        }
+      ]
+    },
+    "wifi_missing_adapter": {
+      "question": "Does the Wi-Fi adapter appear in Device Manager at all?",
+      "help": "Check Device Manager > Network adapters. A missing adapter usually means a driver or hardware switch problem, not a network problem.",
+      "options": [
+        {
+          "label": "It shows a yellow exclamation mark or an error code",
+          "next": "result_device_manager_code",
+          "tag": "device manager"
+        },
+        {
+          "label": "It is not listed at all",
+          "next": "result_hardware_switch",
+          "tag": "hardware"
+        },
+        {
+          "label": "I have not checked yet",
+          "next": "result_wifi_driver",
+          "tag": "driver"
+        }
+      ]
+    },
+    "cable_link_lights": {
+      "question": "Do the lights on the Ethernet port and on the router's matching port light up when the cable is connected?",
+      "help": "No link lights means no physical connection, which is a cable, port or driver problem rather than an ISP problem.",
+      "options": [
+        {
+          "label": "Yes, both ends have lights",
+          "next": "other_device_cable",
+          "tag": "ethernet"
+        },
+        {
+          "label": "No, no lights on one or both ends",
+          "next": "result_cable_or_port",
+          "tag": "cable"
+        }
+      ]
+    },
+    "other_device_cable": {
+      "question": "Does another device connected by the same cable and port get internet?",
+      "help": "If another device works with the same cable, the cable and port are fine and the fault is in this PC's network stack.",
+      "options": [
+        {
+          "label": "Yes, another device works",
+          "next": "result_tcp_ip_reset",
+          "tag": "tcp/ip"
+        },
+        {
+          "label": "No, it fails too",
+          "next": "result_router_or_isp",
+          "tag": "router"
+        }
+      ]
+    },
+    "dns_check": {
+      "question": "Can you open a website by its web address, such as https://1.1.1.1, even though names like example.com fail?",
+      "help": "If a numeric address works but names do not, DNS resolution is the problem. Opening a numeric address means bypassing name lookups entirely.",
+      "options": [
+        {
+          "label": "Yes, numeric addresses work but names do not",
+          "next": "result_dns_fix",
+          "tag": "dns"
+        },
+        {
+          "label": "No, nothing loads",
+          "next": "wifi_or_cable",
+          "tag": "connection"
+        },
+        {
+          "label": "I have not tested that",
+          "next": "result_dns_flush",
+          "tag": "dns"
+        }
+      ]
+    },
+    "partial_access": {
+      "question": "Is the problem specific to work or school sites that require sign-in, or to one particular app?",
+      "help": "Some networks require a sign-in page before any other traffic is allowed, which looks exactly like a broken connection.",
+      "options": [
+        {
+          "label": "Only sites that require a login fail",
+          "next": "result_captive_portal",
+          "tag": "portal"
+        },
+        {
+          "label": "One specific site or app fails",
+          "next": "result_single_service",
+          "tag": "service"
+        },
+        {
+          "label": "Everything is slow rather than broken",
+          "next": "result_dns_flush",
+          "tag": "dns"
+        }
+      ]
+    },
+    "result_tcp_ip_reset": {
+      "type": "result",
+      "title": "Reset the TCP/IP stack on this PC",
+      "diagnosis": "Other devices work, so the router and your internet connection are fine. The fault is in this PC's network configuration.",
+      "steps": [
+        "Open Command Prompt as Administrator: right-click Start > Terminal (Admin), or search cmd and choose Run as administrator",
+        "Run ipconfig /flushdns to clear the cached name lookups",
+        "Run ipconfig /release and then ipconfig /renew to get a fresh address from the router",
+        "Run netsh winsock reset to rebuild the Winsock catalog",
+        "Run netsh int ip reset to rebuild the TCP/IP stack",
+        "Restart the PC, then test again. If it still fails, download our network reset script and run it instead of typing commands by hand"
+      ],
+      "warnings": [
+        "Netsh resets can temporarily disrupt VPN or virtual machine software. Uninstall or reinstall those afterwards.",
+        "Only run these as Administrator from Command Prompt, not PowerShell."
+      ],
+      "article_slug": "fix-no-internet-windows",
+      "difficulty": "easy"
+    },
+    "result_dns_fix": {
+      "type": "result",
+      "title": "Change your DNS servers",
+      "diagnosis": "Numeric addresses working while names fail means your DNS resolver is the problem, not your connection.",
+      "steps": [
+        "Open Settings > Network & internet > Wi-Fi or Ethernet, then the Properties button for your connection",
+        "Under DNS server assignment choose Edit, then switch it to Manual",
+        "Enter 1.1.1.1 and 1.0.0.1 as preferred and alternate DNS, or 8.8.8.8 and 8.8.4.4 for Google's",
+        "Save, then run ipconfig /flushdns in an elevated Command Prompt",
+        "Test with our DNS lookup tool on this site to confirm resolution is working",
+        "Turn the Wi-Fi adapter off and on after changing DNS so it applies immediately"
+      ],
+      "warnings": [
+        "Some workplace and school networks supply their own DNS and block others, so ask your administrator before changing it there."
+      ],
+      "article_slug": "fix-dns-problems-windows",
+      "difficulty": "easy"
+    },
+    "result_dns_flush": {
+      "type": "result",
+      "title": "Clear the DNS cache first",
+      "diagnosis": "Flushing the cache is harmless, takes seconds, and fixes a surprising share of name-resolution problems.",
+      "steps": [
+        "Open an elevated Command Prompt",
+        "Run ipconfig /flushdns",
+        "Then run ipconfig /release followed by ipconfig /renew",
+        "Restart the browser, which keeps its own DNS and connection state",
+        "If the problem persists, change your DNS servers to 1.1.1.1 as described in the DNS guide",
+        "Use our DNS lookup tool to check whether your chosen resolver answers correctly"
+      ],
+      "warnings": [],
+      "article_slug": "fix-dns-problems-windows",
+      "difficulty": "easy"
+    },
+    "result_signal_strength": {
+      "type": "result",
+      "title": "Improve the Wi-Fi signal",
+      "diagnosis": "Weak signal slows everything and causes dropouts even when the connection technically works.",
+      "steps": [
+        "Move the router to a higher, open position rather than inside a cupboard or behind a TV",
+        "Move away from microwaves, cordless phone bases, baby monitors and Bluetooth speakers",
+        "Check how many walls are between the PC and router, and consider a mesh node or a wired connection instead",
+        "On a desktop, use Ethernet instead of Wi-Fi where practical, since it is both faster and more reliable",
+        "Check the router's 5 GHz and 2.4 GHz bands, since 2.4 GHz travels further but 5 GHz is faster where the signal is strong",
+        "Update the Wi-Fi adapter driver, since some older drivers handle weak signals poorly"
+      ],
+      "warnings": [
+        "Avoid long cable runs through doorways or under carpets with Ethernet. PoE or a powerline adapter is better in that situation."
+      ],
+      "article_slug": "fix-wifi-signal-strength",
+      "difficulty": "easy"
+    },
+    "result_wifi_driver": {
+      "type": "result",
+      "title": "Clean reinstall the Wi-Fi driver",
+      "diagnosis": "A corrupt or outdated Wi-Fi driver causes everything from no connection to random dropouts.",
+      "steps": [
+        "Open Device Manager and expand Network adapters",
+        "Right-click the Wi-Fi adapter and choose Uninstall device, ticking Delete the driver software",
+        "Restart the PC and let Windows install a basic driver automatically",
+        "Then install the official driver from your PC vendor, or from the adapter manufacturer",
+        "Update the chipset driver as well, since the Wi-Fi driver depends on it",
+        "If the adapter disappears after restarting, check the physical Wi-Fi switch or function key and the BIOS setting for wireless"
+      ],
+      "warnings": [
+        "Removing the driver leaves you without Wi-Fi. Have Ethernet or a USB Wi-Fi dongle available in case the automatic install fails.",
+        "On a laptop, the Wi-Fi card may be disabled by a function key or a BIOS switch rather than a driver problem."
+      ],
+      "article_slug": "fix-wifi-driver-windows-11",
+      "difficulty": "easy"
+    },
+    "result_device_manager_code": {
+      "type": "result",
+      "title": "Read the Device Manager error code",
+      "diagnosis": "Device Manager tells you exactly what the driver complaint is, and each code has a specific fix.",
+      "steps": [
+        "Open Device Manager with the Windows key plus X, then Device Manager",
+        "Expand Network adapters and double-click the adapter with the yellow exclamation mark",
+        "Read the code on the General tab, which will be something like Code 10, 28, 43 or 31",
+        "Look that code up in our Device Manager error guide for the specific fix",
+        "Code 28 means no driver at all, so install from your PC vendor; Code 10 and 43 are usually fixed by a clean reinstall",
+        "Run Scan for hardware changes from the Action menu if you have added hardware recently"
+      ],
+      "warnings": [
+        "Do not delete driver files from C:\\Windows\\System32 by hand. Use the Device Manager uninstall button with the delete option instead."
+      ],
+      "article_slug": "windows-device-manager-error-codes",
+      "difficulty": "easy"
+    },
+    "result_hardware_switch": {
+      "type": "result",
+      "title": "Check for a hardware switch or BIOS setting",
+      "diagnosis": "A missing adapter on a laptop is usually a switch, a key combination or a BIOS setting rather than a dead adapter.",
+      "steps": [
+        "On a laptop, check for a physical Wi-Fi switch on the side and a function key combination such as Fn plus F2 or F12",
+        "Press the combination and recheck Device Manager",
+        "Enter the BIOS with the Del or F2 key at power-on and look for Wireless or WLAN in the security or advanced settings",
+        "If the adapter is listed in Device Manager but greyed out, right-click it and choose Enable device",
+        "Check hidden devices using View > Show hidden devices for a disabled adapter",
+        "If BIOS has no wireless option at all, the adapter is not being detected, which points to hardware failure"
+      ],
+      "warnings": [
+        "Do not keep a wireless card disabled to avoid interference, since it will also affect Bluetooth and Wake on LAN."
+      ],
+      "article_slug": "fix-wifi-driver-windows-11",
+      "difficulty": "easy"
+    },
+    "result_cable_or_port": {
+      "type": "result",
+      "title": "Fix the physical Ethernet connection",
+      "diagnosis": "No link lights means the connection is not established physically, so software fixes will not help.",
+      "steps": [
+        "Reseat both ends of the cable firmly, listening for a click",
+        "Try a different port on the router and a different port on the PC, since ports do fail",
+        "Test with a different known-good Ethernet cable, as damaged cables are extremely common",
+        "Check for damage, sharp bends or crushed cable near the connectors",
+        "On a laptop, check the Ethernet adapter is enabled and has a current driver in Device Manager",
+        "Update the LAN driver from your PC vendor if link lights appear but no internet follows"
+      ],
+      "warnings": [],
+      "article_slug": "fix-ethernet-not-working",
+      "difficulty": "easy"
+    },
+    "result_captive_portal": {
+      "type": "result",
+      "title": "Complete the network sign-in page",
+      "diagnosis": "Public and guest networks require a sign-in page to be opened and accepted before any other traffic is allowed.",
+      "steps": [
+        "Open a browser and navigate to http://neverssl.com, which forces a sign-in page to appear if one is required",
+        "If nothing appears, try http://1.1.1.1",
+        "Accept the terms, or sign in with whatever credentials the network requires",
+        "For phone hotspots, some Android versions keep a sign-in page in a separate browser window, so check for other browser windows",
+        "Some corporate networks need a certificate installed, which requires your IT administrator",
+        "If you cannot get the sign-in page at all, restart the connection and try again from a fresh network"
+      ],
+      "warnings": [
+        "Never disable certificate warnings or antivirus to force a sign-in page through. That is how captive portal credential theft works."
+      ],
+      "article_slug": "fix-no-internet-windows",
+      "difficulty": "easy"
+    },
+    "result_single_service": {
+      "type": "result",
+      "title": "Work out whether it is DNS or the service itself",
+      "diagnosis": "When only one site fails, the network is probably fine and the problem is name resolution or the service.",
+      "steps": [
+        "Use this site's DNS lookup tool to see whether the failing domain resolves",
+        "If it resolves, the problem is the service or your path to it rather than DNS",
+        "Try the service in a different browser or in a private window to rule out extensions",
+        "Check whether the site works on another device on the same network",
+        "Flush the DNS cache with ipconfig /flushdns and try once more",
+        "If a proxy or VPN is enabled, turn it off and test again"
+      ],
+      "warnings": [
+        "If you use a corporate proxy, ask your administrator which proxy addresses are allowed before changing any settings."
+      ],
+      "article_slug": "fix-dns-problems-windows",
+      "difficulty": "easy"
+    },
+    "result_router_or_isp": {
+      "type": "result",
+      "title": "The problem is the router or the ISP",
+      "diagnosis": "When nothing in the house works, the fault is the router, the modem or your internet provider, not any single PC.",
+      "steps": [
+        "Reboot the modem first, wait a full 60 seconds, then reboot the router and wait another 60 seconds",
+        "Check whether the router's status lights show a normal internet or WAN connection",
+        "Connect a device directly to the modem with an Ethernet cable to bypass the router",
+        "Note the modem's and router's indicator lights, then call your provider and read them out",
+        "Check whether your provider has a service outage in your area",
+        "If the modem's internet light stays off even after a reboot, the modem or the provider's line is at fault"
+      ],
+      "warnings": [
+        "Do not reset the modem to factory settings before calling your provider, since that often erases the credentials they need for your line.",
+        "Avoid interrupting a firmware update if the modem lights are flashing in a pattern, since that can brick it."
+      ],
+      "article_slug": "fix-router-lights-offline",
+      "difficulty": "easy"
+    }
+  }
+}

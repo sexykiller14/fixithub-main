@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'new' %}Upload a tool{% else %}Edit {{ app.title }}{% endif %} - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
+  <a href="/admin/apps" class="text-sm text-brand-700 hover:underline dark:text-brand-400">&larr; All uploads</a>
+  <h1 class="mt-3 text-3xl font-bold text-slate-900 dark:text-white">
+    {% if mode == 'new' %}Upload a tool{% else %}Edit {{ app.title }}{% endif %}
+  </h1>
+
+  {% if form_errors %}
+  <div class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 p-5 dark:bg-red-950">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">Fix these before saving</h2>
+    <ul class="mt-2 space-y-1.5 text-sm text-red-900 dark:text-red-100">
+      {% for error in form_errors %}
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>{{ error }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if mode == 'edit' %}
+  <div class="mt-6 rounded-lg border border-slate-200 bg-white p-5 text-sm dark:border-slate-800 dark:bg-slate-900">
+    <p class="font-semibold text-slate-900 dark:text-white">Current file</p>
+    <dl class="mt-2 grid gap-1 sm:grid-cols-[8rem_1fr]">
+      <dt class="text-slate-500 dark:text-slate-400">Name</dt>
+      <dd class="font-mono text-xs text-slate-700 dark:text-slate-300">{{ app.filename or 'none' }}</dd>
+      <dt class="text-slate-500 dark:text-slate-400">Size</dt>
+      <dd class="text-slate-700 dark:text-slate-300">{{ app.size_display or 'unknown' }}</dd>
+      <dt class="text-slate-500 dark:text-slate-400">SHA-256</dt>
+      <dd class="break-all font-mono text-xs text-slate-700 dark:text-slate-300">{{ app.sha256 or 'not recorded' }}</dd>
+    </dl>
+    <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+      Leave the file field empty to keep this file. Choosing a new one replaces it and records a new checksum.
+    </p>
+  </div>
+  {% endif %}
+
+  <form action="/admin/apps/save" method="post" enctype="multipart/form-data" class="mt-8 space-y-6">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+
+    <div class="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <h2 class="font-semibold text-slate-900 dark:text-white">What it is</h2>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label for="app-title" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Title</label>
+          <input type="text" id="app-title" name="title" required maxlength="160" value="{{ app.title }}"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Shown as the page heading.</p>
+        </div>
+
+        <div>
+          <label for="app-slug" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Slug</label>
+          <input type="text" id="app-slug" name="slug" required maxlength="60" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="{{ app.slug }}"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Lowercase letters, numbers and single hyphens. Becomes the URL, and the stored file name.</p>
+        </div>
+
+        <div>
+          <label for="app-summary" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Summary</label>
+          <textarea id="app-summary" name="summary" rows="3" required maxlength="2000"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">{{ app.summary }}</textarea>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">One or two sentences, shown on the listing page.</p>
+        </div>
+
+        <div>
+          <label for="app-purpose" class="block text-sm font-medium text-slate-700 dark:text-slate-300">When to use it</label>
+          <textarea id="app-purpose" name="purpose" rows="8" maxlength="400000"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">{{ app.purpose }}</textarea>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Markdown. Explain what the tool reads and when a result means something is wrong.</p>
+        </div>
+
+        <div>
+          <label for="app-warnings" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Warnings</label>
+          <textarea id="app-warnings" name="warnings_text" rows="4" maxlength="400000"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">{{ app.warnings_text }}</textarea>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">One per line. Each is shown in a warning box on the page, so use this for anything the user should know before running.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <h2 class="font-semibold text-slate-900 dark:text-white">Provenance</h2>
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Recording who publishes the tool and where it comes from is what makes the download trustworthy. A file with no publisher listed is just an unknown binary.
+      </p>
+
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="app-vendor" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Publisher</label>
+          <input type="text" id="app-vendor" name="vendor" maxlength="120" value="{{ app.vendor }}"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        </div>
+        <div>
+          <label for="app-version" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Version</label>
+          <input type="text" id="app-version" name="version" maxlength="40" value="{{ app.version }}"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        </div>
+        <div class="sm:col-span-2">
+          <label for="app-vendor-url" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Official download page</label>
+          <input type="url" id="app-vendor-url" name="vendor_url" maxlength="400" value="{{ app.vendor_url }}"
+                 placeholder="https://example.com/downloads"
+                 class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Strongly recommended. We link visitors here first, because a vendor's signed installer is safer than our copy.</p>
+        </div>
+        <div>
+          <label for="app-category" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label>
+          <select id="app-category" name="category"
+                  class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+            {% for value, label in app_categories.items() %}
+            <option value="{{ value }}" {% if app.category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <h2 class="font-semibold text-slate-900 dark:text-white">The file</h2>
+
+      {% if mode == 'new' %}
+      <div class="mt-4">
+        <label for="app-binary" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Choose a file</label>
+        <input type="file" id="app-binary" name="binary" required accept=".exe,.msi,.zip"
+               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {{ allowed_suffixes }}, up to {{ max_app_mb }} MB. The stored name is built from the slug, so the
+          name you pick locally does not matter.
+        </p>
+      </div>
+      {% else %}
+      <div class="mt-4">
+        <label for="app-binary" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Replace the file (optional)</label>
+        <input type="file" id="app-binary" name="binary" accept=".exe,.msi,.zip"
+               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <h2 class="font-semibold text-slate-900 dark:text-white">Screenshot (optional)</h2>
+
+      {% if app.screenshot_filename %}
+      <div class="mt-4 flex items-start gap-4">
+        <img src="/apps/{{ app.slug }}/screenshot"
+             alt="Current screenshot of {{ app.title }}"
+             class="h-24 w-40 rounded-lg border border-slate-200 object-cover dark:border-slate-700">
+        <p class="text-sm text-slate-600 dark:text-slate-400">
+          A screenshot is already attached. Uploading a new one replaces it.
+        </p>
+      </div>
+      {% endif %}
+
+      <div class="mt-4">
+        <label for="app-screenshot" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+          {% if app.screenshot_filename %}Replace the screenshot (optional){% else %}Add a screenshot (optional){% endif %}
+        </label>
+        <input type="file" id="app-screenshot" name="screenshot" accept="{{ allowed_image_suffixes }}"
+               class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {{ allowed_image_suffixes }}, up to {{ max_image_mb }} MB. Shown on the tools page so a visitor can
+          recognise the tool before downloading. SVG is not accepted, because a browser would run it as a
+          document rather than display it as a picture. Images are stored as-is and never resized here, so
+          upload one close to the size you want.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4">
+      <button type="submit" class="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+        {% if mode == 'new' %}Upload{% else %}Save changes{% endif %}
+      </button>
+      <a href="/admin/apps" class="text-sm text-slate-600 hover:underline dark:text-slate-300">Cancel</a>
+
+      <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        <input type="checkbox" name="is_published" value="on" {% if app.is_published %}checked{% endif %}
+               class="rounded border-slate-300 text-brand-600 dark:border-slate-700 dark:bg-slate-800">
+        Published
+      </label>
+    </div>
+
+    <p class="text-xs text-slate-500 dark:text-slate-400">
+      Leave unpublished while you check the file. Draft uploads are not listed publicly and their download
+      route returns 404, so nobody can reach them until you publish.
+    </p>
+  </form>
+</div>
+{% endblock %}

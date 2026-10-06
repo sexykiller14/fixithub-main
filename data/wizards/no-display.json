@@ -1,0 +1,294 @@
+{
+  "id": "no-display",
+  "title": "No display / black screen",
+  "summary": "Works from the cheapest checks through to graphics card and memory faults, in the order that saves the most time.",
+  "icon": "monitor",
+  "estimated_minutes": 7,
+  "start": "state",
+  "nodes": {
+    "state": {
+      "question": "What state is the computer in when there is no display?",
+      "help": "No power at all and no display but running fans are completely different problems.",
+      "options": [
+        {
+          "label": "No power: no lights, no fans",
+          "next": "result_power_supply",
+          "tag": "power"
+        },
+        {
+          "label": "Fans and lights work, but the screen is black",
+          "next": "cable_test",
+          "tag": "display"
+        },
+        {
+          "label": "Monitor says no signal but the PC is clearly on",
+          "next": "output_source",
+          "tag": "display"
+        },
+        {
+          "label": "It works when I boot, then goes black later",
+          "next": "black_after_boot",
+          "tag": "driver"
+        }
+      ]
+    },
+    "cable_test": {
+      "question": "Have you tried a different video cable and a different port on the monitor?",
+      "help": "This is free and rules out the single most common cause of a black screen.",
+      "options": [
+        {
+          "label": "No, same cable and port as always",
+          "next": "result_cable_first",
+          "tag": "cable"
+        },
+        {
+          "label": "Yes, tried different cables and ports",
+          "next": "gpu_present",
+          "tag": "gpu"
+        }
+      ]
+    },
+    "output_source": {
+      "question": "Does the monitor have more than one input, and have you selected the right one using its own menu?",
+      "help": "Monitors do not detect inputs automatically on many models. Use the buttons on the monitor to select HDMI, DisplayPort or VGA.",
+      "options": [
+        {
+          "label": "I have not checked the monitor's input menu",
+          "next": "result_monitor_input",
+          "tag": "monitor"
+        },
+        {
+          "label": "The correct input is selected and it still says no signal",
+          "next": "gpu_present",
+          "tag": "gpu"
+        }
+      ]
+    },
+    "gpu_present": {
+      "question": "Does this computer have a separate graphics card?",
+      "help": "Most desktops with a dedicated GPU also have video output on the motherboard, which lets you test without the card.",
+      "options": [
+        {
+          "label": "Yes, it has a graphics card and the motherboard also has video output",
+          "next": "result_test_integrated",
+          "tag": "gpu"
+        },
+        {
+          "label": "No separate graphics card",
+          "next": "integrated_no_gpu",
+          "tag": "ram"
+        },
+        {
+          "label": "I am not sure",
+          "next": "result_test_integrated",
+          "tag": "gpu"
+        }
+      ]
+    },
+    "integrated_no_gpu": {
+      "question": "Is this a laptop, and does pressing the brightness keys make anything appear on the internal screen?",
+      "help": "Some laptops send video to the external output only, or apply a backlight that needs cycling.",
+      "options": [
+        {
+          "label": "It is a laptop and nothing happens with the brightness keys",
+          "next": "external_monitor_test",
+          "tag": "display"
+        },
+        {
+          "label": "It is a laptop, and something appeared after cycling brightness or display output",
+          "next": "result_display_switch",
+          "tag": "display"
+        },
+        {
+          "label": "It is a desktop without a separate graphics card",
+          "next": "result_ram_then_boot",
+          "tag": "ram"
+        }
+      ]
+    },
+    "external_monitor_test": {
+      "question": "Does an external monitor connected to the laptop show anything, including a login screen?",
+      "help": "If the external display works, the panel, its cable or its backlight is the problem rather than the graphics hardware.",
+      "options": [
+        {
+          "label": "Yes, the external monitor works",
+          "next": "result_internal_display",
+          "tag": "display"
+        },
+        {
+          "label": "No, the external monitor is black too",
+          "next": "result_ram_then_boot",
+          "tag": "ram"
+        }
+      ]
+    },
+    "black_after_boot": {
+      "question": "Does it show the Windows logo and spinner, then go black?",
+      "help": "That pattern points at the graphics driver rather than hardware, because Windows has already started.",
+      "options": [
+        {
+          "label": "Yes, it gets as far as the Windows logo then goes black",
+          "next": "result_safe_mode_driver",
+          "tag": "driver"
+        },
+        {
+          "label": "It goes black without showing the Windows logo",
+          "next": "gpu_present",
+          "tag": "gpu"
+        },
+        {
+          "label": "It goes black after signing in, when the desktop loads",
+          "next": "result_safe_mode_driver",
+          "tag": "driver"
+        }
+      ]
+    },
+    "result_power_supply": {
+      "type": "result",
+      "title": "Start with power",
+      "diagnosis": "No lights and no fans at all means the power supply, its cable or the wall socket, not the display.",
+      "steps": [
+        "Test the wall socket with a lamp or phone charger, since a dead outlet looks exactly like a dead PC",
+        "Check the PSU power switch at the back is set to I, and the cable is clicked in fully at both ends",
+        "Disconnect all drives and expansion cards except the motherboard, then retry",
+        "Test with a single RAM stick, since a machine with no usable memory often shows nothing",
+        "Try a known-good power supply of the same wattage and form factor",
+        "Confirm the CPU fan spins at all when the power switch is flicked on"
+      ],
+      "warnings": [
+        "Never open a power supply. The capacitors inside hold a lethal charge even when unplugged.",
+        "Do not use a power supply from another PC unless the wattage and connectors match exactly."
+      ],
+      "article_slug": "fix-pc-wont-boot-power-on",
+      "difficulty": "moderate"
+    },
+    "result_cable_first": {
+      "type": "result",
+      "title": "Change the cable before anything else",
+      "diagnosis": "A damaged cable or wrong input selection produces a black screen identical to a dead graphics card.",
+      "steps": [
+        "Swap the video cable for a known-good one of the same type",
+        "Try a different port on the monitor and select it in the monitor's own input menu",
+        "Test the monitor with another device, such as a laptop, to confirm the panel works",
+        "On a desktop with a graphics card, confirm the cable is plugged into the card, not the motherboard",
+        "Clean the connectors gently and check for bent pins, which cause exactly this symptom",
+        "Only after cables, ports and monitors are ruled out should you suspect the graphics hardware"
+      ],
+      "warnings": [
+        "Do not assume the graphics card has failed until the cable and monitor are ruled out."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "easy"
+    },
+    "result_monitor_input": {
+      "type": "result",
+      "title": "Select the correct input on the monitor",
+      "diagnosis": "Many monitors do not detect an input automatically, and simply show a black screen instead.",
+      "steps": [
+        "Press the buttons or joystick on the monitor to open its own menu",
+        "Find Input Source or Source and select the port matching your cable, such as HDMI 1",
+        "If unsure, plug the cable into the only port that works with no selection needed, often HDMI 1",
+        "Confirm the monitor's own LED shows a normal, not standby, state",
+        "Check the power cable to the monitor is fully connected and the monitor input is right",
+        "Try a different cable if the screen still says no signal"
+      ],
+      "warnings": [],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "easy"
+    },
+    "result_display_switch": {
+      "type": "result",
+      "title": "Windows is using the wrong display",
+      "diagnosis": "Pressing the brightness or display-switch keys fixes it, so the machine and graphics hardware are fine.",
+      "steps": [
+        "Use Win plus P to open the projection menu and choose the display you want",
+        "Choose PC screen only if you only use the laptop panel, or Duplicate if you want both",
+        "If the display menu does not appear, try the hardware keys: Fn plus F7, F8, F9 or F10 vary by laptop",
+        "Open Settings > System > Display > Display resolution and set it to Recommended",
+        "Check Settings > System > Display > Use dynamic brightness, which can black out very bright panels",
+        "Update the graphics driver if this happens regularly after waking"
+      ],
+      "warnings": [
+        "Do not change the resolution to something custom if the recommended setting looks wrong; that usually means a driver problem."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "easy"
+    },
+    "result_internal_display": {
+      "type": "result",
+      "title": "The internal laptop screen is at fault",
+      "diagnosis": "The external display working proves the graphics hardware is fine, so the panel, cable or backlight has failed.",
+      "steps": [
+        "Connect an external monitor and use it with Win plus P set to Duplicate or Extend",
+        "Increase the internal panel brightness with the brightness keys to check for a backlight that is alive but dim",
+        "Update the graphics driver and the display's own driver through Windows Update",
+        "On a laptop, check the panel cable is seated, which requires opening the case or a repair centre",
+        "Look closely at the screen with a torch, since a faint image under direct light means the backlight has failed rather than the panel",
+        "Consider a repair centre for panel or backlight replacement, which is usually cheaper than a new laptop"
+      ],
+      "warnings": [
+        "Opening a laptop to reach the screen cable risks damaging the display. If you are not comfortable, use a repair centre.",
+        "A laptop with a black screen and faint image under a torch almost always needs a backlight or cable repair rather than a new motherboard."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "moderate"
+    },
+    "result_test_integrated": {
+      "type": "result",
+      "title": "Test without the graphics card",
+      "diagnosis": "Moving the cable to the motherboard's video output tells you immediately whether the graphics card is the problem.",
+      "steps": [
+        "Power off and switch the PSU off, then move the monitor cable to the motherboard's HDMI or DisplayPort",
+        "If the display works, the graphics card, its power cables or its slot is at fault, so reseat the card and every power connector on it",
+        "If there is still no display, reseat the RAM and test one stick at a time, since memory faults produce no video",
+        "On a desktop, try the card in a different PCIe slot if the board has a second one",
+        "Once you get a display, install the GPU driver with a clean uninstall using DDU",
+        "If the card fails in another PC or another slot, the card itself has failed"
+      ],
+      "warnings": [
+        "Never force a graphics card into a slot. If it does not seat easily with the latch open, something is misaligned and forcing it can damage the slot.",
+        "A GPU needs two or three 8-pin power connectors on most models. Missing power causes no display or random shutdowns."
+      ],
+      "article_slug": "fix-black-screen-no-display",
+      "difficulty": "moderate"
+    },
+    "result_ram_then_boot": {
+      "type": "result",
+      "title": "Test memory, then repair the boot",
+      "diagnosis": "Fans on, no display, no separate GPU: memory is the first thing to test, then the boot files.",
+      "steps": [
+        "Reseat all RAM, then test with a single stick in the slot closest to the CPU",
+        "Run MemTest86 for two full passes with that stick",
+        "If memory is clean, boot from Windows install media and choose Repair > Command Prompt",
+        "Run bootrec /fixmbr, bootrec /fixboot and bootrec /rebuildbcd",
+        "Run chkdsk C: /f /r /x to repair the filesystem",
+        "Check the drive's SMART health, since a failing drive cannot hold repaired boot files"
+      ],
+      "warnings": [
+        "Create a Windows install USB on another working PC first, so you always have boot media available."
+      ],
+      "article_slug": "fix-boot-recovery-loop",
+      "difficulty": "moderate"
+    },
+    "result_safe_mode_driver": {
+      "type": "result",
+      "title": "Start in Safe Mode and fix the driver",
+      "diagnosis": "Getting to the Windows logo and spinner means Windows has started, so the fault is almost always a driver.",
+      "steps": [
+        "Interrupt the boot three times, choosing Start your PC in Safe mode when prompted, or hold Shift while clicking Restart",
+        "Once in Safe Mode, open Device Manager and expand Display adapters",
+        "Right-click the graphics adapter and choose Uninstall device, ticking Delete the driver software",
+        "Restart, let Windows install the basic display driver, then install the newest official driver",
+        "For a stubborn fault, clean install in Safe Mode using our DDU guide",
+        "Update chipset drivers too, since they underpin the graphics driver",
+        "Disable Windows Update driver replacement so your working driver is not swapped out again"
+      ],
+      "warnings": [
+        "After removing the GPU driver you will be on a low-performance basic driver until you install the real one. Have the installer ready.",
+        "Do not install third-party driver packages or driver updater tools, which often install unsigned drivers and cause more problems than they solve."
+      ],
+      "article_slug": "clean-gpu-driver-uninstall-ddu",
+      "difficulty": "moderate"
+    }
+  }
+}

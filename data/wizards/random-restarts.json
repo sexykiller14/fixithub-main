@@ -1,0 +1,270 @@
+{
+  "id": "random-restarts",
+  "title": "My PC restarts by itself",
+  "summary": "Distinguishes blue screen crashes, overheating, power supply faults and Windows Update restarts, which all look the same from a distance.",
+  "icon": "refresh",
+  "estimated_minutes": 6,
+  "start": "what_sees",
+  "nodes": {
+    "what_sees": {
+      "question": "What do you see when the restart happens?",
+      "help": "The first thing to check is whether Windows logged a crash. Open Reliability Monitor to see.",
+      "options": [
+        {
+          "label": "A blue screen with a stop code appears first",
+          "next": "stop_code_present",
+          "tag": "bsod"
+        },
+        {
+          "label": "No blue screen, it just restarts",
+          "next": "update_restart",
+          "tag": "updates"
+        },
+        {
+          "label": "It restarts during games or heavy work",
+          "next": "load_related",
+          "tag": "power"
+        },
+        {
+          "label": "It restarts and everything smells hot",
+          "next": "thermal_check",
+          "tag": "heat"
+        }
+      ]
+    },
+    "stop_code_present": {
+      "question": "Do you know which stop code it shows?",
+      "help": "We have full repair guides for over 90 stop codes, including the ones you are seeing on laptops with new hardware.",
+      "options": [
+        {
+          "label": "Yes, I have the code or name",
+          "next": "result_stop_code_lookup",
+          "tag": "bsod"
+        },
+        {
+          "label": "No, I cannot read it in time",
+          "next": "result_find_minidump",
+          "tag": "bsod"
+        }
+      ]
+    },
+    "update_restart": {
+      "question": "Does the restart happen at a similar time each day, or right after Windows tells you it finished updating?",
+      "help": "Scheduled restarts after updates happen at a set time. Crashes are random and usually follow a pattern of activity instead.",
+      "options": [
+        {
+          "label": "It happens after an update message, at a set time",
+          "next": "result_scheduled_restart",
+          "tag": "updates"
+        },
+        {
+          "label": "It happens at random times",
+          "next": "reliability_history",
+          "tag": "diagnostics"
+        }
+      ]
+    },
+    "reliability_history": {
+      "question": "What does Reliability Monitor show for the times it restarted?",
+      "help": "Press Win plus R, type perfmon /rel, then look at the red X markers. Hardware errors show as 'Hardware error'.",
+      "options": [
+        {
+          "label": "It shows Hardware error or unexpected shutdown",
+          "next": "power_or_thermal",
+          "tag": "hardware"
+        },
+        {
+          "label": "It shows a stopped service or application failure",
+          "next": "result_windows_reliability",
+          "tag": "diagnostics"
+        },
+        {
+          "label": "It shows nothing at all",
+          "next": "thermal_check",
+          "tag": "heat"
+        }
+      ]
+    },
+    "load_related": {
+      "question": "Do the restarts happen under heavy GPU or CPU load, and does the machine feel very hot first?",
+      "help": "Restarts under load with high temperatures point to cooling. Restarts under load that stays cool point to power delivery.",
+      "options": [
+        {
+          "label": "Yes, it gets very hot first",
+          "next": "result_overheating",
+          "tag": "heat"
+        },
+        {
+          "label": "It stays cool but still restarts",
+          "next": "power_or_thermal",
+          "tag": "power"
+        },
+        {
+          "label": "It restarts at random times too",
+          "next": "power_or_thermal",
+          "tag": "power"
+        }
+      ]
+    },
+    "thermal_check": {
+      "question": "Can you feel hot air coming out of the vents, and are the fans running loudly most of the time?",
+      "help": "Loud constant fans and hot exhaust mean the cooling is struggling, which is common in older machines and dusty cases.",
+      "options": [
+        {
+          "label": "Yes, hot air and loud fans",
+          "next": "result_overheating",
+          "tag": "heat"
+        },
+        {
+          "label": "It feels normal, not hot",
+          "next": "power_or_thermal",
+          "tag": "power"
+        }
+      ]
+    },
+    "power_or_thermal": {
+      "question": "Have you added any new hardware, such as a graphics card or more RAM, in the months before this started?",
+      "help": "New hardware that pushes power demand beyond what the power supply can deliver causes restarts under load with no blue screen.",
+      "options": [
+        {
+          "label": "Yes, I upgraded something",
+          "next": "result_psu_check",
+          "tag": "power"
+        },
+        {
+          "label": "No upgrades, it is the same machine",
+          "next": "result_ram_then_disk",
+          "tag": "diagnostics"
+        }
+      ]
+    },
+    "result_stop_code_lookup": {
+      "type": "result",
+      "title": "Follow the stop code guide",
+      "diagnosis": "A stop code names the exact driver or hardware area at fault, so you can skip straight to the likely cause.",
+      "steps": [
+        "Write down the full stop code and the four parameters shown at the bottom of the blue screen",
+        "Search this site's BSOD lookup for the code or its name",
+        "Work through the ordered fix steps, which are ordered from most to least likely",
+        "Upload your minidump from C:\\Windows\\Minidump and we will extract the bugcheck code and parameters for you",
+        "If the code repeats after all steps, read that code's 'when to seek professional help' note for the hardware to test"
+      ],
+      "warnings": [],
+      "article_slug": "read-bsod-stop-code",
+      "difficulty": "easy"
+    },
+    "result_find_minidump": {
+      "type": "result",
+      "title": "Get the crash details from your minidumps",
+      "diagnosis": "Windows saved a record of every crash. Reading it tells you the stop code even if you missed it on screen.",
+      "steps": [
+        "Open File Explorer and paste C:\\Windows\\Minidump into the address bar",
+        "Sort by date to find the most recent .dmp files",
+        "Upload one here using the minidump analyzer, which extracts the bugcheck code and parameters safely in your browser",
+        "For more detail, install Microsoft Store WinDbg and open the dump there",
+        "Then search this site for the extracted stop code and follow its guide",
+        "Repeat for several recent files, since the same crash may record different parameters each time"
+      ],
+      "warnings": [
+        "Minidump files can contain fragments of your files and filenames. Treat them as private and do not upload them to public forums.",
+        "Our analyzer parses the file in memory and never stores it or runs anything from it."
+      ],
+      "article_slug": "read-bsod-stop-code",
+      "difficulty": "easy"
+    },
+    "result_scheduled_restart": {
+      "type": "result",
+      "title": "Control Windows Update restarts",
+      "diagnosis": "After installing updates, Windows schedules a restart during a maintenance window. This is expected behaviour, not a fault.",
+      "steps": [
+        "Open Settings > Windows Update > Advanced options > Active hours and set your working hours",
+        "Under Advanced options > Windows Update hours, confirm the restart window",
+        "Set Restart notifications to On or Only when users are logged in, so you know before it happens",
+        "For full control, open Group Policy Editor: gpedit.msc > Computer Configuration > Administrative Templates > Windows Components > Windows Update > Manage settings for configuring Windows Update in Windows > No auto-restart with logon for logged-on users",
+        "Schedule active hours around your usage so the restart never interrupts you",
+        "Postpone an individual update with Pause for up to five weeks"
+      ],
+      "warnings": [
+        "Do not disable Windows Update permanently. Unpatched Windows is the main route for ransomware.",
+        "Restarting during a feature update rather than letting it finish can leave the system in a broken state."
+      ],
+      "article_slug": "fix-windows-update-failing",
+      "difficulty": "easy"
+    },
+    "result_windows_reliability": {
+      "type": "result",
+      "title": "Read the failure in Reliability Monitor",
+      "diagnosis": "Reliability Monitor records what crashed and when, which turns guesswork into a short list.",
+      "steps": [
+        "Press Win plus R, type perfmon /rel and press Enter",
+        "Look at the red X markers for the times the machine restarted",
+        "Read the 'Stop error' or 'Application name' column to identify what failed",
+        "Use our system report script to capture recent critical events into a text file you can attach to a support request",
+        "Search this site for the stop code or program name it identifies",
+        "Update the software or driver named, then check whether the restarts stop"
+      ],
+      "warnings": [],
+      "article_slug": "collect-system-info-report",
+      "difficulty": "easy"
+    },
+    "result_overheating": {
+      "type": "result",
+      "title": "Fix the overheating",
+      "diagnosis": "Hardware that gets too hot throttles, then shuts down to protect itself. That shutdown looks like a random restart.",
+      "steps": [
+        "Monitor temperatures while you reproduce the problem, using our hardware temperature guide",
+        "Clean dust from every fan, heatsink and radiator, since dust acts as insulation and is the most common cause",
+        "Check the CPU cooler is mounted firmly and its fan is connected and spinning freely",
+        "Confirm the case has intake and exhaust airflow and is not in a tight cupboard",
+        "Repaste the CPU cooler thermal compound after several years, using proper thermal paste",
+        "Raise the power limits slightly below thermal shutdown temperatures, or reduce them if you want it to run cooler",
+        "Replace the thermal paste on the GPU cooler if it is several years old"
+      ],
+      "warnings": [
+        "Do not leave thermal paste exposed to air for long periods; it can dry out. Use a proper syringe of paste.",
+        "Do not remove a heatsink while the CPU is powered. Let the machine cool fully first.",
+        "Repeated thermal shutdowns shorten CPU and GPU life. Do not ignore them."
+      ],
+      "article_slug": "fix-high-cpu-temperature",
+      "difficulty": "moderate"
+    },
+    "result_psu_check": {
+      "type": "result",
+      "title": "Check the power supply",
+      "diagnosis": "When new hardware pushes power demand past what the supply can deliver, machines restart or shut off under load with no error message.",
+      "steps": [
+        "Check the wattage your new GPU and CPU can draw, and compare it with your power supply's rating",
+        "Remember the rating is total continuous output, and a power supply running near its limit produces unstable voltage",
+        "Test with a known-good power supply of adequate wattage, which is the only reliable test",
+        "Use a PSU load tester if you have one, or watch voltages under load with our hardware monitoring guide",
+        "Check every modular cable is fully clicked into the PSU and the same wattage's cables, since mixing cables from different supplies can destroy components",
+        "Reseat the 24-pin and CPU power connectors at both ends"
+      ],
+      "warnings": [
+        "Never open a power supply. The capacitors inside hold a lethal charge even when unplugged.",
+        "Only use modular cables that came with the same power supply model. Mixing cables from different units can permanently damage your hardware.",
+        "Do not buy a very cheap unbranded power supply to save money. Failing supplies destroy motherboards and GPUs."
+      ],
+      "article_slug": "psu-failure-symptoms",
+      "difficulty": "moderate"
+    },
+    "result_ram_then_disk": {
+      "type": "result",
+      "title": "Test memory, then the disk",
+      "diagnosis": "On an unchanged machine, faulty RAM and a failing disk are the two hardware causes that produce restarts with no blue screen.",
+      "steps": [
+        "Run MemTest86 for at least two full passes; any error at all means faulty RAM",
+        "Test one stick at a time in each slot to isolate a bad module or slot",
+        "Check the drive's SMART health using our disk health script, and back up your files",
+        "Run chkdsk C: /scan, and only then /f /r /x if the drive is healthy",
+        "Update chipset, GPU, network and storage drivers",
+        "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+      ],
+      "warnings": [
+        "If SMART shows failures, back up before running chkdsk with /f, since repair writes can destroy remaining recoverable data."
+      ],
+      "article_slug": "test-ram-memory-errors",
+      "difficulty": "moderate"
+    }
+  }
+}

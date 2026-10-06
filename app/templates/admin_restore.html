@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Restore backup - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Restore backup</h1>
+  <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+    Upload a backup zip created by the site. This will replace the current database
+    and admin.json. A pre-restore snapshot is saved automatically.
+  </p>
+
+  <form action="/admin/restore" method="post" enctype="multipart/form-data" class="mt-8 space-y-4">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div>
+      <label for="restore-file" class="block text-sm font-medium">Backup zip</label>
+      <input id="restore-file" name="file" type="file" accept=".zip" required class="mt-1 block w-full text-sm text-slate-600 dark:text-slate-400">
+    </div>
+    <div>
+      <label for="restore-confirm" class="block text-sm font-medium">Type RESTORE to confirm</label>
+      <input id="restore-confirm" name="confirm" type="text" placeholder="RESTORE" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" required>
+    </div>
+    <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Restore from this zip</button>
+  </form>
+
+  <div class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+    <p class="font-semibold">Before you restore</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li>Take a fresh backup first if you have not already.</li>
+      <li>This overwrites the current SQLite file and admin.json. It cannot be undone except by restoring the pre-restore snapshot.</li>
+      <li>The site is not stopped during the swap; new visitors may see a short error page.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

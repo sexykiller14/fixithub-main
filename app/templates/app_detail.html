@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}{{ app.title }} - {{ site_name }}{% endblock %}
+{% block description %}{{ app.summary }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+  <a href="/apps" class="text-sm text-brand-700 hover:underline dark:text-brand-400">&larr; All tools</a>
+
+  <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ app.title }}</h1>
+      <p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+        {{ app.vendor or 'Publisher not recorded' }}
+        {% if app.version %}&middot; version {{ app.version }}{% endif %}
+      </p>
+    </div>
+    <span class="rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-1 font-mono text-xs uppercase text-slate-600 dark:text-slate-300">{{ app.suffix }}</span>
+  </div>
+
+  <p class="mt-4 text-slate-700 dark:text-slate-300">{{ app.summary }}</p>
+
+  {% if integrity is none %}
+  <div class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 dark:bg-red-950 p-5">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">This file is missing or cannot be verified</h2>
+    <p class="mt-2 text-sm text-red-900 dark:text-red-100">
+      The upload is recorded but the file is not readable on the server, so the download has been
+      disabled rather than serve something we cannot check.
+    </p>
+  </div>
+  {% elif integrity is false %}
+  <div class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 dark:bg-red-950 p-5">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">Checksum mismatch, download disabled</h2>
+    <p class="mt-2 text-sm text-red-900 dark:text-red-100">
+      The file no longer matches the checksum recorded when it was uploaded, so it has changed since
+      then. We will not hand out a file we cannot vouch for. Please treat this as a problem to
+      report rather than downloading it.
+    </p>
+  </div>
+  {% else %}
+  <div class="mt-6 rounded-lg border-l-4 border-green-500 bg-green-50 dark:bg-green-950 p-5">
+    <h2 class="font-semibold text-green-900 dark:text-green-200">Checksum verified</h2>
+    <p class="mt-2 text-sm text-green-900 dark:text-green-100">
+      The file on disk matches the SHA-256 recorded at upload. If your download is corrupted, the
+      checksum you compute will not match the one below.
+    </p>
+  </div>
+  {% endif %}
+
+  {% if app.purpose %}
+  <section class="mt-8" aria-labelledby="purpose-heading">
+    <h2 id="purpose-heading" class="text-lg font-bold text-slate-900 dark:text-white">When to use it</h2>
+    <div class="prose prose-slate mt-3 max-w-none dark:prose-invert dark:text-slate-300">{{ app.purpose | markdown_safe }}</div>
+  </section>
+  {% endif %}
+
+  {% if app.warnings %}
+  <section class="mt-8" aria-labelledby="warnings-heading">
+    <h2 id="warnings-heading" class="text-lg font-bold text-slate-900 dark:text-white">Before you run it</h2>
+    <ul class="mt-3 space-y-2">
+      {% for warning in app.warnings %}
+      <li class="flex gap-2 rounded-lg border-l-4 border-amber-500 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+        <span aria-hidden="true" class="font-bold">&bull;</span>
+        <span>{{ warning }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="mt-8" aria-labelledby="download-heading">
+    <h2 id="download-heading" class="text-lg font-bold text-slate-900 dark:text-white">Download</h2>
+
+    {% if integrity is true %}
+    {% if download_locked %}
+    <div class="mt-3 rounded-xl border border-slate-300 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800">
+      <h3 class="font-semibold text-slate-900 dark:text-white">Sign in to download</h3>
+      {% if reader and not reader.is_verified %}
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        Your email address is not confirmed yet, so downloads are locked.
+        <a href="/account" class="text-brand-700 hover:underline dark:text-brand-400">Check your account</a>
+        or open the confirmation link we emailed you. Commenting works already.
+      </p>
+      {% else %}
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        A free account is needed for downloads. If the vendor link below does not suit you, this
+        copy is a fallback rather than the best route.
+      </p>
+      <div class="mt-3 flex flex-wrap gap-3">
+        <a href="/login?next=/apps/{{ app.slug }}/download" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Sign in</a>
+        {% if registration_open %}
+        <a href="/signup" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">Create an account</a>
+        {% endif %}
+      </div>
+      {% endif %}
+      <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">{{ app.size_display }} &middot; checksum below</p>
+    </div>
+    {% else %}
+    <div class="mt-3 flex flex-wrap items-center gap-4">
+      <a href="/apps/{{ app.slug }}/download" class="rounded-lg bg-brand-600 px-5 py-3 font-semibold text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+        Download {{ app.filename }}
+      </a>
+      <span class="text-sm text-slate-500 dark:text-slate-400">{{ app.size_display }}</span>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">{{ app.download_count }} download{{ '' if app.download_count == 1 else 's' }}</p>
+    {% endif %}
+    {% else %}
+    <p class="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+      Downloading is unavailable while the checksum cannot be verified.
+    </p>
+    {% endif %}
+
+    <dl class="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+      <caption class="sr-only">File details for {{ app.filename }}</caption>
+      <tbody class="text-sm">
+        <tr class="border-b border-slate-200 dark:border-slate-800">
+          <th scope="row" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">File name</th>
+          <td class="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{{ app.filename }}</td>
+        </tr>
+        <tr class="border-b border-slate-200 dark:border-slate-800">
+          <th scope="row" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Size</th>
+          <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{{ app.size_display }} ({{ app.size_bytes }} bytes)</td>
+        </tr>
+        <tr class="border-b border-slate-200 dark:border-slate-800">
+          <th scope="row" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">SHA-256</th>
+          <td class="break-all px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{{ app.sha256 }}</td>
+        </tr>
+        <tr class="border-b border-slate-200 dark:border-slate-800">
+          <th scope="row" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Uploaded</th>
+          <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{{ app.created_at.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% if app.vendor_url %}
+        <tr>
+          <th scope="row" class="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">Official site</th>
+          <td class="px-4 py-3">
+            <a href="{{ app.vendor_url }}" rel="nofollow noopener external" target="_blank" class="break-all text-brand-700 hover:underline dark:text-brand-400">{{ app.vendor_url }}</a>
+            <span class="mt-0.5 block text-xs text-slate-400">No sign-in needed. A signed installer from the vendor is the safer download.</span>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </dl>
+
+    {% include "_comments.html" %}
+
+    <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
+      To check the file after downloading, run
+      <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">certutil -hashfile {{ app.filename }} SHA256</code>
+      in a command prompt. The output should match the checksum above.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white p-6 dark:bg-slate-900" aria-labelledby="safety-heading">
+    <h2 id="safety-heading" class="font-semibold text-slate-900 dark:text-white">How to treat a program from this site</h2>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>Nothing here is code signed, so Windows cannot confirm who published it. That is why SmartScreen warns you.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>Check the checksum before running. If it does not match the value on this page, delete the file.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>Where a vendor link is listed, prefer it. A signed installer from the vendor is safer than an unsigned copy.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>If a program asks you to disable antivirus or Defender, stop. Legitimate diagnostic tools never need that.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>Scan with Defender before running anything you did not get from the vendor.</span></li>
+    </ul>
+    <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
+      Prefer the <a href="/scripts" class="text-brand-700 hover:underline dark:text-brand-400">text scripts</a>
+      where one does the job. You can read those before running them.
+    </p>
+  </section>
+
+  {% if related %}
+  <section class="mt-8" aria-labelledby="related-heading">
+    <h2 id="related-heading" class="text-lg font-bold text-slate-900 dark:text-white">Related guides</h2>
+    <ul class="mt-3 space-y-2">
+      {% for item in related %}
+      <li><a href="/articles/{{ item.slug }}" class="text-sm text-brand-700 hover:underline dark:text-brand-400">{{ item.title }}</a></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

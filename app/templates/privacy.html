@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Privacy - {{ site_name }}{% endblock %}
+{% block description %}What FixIT Hub stores, why, for how long, and how to have it deleted.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 sm:px-6 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Privacy</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">
+    Plainly, because you should not have to guess what a site like this keeps about you.
+  </p>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">The short version</h2>
+  <ul class="mt-3 space-y-2 text-slate-700 dark:text-slate-300">
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>If you never create an account and never use the question box, we store nothing about you beyond what a web server logs.</span></li>
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>We do not run analytics, and we do not embed trackers from other companies.</span></li>
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>An account needs an email address. We do not send anything else to it.</span></li>
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>A question sent with the "Ask us anything" box is stored so it can be answered, whether or not you have an account. See below.</span></li>
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>You can delete your account and everything you wrote at any time, without asking us.</span></li>
+  </ul>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">Questions you ask</h2>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    The "Ask us anything" box does not ask who you are. When you send a question we store the
+    words you wrote, the address of the page you sent it from, and a one-way hash of your IP
+    address so repeated abuse is traceable. The hash cannot be turned back into an address.
+  </p>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    If you were signed in when you sent it, we also record the email address on your account so
+    an admin can tell your question apart from others. We do not attach an address you have not
+    given us, and there is no field in the box that invites you to type one.
+  </p>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    A question stays in the admin queue until it is answered or deleted. Answering it does not
+    email you: the answer appears in the same box on this site, which is why the box keeps a
+    random one-time code in your browser so it can fetch the answer later. Clearing your browser
+    data discards that code, so an answer sent after you do so will not reach you. Nothing is
+    used for advertising or profiling, and no question is ever published on a page.
+  </p>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">What an account stores</h2>
+  <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+    <table class="w-full text-sm">
+      <caption class="sr-only">Data held for a registered account</caption>
+      <thead class="bg-slate-50 dark:bg-slate-800">
+        <tr>
+          <th scope="col" class="px-4 py-2.5 text-left font-semibold text-slate-700 dark:text-slate-300">What</th>
+          <th scope="col" class="px-4 py-2.5 text-left font-semibold text-slate-700 dark:text-slate-300">Why</th>
+        </tr>
+      </thead>
+      <tbody class="text-slate-700 dark:text-slate-300">
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="px-4 py-3">Email address</td>
+          <td class="px-4 py-3">To confirm the address is real before downloads are unlocked.</td>
+        </tr>
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="px-4 py-3">A one-way hash of your password</td>
+          <td class="px-4 py-3">To check a sign-in. We cannot reverse it, so nobody here can read your password, including us.</td>
+        </tr>
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="px-4 py-3">Your comments</td>
+          <td class="px-4 py-3">To show them on the page they were written for.</td>
+        </tr>
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="px-4 py-3">A hashed form of your IP address</td>
+          <td class="px-4 py-3">So repeated abuse is traceable. The hash cannot be turned back into an address.</td>
+        </tr>
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="px-4 py-3">When you last signed in</td>
+          <td class="px-4 py-3">Nothing more than that is recorded about your sessions.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">What cookies are set</h2>
+  <ul class="mt-3 space-y-2 text-slate-700 dark:text-slate-300">
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>A session cookie, so you stay signed in and so forms can be protected against cross-site request forgery. It contains no personal data.</span></li>
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>A theme cookie, so the site does not flash the wrong colours on every page.</span></li>
+    <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>No advertising, profiling or third-party cookies. We do not embed anything from another company.</span></li>
+  </ul>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">Comments</h2>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    Comments are plain text and are read by a person before they appear. Do not post anything you
+    would not want published, because an approved comment stays on the page.
+  </p>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">Deleting your account</h2>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    Sign in and use the delete option on your
+    <a href="/account" class="text-brand-700 hover:underline dark:text-brand-400">account page</a>.
+    That removes your email address, your password and all your comments immediately. We do not
+    keep a copy, and we do not retain an anonymised version of what you wrote.
+  </p>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    If you cannot sign in, contact the site owner and ask for the address to be removed.
+  </p>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">Files you upload</h2>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    If you send a minidump to the BSOD analyzer, it is parsed in memory and thrown away. Nothing
+    is kept except a line in the admin log recording the filename, size and result, so abuse is
+    visible. A dump is a snapshot of your memory, so we do not store it.
+  </p>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">Children</h2>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    This site is not aimed at children, and nobody under 13 should create an account here.
+  </p>
+
+  <h2 class="mt-10 text-xl font-bold text-slate-900 dark:text-white">Changes</h2>
+  <p class="mt-3 text-slate-700 dark:text-slate-300">
+    If this notice changes materially, the change will be visible in the site history rather than
+    applied quietly.
+  </p>
+
+  <p class="mt-10 text-sm text-slate-500 dark:text-slate-400">
+    FixIT Hub is not affiliated with Microsoft or any hardware vendor.
+  </p>
+</div>
+{% endblock %}

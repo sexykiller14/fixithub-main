@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} - {{ site_tagline }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 via-white to-brand-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+    <div class="max-w-3xl">
+      <p class="inline-flex items-center gap-2 rounded-full bg-brand-100 dark:bg-brand-950 px-3 py-1 text-xs font-medium text-brand-800 dark:text-brand-300">
+        <span class="h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true"></span>
+        {{ counts.stop_codes }} stop codes &middot; {{ counts.articles }} guides
+      </p>
+      <h1 class="mt-5 text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        Fix your PC yourself
+      </h1>
+      <p class="mt-4 text-lg text-slate-600 dark:text-slate-300">
+        {{ site_description }}
+      </p>
+
+      <form action="/search" method="get" role="search" class="mt-8 max-w-2xl">
+        <label for="hero-search" class="sr-only">Search for your error or stop code</label>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <input id="hero-search" type="search" name="q" maxlength="200"
+                 placeholder="Search 0x0000007E, MEMORY_MANAGEMENT, wifi, slow computer..."
+                 class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+          <button type="submit" class="rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
+            Search
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <span class="text-slate-500 dark:text-slate-400">Popular:</span>
+        <a href="/bsod/MEMORY_MANAGEMENT" class="rounded-md bg-white dark:bg-slate-800 px-2 py-1 font-mono text-xs text-brand-700 dark:text-brand-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-brand-400">MEMORY_MANAGEMENT</a>
+        <a href="/bsod/INACCESSIBLE_BOOT_DEVICE" class="rounded-md bg-white dark:bg-slate-800 px-2 py-1 font-mono text-xs text-brand-700 dark:text-brand-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-brand-400">0x0000007B</a>
+        <a href="/wizards" class="rounded-md bg-white dark:bg-slate-800 px-2 py-1 text-xs text-brand-700 dark:text-brand-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-brand-400">Guided wizard</a>
+        <a href="/scripts" class="rounded-md bg-white dark:bg-slate-800 px-2 py-1 text-xs text-brand-700 dark:text-brand-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-brand-400">Diagnostic scripts</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+  <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Start with a category</h2>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">Every guide is written for a beginner, with warnings before anything risky.</p>
+
+  <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for key, meta in categories.items() %}
+    <a href="/category/{{ key }}" class="group rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-brand-400 dark:hover:border-brand-500 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <div class="flex items-center justify-between">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300" aria-hidden="true">
+          {% if key == 'hardware' %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M9 1v3m6-3v3M9 20v3m6-3v3M20 9h3m-3 6h3M1 9h3m-3 6h3"/></svg>
+          {% elif key == 'network' %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+          {% elif key == 'windows' %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5.5 11 4.4v7.1H3zM11 4.4 21 3v8.5h-10zM3 11.5h8v7.1l-8-1.1zM11 11.5h10V21l-10-1.4z"/></svg>
+          {% elif key == 'drivers' %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 2v2m6-2v2M9 20v2m6-2v2M2 9h2m-2 6h2m16-6h2m-2 6h2"/></svg>
+          {% else %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          {% endif %}
+        </span>
+        <span class="text-xs font-medium text-slate-400">{{ category_counts.get(key, 0) }} guides</span>
+      </div>
+      <h3 class="mt-4 font-semibold text-slate-900 dark:text-white group-hover:text-brand-700 dark:group-hover:text-brand-400">{{ meta.name }}</h3>
+      <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{{ meta.blurb }}</p>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+  <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8">
+    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Not sure what is wrong? Take the guided route.</h2>
+    <p class="mt-2 text-slate-600 dark:text-slate-400">
+      Each wizard asks a few yes/no questions and ends with the fix that fits your answers.
+    </p>
+    <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {% for wizard in wizards %}
+      <a href="/wizards/{{ wizard.id }}" class="rounded-lg border border-slate-200 dark:border-slate-800 p-4 hover:border-brand-400 dark:hover:border-brand-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <h3 class="font-medium text-slate-900 dark:text-white">{{ wizard.title }}</h3>
+        <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ wizard.summary }}</p>
+        <p class="mt-2 text-xs text-slate-400">About {{ wizard.estimated_minutes }} minutes</p>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+  <div class="grid gap-8 lg:grid-cols-2">
+    <div>
+      <div class="flex items-baseline justify-between">
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Popular fixes</h2>
+        <a href="/articles" class="text-sm font-medium text-brand-700 dark:text-brand-400 hover:underline">All articles</a>
+      </div>
+      <ul class="mt-5 space-y-3">
+        {% for article in popular %}
+        <li class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-brand-400 dark:hover:border-brand-500 transition">
+          <a href="/articles/{{ article.slug }}" class="font-semibold text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-400">{{ article.title }}</a>
+          <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{{ article.summary }}</p>
+          <div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+            <span class="rounded px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{{ category_names[article.category] }}</span>
+            <span class="rounded px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{{ difficulty_labels[article.difficulty] }}</span>
+            <span class="text-slate-400">{{ article.reading_time }} min read</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Blue screen lookup</h2>
+      <p class="mt-2 text-slate-600 dark:text-slate-400">Look up a stop code by name or hex value.</p>
+      <form action="/bsod/lookup" method="get" class="mt-4 flex gap-2">
+        <label for="home-bsod" class="sr-only">Stop code name or hex value</label>
+        <input id="home-bsod" type="search" name="q" maxlength="100" placeholder="0x0000007B or MEMORY_MANAGEMENT"
+               class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-sm placeholder:font-sans placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <button type="submit" class="rounded-lg bg-slate-900 dark:bg-white px-4 py-2 text-sm font-semibold text-white dark:text-slate-900 hover:bg-brand-700 dark:hover:bg-brand-300">Look up</button>
+      </form>
+      <ul class="mt-5 space-y-2">
+        {% for code in popular_codes %}
+        <li>
+          <a href="/bsod/{{ code.name }}" class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-brand-400 dark:hover:border-brand-500 transition">
+            <span class="min-w-0">
+              <span class="block truncate font-mono text-sm font-semibold text-slate-900 dark:text-white">{{ code.name }}</span>
+              <span class="block font-mono text-xs text-slate-400">{{ code.code_hex }}</span>
+            </span>
+            <span class="shrink-0 text-xs text-slate-400">Guide</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
+  <div class="flex items-baseline justify-between">
+    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Recently added</h2>
+  </div>
+  <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for article in recent %}
+    <a href="/articles/{{ article.slug }}" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <h3 class="font-semibold text-slate-900 dark:text-white">{{ article.title }}</h3>
+      <p class="mt-1.5 line-clamp-3 text-sm text-slate-600 dark:text-slate-400">{{ article.summary }}</p>
+      <p class="mt-2.5 text-xs text-slate-400">{{ article.os_version }} &middot; {{ article.reading_time }} min read</p>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

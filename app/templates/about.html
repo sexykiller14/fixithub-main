@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}About and safety - {{ site_name }}{% endblock %}
+{% block description %}What FixIT Hub covers, what it deliberately will not do, and how to stay safe while following its guides.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">About FixIT Hub</h1>
+  <p class="mt-3 text-lg text-slate-600 dark:text-slate-400">
+    {{ counts.articles }} guides and {{ counts.stop_codes }} blue screen stop codes, written for people
+    who want to fix their own PC rather than open a support ticket.
+  </p>
+
+  <div class="mt-8 grid gap-6 sm:grid-cols-2">
+    <section aria-labelledby="what-heading">
+      <h2 id="what-heading" class="text-xl font-bold text-slate-900 dark:text-white">What is here</h2>
+      <ul class="mt-3 space-y-2.5 text-slate-700 dark:text-slate-300">
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span> <span><strong>Stop code lookup</strong> for {{ counts.stop_codes }} bugchecks, searchable by name or hex value, each with fixes ordered by likelihood.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span> <span><strong>Minidump analyzer</strong> that reads the bugcheck code and parameters out of a .dmp file in memory.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span> <span><strong>Seven guided wizards</strong> that ask a few questions and end with the fix that matches your answers.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span> <span><strong>Network tools</strong> for DNS, public IP, port, HTTP status and latency, with SSRF protection and rate limiting.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span> <span><strong>Driver guides</strong> for NVIDIA, AMD, Intel and Realtek, plus every Device Manager error code.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span> <span><strong>Diagnostic scripts</strong> shown in full, with every command explained in plain English.</span></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="safety-heading">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white" id="safety-heading">What this site will not do</h2>
+      <ul class="mt-3 space-y-2.5 text-slate-700 dark:text-slate-300">
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span> <span>Run any command on your computer. Nothing here executes anything remotely.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span> <span>Store your minidump file. Uploads are parsed in memory and discarded.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span> <span>Link to third-party driver download sites. Every driver link is an official vendor page.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span> <span>Ask for your email address, or track you across sites.</span></li>
+        <li class="flex gap-3"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span> <span>Reach private or internal network addresses with its tools.</span></li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="mt-10 rounded-xl border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950 p-6" aria-labelledby="warnings-heading">
+    <h2 id="warnings-heading" class="text-lg font-bold text-amber-900 dark:text-amber-200">A word about risk</h2>
+    <div class="mt-3 space-y-3 text-sm text-amber-900 dark:text-amber-100">
+      <p>
+        Some fixes on this site involve editing the registry, changing BIOS settings, or opening your PC.
+        Those steps carry real risk, and guides here mark them with a warning rather than burying them.
+      </p>
+      <p>
+        <strong>Never</strong> open a power supply. The capacitors inside hold a lethal charge even when
+        it is unplugged from the wall.
+      </p>
+      <p>
+        <strong>Never</strong> change a storage controller mode between AHCI and RAID after installing
+        Windows. The machine will not boot and you will need installation media to recover it.
+      </p>
+      <p>
+        <strong>Always</strong> back up before repairing a filesystem or resetting Windows. Repairs fail
+        partway, and a failing drive can become unreadable.
+      </p>
+      <p>
+        <strong>Stop</strong> and ask a technician when a guide tells you to. Each stop code page ends with
+        a note explaining which test result means you have reached that point.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-6 sm:grid-cols-2" aria-labelledby="coverage-heading">
+    <div>
+      <h2 id="coverage-heading" class="text-xl font-bold text-slate-900 dark:text-white">Coverage</h2>
+      <p class="mt-2 text-slate-600 dark:text-slate-400">
+        Windows 10 and Windows 11, with notes where behaviour differs between them and between
+        Windows 10 22H2 and 23H2.
+      </p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Categories</h2>
+      <ul class="mt-2 space-y-1.5">
+        {% for key, meta in categories.items() %}
+        <li class="flex items-center justify-between">
+          <a href="/category/{{ key }}" class="font-medium text-brand-700 dark:text-brand-400 hover:underline">{{ meta.name }}</a>
+          <span class="text-sm text-slate-400">{{ category_counts.get(key, 0) }} guides</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <p class="mt-10 text-sm text-slate-500 dark:text-slate-400">
+    FixIT Hub is an independent project and is not affiliated with Microsoft, NVIDIA, AMD, Intel,
+    Realtek or any other vendor. Product names are the property of their respective owners.
+  </p>
+</div>
+{% endblock %}

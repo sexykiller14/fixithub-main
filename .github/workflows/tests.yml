@@ -1,0 +1,72 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # The tests use a temporary SQLite database and a temporary admin hash, so
+      # nothing here touches a real one and no secrets are needed.
+      - name: Run the test suite
+        run: python -m pytest -q
+
+      - name: Confirm the scripts parse as PowerShell
+        # The downloadable scripts are served as source and users run them
+        # locally, so a syntax error would only show up on someone's machine.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends powershell
+          pwsh -NoProfile -Command '
+            $failed = $false
+            # Only the PowerShell scripts are parsed here. The .bat file is a
+            # batch script, which this parser cannot read, so checking it would
+            # report a false failure.
+            Get-ChildItem -Path scripts_download -Filter *.ps1 -Recurse |
+              ForEach-Object {
+                $errors = $null
+                $tokens = $null
+                [System.Management.Automation.Language.Parser]::ParseFile(
+                    $_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+                if ($errors -and $errors.Count -gt 0) {
+                  $failed = $true
+                  Write-Host "FAIL $($_.Name)"
+                  $errors | ForEach-Object { Write-Host "  $($_.Message)" }
+                } else {
+                  Write-Host "OK   $($_.Name)"
+                }
+              }
+            if ($failed) { exit 1 }
+          '
+
+      - name: Confirm the catalog matches the files on disk
+        # A catalog entry pointing at a missing file would 404 for the user.
+        run: |
+          python - <<'PY'
+          from app.services.scripts_catalog import CATALOG, list_scripts
+
+          listed = {script.slug for script in list_scripts()}
+          declared = set(CATALOG)
+          missing = declared - listed
+          if missing:
+              raise SystemExit(f"catalog entries with no file on disk: {sorted(missing)}")
+          print(f"{len(listed)} scripts, all present")
+          PY

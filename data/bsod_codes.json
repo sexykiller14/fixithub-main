@@ -1,0 +1,2056 @@
+[
+  {
+    "code_hex": "0x0000000A",
+    "name": "IRQL_NOT_LESS_OR_EQUAL",
+    "meaning": "A driver tried to read or write memory at an address it was not allowed to use, or at an invalid kernel priority level. The message names the driver responsible and the memory location involved. This is one of the most frequently seen stop codes on real machines and almost always points to RAM or a driver rather than Windows itself.",
+    "causes": [
+      "Faulty RAM, or memory running at unstable XMP/EXPO timings",
+      "Corrupt or mismatched graphics, network, storage or antivirus driver",
+      "Failing SSD returning corrupted data",
+      "Overclocked CPU or undervolted GPU producing unstable results",
+      "A driver that does not match its hardware, such as an old Wi-Fi card driver"
+    ],
+    "fix_steps": [
+      "Write down the address and driver filename shown at the bottom of the blue screen, then search this site for that filename",
+      "Test RAM with MemTest86 for at least two full passes, with XMP/EXPO disabled while testing",
+      "Clean reinstall GPU drivers using DDU in Safe Mode",
+      "Update drivers in this order: chipset, graphics, network, then peripherals",
+      "Uninstall third-party antivirus, VPN clients and system tuning tools one at a time and retest",
+      "Run chkdsk C: /scan from an elevated prompt and check the drive's SMART data",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth followed by sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Bring it to a technician if the named driver is a Microsoft system file and both memory and disk tests come back clean, because that usually means failing hardware.",
+    "related_slugs": ["test-ram-memory-errors", "clean-gpu-driver-uninstall-ddu", "fix-wifi-driver-windows-11"]
+  },
+  {
+    "code_hex": "0x000000D1",
+    "name": "DRIVER_IRQL_NOT_LESS_OR_EQUAL",
+    "meaning": "The same class of fault as IRQL_NOT_LESS_OR_EQUAL, but reached through a different code path. A kernel-mode driver accessed memory it was not allowed to, usually after being handed a corrupt pointer. The named driver is almost always the culprit.",
+    "causes": [
+      "Buggy or mismatched network, graphics or storage driver",
+      "Faulty RAM feeding the driver bad data",
+      "Antivirus or security software hooking the kernel and conflicting",
+      "Old driver package left behind by a previous device",
+      "Failing SSD returning corrupted data"
+    ],
+    "fix_steps": [
+      "Note the driver file named on the blue screen, for example tcpip.sys, ntoskrnl.exe or nvlddmkm.sys",
+      "Boot into Safe Mode and update or cleanly reinstall the matching driver; for graphics use DDU",
+      "Update chipset and network drivers, since most unexpected stop codes trace back to these",
+      "Uninstall third-party antivirus, VPN and tuning software one at a time and retest",
+      "Test RAM with MemTest86 and check disk health with chkdsk",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault survives a clean driver install and a full memory test with all overclocks removed.",
+    "related_slugs": ["clean-gpu-driver-uninstall-ddu", "fix-wifi-driver-windows-11", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x0000001A",
+    "name": "MEMORY_MANAGEMENT",
+    "meaning": "Windows found corruption in the structures it uses to track memory itself, the page tables. Almost always defective RAM, but it can also follow a bad driver or a failing drive returning corrupt files.",
+    "causes": [
+      "Defective RAM module, or a slot with dirty or bent contacts",
+      "Unstable memory timings under XMP or EXPO, or mismatched module speeds",
+      "Corrupt graphics driver or a hardware-accelerated application fault",
+      "Failing SSD returning corrupted system files",
+      "Incorrect page file settings or a nearly full system drive"
+    ],
+    "fix_steps": [
+      "Run mdsched.exe and let Windows Memory Diagnostic complete a full pass, then confirm with MemTest86",
+      "Reseat every RAM stick, clean the slots with a soft brush or compressed air, then try one stick at a time in each slot",
+      "Disable XMP/EXPO and run at the JEDEC default speed to rule out timings",
+      "Clean reinstall GPU drivers with DDU and update chipset drivers",
+      "Check free space on the system drive and set the page file to system-managed",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth from an elevated prompt"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Escalate if MemTest86 reports even a single error, if the fault follows one stick across multiple slots, or if there is no overclock profile to disable.",
+    "related_slugs": ["test-ram-memory-errors", "repair-windows-system-files", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x00000050",
+    "name": "PAGE_FAULT_IN_NONPAGED_AREA",
+    "meaning": "Windows tried to use memory that should never be touched by ordinary code. One of the most common stop codes, and almost always a bad RAM module or a faulty driver. The bottom of the blue screen names the file and module responsible.",
+    "causes": [
+      "Defective RAM, or RAM running at unstable timings",
+      "Corrupt or mismatched drivers, especially graphics and network",
+      "Failing SSD or HDD returning bad data",
+      "Insufficient or misconfigured page file on a memory-hungry system",
+      "Overclocked CPU or GPU"
+    ],
+    "fix_steps": [
+      "Read the message at the bottom of the screen; it names the file such as win32k.sys or nvlddmkm.sys",
+      "Run Windows Memory Diagnostic, then confirm with MemTest86 over at least two passes",
+      "Disable XMP/EXPO and any overclock, then retest",
+      "Clean reinstall GPU drivers with DDU, plus a chipset driver update",
+      "Verify the system drive has free space and run chkdsk C: /scan",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth followed by sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if memory tests are clean but crashes persist after a clean driver install, or if several different stop codes appear at once.",
+    "related_slugs": ["test-ram-memory-errors", "clean-gpu-driver-uninstall-ddu", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x0000003B",
+    "name": "SYSTEM_SERVICE_EXCEPTION",
+    "meaning": "Windows tried to switch from kernel mode back to normal mode and hit an unexpected error. Frequently caused by graphics driver faults and faulty RAM. The bracketed value narrows down the exact area.",
+    "causes": [
+      "Graphics driver corruption or a partially failed update",
+      "Defective RAM",
+      "Corrupt system file in the graphics or networking stack",
+      "Overheating causing the GPU to drop out mid-operation",
+      "Incompatible third-party overlay or antivirus software"
+    ],
+    "fix_steps": [
+      "Identify the bracketed code, since 0xE, 0x50 and 0x1E are the most common, and search this site for it",
+      "Reinstall the graphics driver with DDU in Safe Mode",
+      "Update chipset drivers, then run sfc /scannow and DISM RestoreHealth",
+      "Test your RAM and check GPU temperatures under load",
+      "Remove overlays, screen recorders and background optimisation tools",
+      "Install any pending Windows updates, which sometimes fix known driver faults"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Seek help if the stop code appears during games or video calls and persists with a clean driver, since that points to the GPU or its power supply.",
+    "related_slugs": ["fix-video-tdr-failure", "clean-gpu-driver-uninstall-ddu", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0x0000001E",
+    "name": "KMODE_EXCEPTION_NOT_HANDLED",
+    "meaning": "An error occurred in kernel mode that Windows had no handler for. The most common single meaning is a bad graphics driver, and the bracketed code narrows it further.",
+    "causes": [
+      "Graphics driver fault, often right after a driver update",
+      "Faulty RAM",
+      "Unstable overclock or undervolt",
+      "Corrupt system files or a failing drive"
+    ],
+    "fix_steps": [
+      "Clean reinstall the GPU driver using DDU in Safe Mode",
+      "Update chipset drivers before anything else",
+      "Test RAM with MemTest86 and check disk health",
+      "Reset all overclock and undervolt settings, including BIOS settings",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it to a technician if the crash only happens under graphics load and survives a clean driver install at stock clocks.",
+    "related_slugs": ["clean-gpu-driver-uninstall-ddu", "fix-video-tdr-failure", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x0000007E",
+    "name": "SYSTEM_THREAD_EXCEPTION_NOT_HANDLED",
+    "meaning": "A system thread hit an error the kernel had no handler for. The hexadecimal value in brackets names the exact fault. In practice it nearly always points to a faulty driver or bad RAM rather than a broken Windows install.",
+    "causes": [
+      "Faulty RAM or unstable XMP/EXPO memory timings",
+      "Corrupt or mismatched graphics, Wi-Fi or antivirus drivers",
+      "Bad system file after a partial Windows Update",
+      "Overclocked CPU or undervolted GPU producing unstable results",
+      "Failing drive returning corrupted data"
+    ],
+    "fix_steps": [
+      "Write down the hex code in brackets, then search this site for it, since it identifies the exact driver or memory area at fault",
+      "Boot into Safe Mode using three interrupted boots or Shift+Restart, then run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth",
+      "Test RAM with Windows Memory Diagnostic or MemTest86 for at least two full passes",
+      "Remove any XMP/EXPO profile and all CPU/GPU overclocks, then retest",
+      "Reinstall your GPU driver cleanly using DDU in Safe Mode",
+      "Uninstall recently added drivers and software, especially audio, network and antivirus filter drivers"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the crash survives a clean driver install and a memory test with all overclocks removed, or if it points at a specific hardware part.",
+    "related_slugs": ["test-ram-memory-errors", "clean-gpu-driver-uninstall-ddu", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x000000EF",
+    "name": "CRITICAL_PROCESS_DIED",
+    "meaning": "A process Windows cannot run without has stopped. Common after interrupted updates, failed antivirus removals, and on systems with a failing drive. Frequently paired with an automatic repair loop.",
+    "causes": [
+      "Interrupted or failed Windows Update leaving a half-installed system file",
+      "Third-party antivirus removed or corrupted a system file",
+      "Failing system drive",
+      "Corrupt user profile or system registry",
+      "Aggressive third-party privacy or tuning tool"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode and uninstall any antivirus or recently installed system tool",
+      "Hold Shift while clicking Restart, then use Troubleshoot > Advanced > Startup Repair > Restart",
+      "From an elevated Command Prompt run DISM /Online /Cleanup-Image /RestoreHealth, then sfc /scannow",
+      "Uninstall the most recent Windows Update from Settings > Windows > Update history > Uninstall updates",
+      "Check drive health with chkdsk C: /scan and SMART data before reinstalling Windows",
+      "As a last resort use Reset this PC > Keep my files, which rebuilds the system while keeping your data"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get professional help if Startup Repair loops without progress, if the drive reports failures, or if a clean Reset this PC still lands on this screen.",
+    "related_slugs": ["fix-boot-recovery-loop", "repair-windows-system-files", "fix-windows-update-failing"]
+  },
+  {
+    "code_hex": "0x000000ED",
+    "name": "UNMOUNTABLE_BOOT_VOLUME",
+    "meaning": "Windows cannot mount the drive it boots from because the filesystem is damaged. A classic result of a power cut or forced shutdown during a write.",
+    "causes": [
+      "Dirty shutdown during a large write operation",
+      "Failing drive with bad sectors in the boot area",
+      "Loose or faulty SATA or NVMe connection",
+      "Sudden power loss with no battery backup or UPS"
+    ],
+    "fix_steps": [
+      "Boot into the Recovery Environment by interrupting booting three times, or use Shift+Restart",
+      "Open Command Prompt and run chkdsk C: /f /r /x, confirming with Y when prompted",
+      "If the drive letter is wrong, use diskpart to list volumes and substitute the correct letter",
+      "Run bootrec /fixmbr and bootrec /fixboot if the boot sector was also damaged",
+      "Check SMART health and replace the drive if it reports reallocated or pending sectors",
+      "Once repaired, back up your data immediately and consider replacing the drive"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Stop and see a professional if chkdsk cannot complete, if the drive is not detected at all, or if the data on it is irreplaceable.",
+    "related_slugs": ["fix-unmountable-boot-volume", "check-disk-health-ssd-hdd", "fix-boot-recovery-loop"]
+  },
+  {
+    "code_hex": "0x0000007B",
+    "name": "INACCESSIBLE_BOOT_DEVICE",
+    "meaning": "Windows lost access to the system partition during startup. Almost always a storage driver, BIOS storage mode, or filesystem problem rather than a broken Windows install. Moving a Windows drive to a different machine, or changing AHCI to RAID after installation, triggers it reliably.",
+    "causes": [
+      "Storage controller mode or settings changed in BIOS after Windows was installed",
+      "Missing, corrupt or misbehaving storage filter drivers",
+      "Filesystem corruption on the system partition",
+      "Moving the hard disk to a different computer with a different controller",
+      "Faulty motherboard, storage controller or hardware",
+      "Corrupt files in the small SYSTEM partition"
+    ],
+    "fix_steps": [
+      "Unplug every storage device except the one Windows is installed on, then boot again, since a stray drive holding a broken bootloader will cause this",
+      "Enter BIOS with Del or F2 and confirm the SATA mode matches the installed configuration: AHCI for almost all modern systems",
+      "Boot into Safe Mode, which usually starts even with this fault, and check the Storage controller, file system and UpperFilters values under Services > msahci and storahci",
+      "Interrupt booting three times or hold Shift while clicking Restart to reach the Recovery Environment",
+      "From Command Prompt run bootrec /fixmbr, bootrec /fixboot and bootrec /rebuildbcd",
+      "If bootrec reports access denied, run bcdboot C:\\Windows /s C: /f UEFI, using /f BIOS on a legacy machine",
+      "Run chkdsk C: /f /r /x to repair the filesystem"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Take it to a technician if Safe Mode will not start either, if the drive is missing in BIOS, or if the boot files cannot be rebuilt.",
+    "related_slugs": ["fix-pc-wont-boot-power-on", "fix-unmountable-boot-volume", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x00000024",
+    "name": "NTFS_FILE_SYSTEM",
+    "meaning": "The NTFS driver itself crashed. The filesystem on the volume is likely damaged, or the drive is failing and returning bad data to the driver.",
+    "causes": [
+      "Filesystem corruption from a forced shutdown or power loss",
+      "Failing drive with bad sectors",
+      "Bad memory or unstable RAM timings",
+      "Filter drivers from antivirus or disk encryption tools",
+      "Chkdsk interrupted midway through"
+    ],
+    "fix_steps": [
+      "Run chkdsk C: /scan first to see the damage without changing anything",
+      "Then run chkdsk C: /f /r /x to repair and scan for bad sectors",
+      "Run SMART or vendor disk tools and replace any drive reporting failures",
+      "Test RAM with MemTest86, since bad RAM corrupts files",
+      "Update chipset drivers and reinstall disk encryption or antivirus software",
+      "Back up your files as soon as the system is usable, because this stop code frequently precedes data loss"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help immediately if the drive is failing, because continuing to use it can destroy the remaining data on it.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "repair-windows-system-files", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000EA",
+    "name": "THREAD_STUCK_IN_DEVICE_DRIVER",
+    "meaning": "A driver stopped responding for too long, so Windows decided it had hung. It often appears as a freeze followed by an automatic restart with this stop code.",
+    "causes": [
+      "Graphics driver stuck, often a GeForce Experience or AMD Adrenalin bug",
+      "Faulty storage, sound card or network driver",
+      "Overheating GPU causing the driver to stall",
+      "Failing drive hanging on a bad sector",
+      "Insufficient system memory with heavy paging"
+    ],
+    "fix_steps": [
+      "Clean reinstall GPU drivers with DDU, and disable driver auto-updates so the version does not silently change again",
+      "Update chipset, network and storage drivers",
+      "Monitor GPU temperature during the activity that triggers the freeze",
+      "Run chkdsk /scan and check disk SMART data",
+      "Disable hardware-accelerated GPU scheduling and overlay software",
+      "Verify the system drive has plenty of free space"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the freeze survives a clean driver install with stock settings and healthy temperatures.",
+    "related_slugs": ["fix-video-tdr-failure", "fix-high-cpu-temperature", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x000000F4",
+    "name": "CRITICAL_OBJECT_TERMINATION",
+    "meaning": "A process essential to Windows was killed or terminated unexpectedly. Frequently follows a hibernation or Fast Startup failure.",
+    "causes": [
+      "Hibernation or Fast Startup saving an inconsistent system state",
+      "Failing RAM or drive",
+      "Corrupt system file",
+      "Recently installed software or driver that conflicts with the kernel",
+      "Filesystem corruption on the system volume"
+    ],
+    "fix_steps": [
+      "Turn off hibernation and Fast Startup by running powercfg /h off as administrator, then verify Fast Startup is off in Power Options",
+      "Run chkdsk C: /scan and then chkdsk C: /f /r /x",
+      "Test RAM with MemTest86",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Uninstall the last few software updates and drivers and retest"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Escalate if disabling Fast Startup does not help and both memory and disk tests pass, since that narrows the fault to firmware or board-level issues.",
+    "related_slugs": ["disable-fast-startup-hibernation", "check-disk-health-ssd-hdd", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x00000012",
+    "name": "TRAP_CAUSE_UNKNOWN",
+    "meaning": "A fault occurred that Windows could not attribute, and the specific cause depends on the system that produced it. Commonly seen as a generic crash after a failed update.",
+    "causes": [
+      "Incomplete Windows Update",
+      "Antivirus quarantined a system file",
+      "Failed upgrade or interrupted install",
+      "Aggressive disk cleanup tool deleted system files",
+      "Failing drive returning incomplete reads"
+    ],
+    "fix_steps": [
+      "Run sfc /scannow from an elevated Command Prompt",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth, which is often required before sfc can repair anything",
+      "Reboot and repeat sfc /scannow, since DISM often needs two passes",
+      "Uninstall the most recent Windows Update if the problem started right after one",
+      "Check disk health, because a failing drive cannot hold a repaired file"
+    ],
+    "difficulty": "easy",
+    "when_to_call_pro": "Ask for help if sfc cannot repair the file even after DISM and a reboot, or if the drive is failing.",
+    "related_slugs": ["repair-windows-system-files", "fix-windows-update-failing", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x0000009F",
+    "name": "DRIVER_POWER_STATE_FAILURE",
+    "meaning": "A driver failed to complete a power management request within the time Windows allows. Very common on laptops with ageing batteries and on systems with aggressive power management drivers.",
+    "causes": [
+      "Aggressive or faulty power management and chipset drivers",
+      "Failing battery or charger on a laptop",
+      "Graphics driver stalling during sleep transitions",
+      "USB device preventing sleep, such as a phone charger or webcam",
+      "Dying CMOS battery giving unreliable firmware power states",
+      "Fast Startup saving an inconsistent state"
+    ],
+    "fix_steps": [
+      "Update chipset, graphics and power management drivers from your PC vendor",
+      "Run powercfg /h off to disable hibernation, then retest sleep and wake",
+      "Unplug all USB devices and try sleep again to rule out a device blocking the transition",
+      "On a laptop, run the manufacturer's battery health report to check charge capacity",
+      "Replace the CMOS battery if the clock resets every time the PC is off",
+      "Set the power plan's sleep timeout to Never while testing"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the machine cannot complete a sleep cycle at all, or if the battery report shows heavy degradation.",
+    "related_slugs": ["disable-fast-startup-hibernation", "fix-laptop-battery-health", "laptop-sleep-wake-issues"]
+  },
+  {
+    "code_hex": "0x00000139",
+    "name": "KERNEL_SECURITY_CHECK_FAILURE",
+    "meaning": "A kernel-level safety check caught a driver trying to access memory it should not. Usually a driver bug or an intrusion-detection driver hooking the kernel.",
+    "causes": [
+      "Intrusion prevention or antivirus filter driver conflict",
+      "Out-of-date or mismatched driver, often graphics or storage",
+      "Corrupted or tampered system file",
+      "Faulty RAM",
+      "Incompatible third-party tool such as an RGB or monitoring utility"
+    ],
+    "fix_steps": [
+      "Boot Safe Mode and uninstall third-party antivirus, VPN, RGB and system monitoring tools",
+      "Update chipset and GPU drivers to current versions",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow to verify system file integrity",
+      "Test RAM with MemTest86",
+      "Reinstall the security software cleanly rather than layering it back on"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the fault persists with all third-party security and monitoring software removed and a clean driver install.",
+    "related_slugs": ["windows-device-manager-error-codes", "clean-gpu-driver-uninstall-ddu", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x00000133",
+    "name": "DPC_WATCHDOG_VIOLATION",
+    "meaning": "A driver spent far too long in a Deferred Procedure Call, which Windows uses for urgent low-level work. The named driver is almost always the cause, with network and storage drivers leading the list.",
+    "causes": [
+      "Faulty network adapter driver, very often Realtek or Wi-Fi",
+      "Failing storage, NVMe or RAID driver",
+      "Corrupt or mismatched graphics driver",
+      "USB device or hub driver stalling",
+      "Faulty RAM",
+      "Incompatible virtualisation or VPN filter driver"
+    ],
+    "fix_steps": [
+      "Update the named driver from its vendor, starting with network and storage",
+      "Clean reinstall the GPU driver with DDU if that is the one named",
+      "Test RAM with MemTest86",
+      "Disconnect external USB devices and retest",
+      "Check disk SMART data and run chkdsk /scan",
+      "Remove VPN clients and virtualisation tools and retest"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the named driver is a Microsoft storage driver and both disk health and memory tests pass, because that points at the controller or board.",
+    "related_slugs": ["fix-wifi-driver-windows-11", "realtek-audio-network-drivers", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x000000C2",
+    "name": "BAD_POOL_CALLER",
+    "meaning": "A driver passed a bad parameter to a kernel function, usually from a corrupted driver or a badly written hook into Windows internals.",
+    "causes": [
+      "Corrupted or mismatched driver",
+      "Antivirus or monitoring tool hooking system calls incorrectly",
+      "Faulty RAM",
+      "Corrupted system file after an update"
+    ],
+    "fix_steps": [
+      "Identify the driver named in brackets and update or reinstall it",
+      "Remove third-party antivirus, tuning and monitoring software and retest",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth then sfc /scannow",
+      "Test RAM with MemTest86",
+      "Update chipset drivers"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Ask a technician if the named driver cannot be identified or is a core Microsoft file.",
+    "related_slugs": ["repair-windows-system-files", "windows-device-manager-error-codes", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000C5",
+    "name": "DRIVER_CORRUPTED_EXPOOL",
+    "meaning": "Windows found corruption in memory a driver had allocated from the general kernel pool. Almost always points to a specific faulty driver, with graphics, network and storage drivers most common.",
+    "causes": [
+      "Corrupted graphics, network or storage driver",
+      "Faulty RAM",
+      "Incomplete driver installation",
+      "Failing drive returning corrupted data"
+    ],
+    "fix_steps": [
+      "Note the driver name and reinstall it cleanly from the official vendor",
+      "Update chipset drivers first, since they underpin everything else",
+      "Test RAM with MemTest86",
+      "Check disk health and run chkdsk /scan",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Seek help if the fault survives a clean driver install and clean memory and disk tests.",
+    "related_slugs": ["windows-device-manager-error-codes", "test-ram-memory-errors", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x0000007A",
+    "name": "KERNEL_DATA_INPAGE_ERROR",
+    "meaning": "Windows could not read a page of memory from disk while paging. The drive could not deliver the data, so the underlying problem is almost always storage rather than software.",
+    "causes": [
+      "Failing or dying hard drive or SSD",
+      "Loose or damaged SATA, NVMe or power cable",
+      "Corrupted page file or hibernation file",
+      "Excessive memory pressure from too many programs",
+      "Failing controller on the drive or motherboard",
+      "Windows crashed during a large write"
+    ],
+    "fix_steps": [
+      "Back up your important files immediately, because this stop code predicts drive failure",
+      "Check SMART data with the vendor's tool or PowerShell Get-PhysicalDisk",
+      "Run chkdsk C: /scan, then chkdsk C: /f /r /x",
+      "Reseat the drive's data and power cables, or reseat the M.2 screw",
+      "Confirm the system drive has generous free space",
+      "Replace the drive if SMART reports reallocated, pending or uncorrectable sectors"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Replace the drive or see a professional immediately if SMART shows failures. Continuing to use a drive in this state risks losing everything on it.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "repair-windows-system-files", "fix-unmountable-boot-volume"]
+  },
+  {
+    "code_hex": "0x0000005C",
+    "name": "HAL_INITIALIZATION_FAILED",
+    "meaning": "A hardware abstraction layer driver failed while the system was starting, so the screen never appears. This is a boot-time hardware or firmware problem.",
+    "causes": [
+      "Incompatible or corrupted storage controller driver",
+      "Storage controller mode changed in BIOS after installation",
+      "Failing drive",
+      "Insufficient or overlapping base memory",
+      "Corrupted system files in the boot partition"
+    ],
+    "fix_steps": [
+      "Enter BIOS and confirm the SATA mode matches the installed Windows configuration",
+      "Boot into Windows Recovery and rebuild the boot files with bcdboot C:\\Windows /s C: /f UEFI",
+      "Run chkdsk C: /f /r /x from the recovery command prompt",
+      "Check disk health and replace the drive if it reports failures",
+      "Load BIOS defaults, which clears an overclocked or misconfigured memory setting",
+      "Update chipset and storage controller drivers from your PC vendor"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Call a technician if the drive is not detected in BIOS at all, since no software fix will help at that point.",
+    "related_slugs": ["fix-pc-wont-boot-power-on", "fix-unmountable-boot-volume", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x0000006B",
+    "name": "PROCESS1_INITIALIZATION_FAILED",
+    "meaning": "Windows could not start its very first user-mode process. This happens early in boot and points at corrupted system files or a failing drive.",
+    "causes": [
+      "Corrupted system files from a failed update",
+      "Failing system drive",
+      "Aggressive startup tool or antivirus blocking boot",
+      "Insufficient disk space for the boot partition"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode or the Recovery Environment",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth then sfc /scannow",
+      "Run chkdsk C: /f /r /x",
+      "Uninstall the last Windows Update or recently installed startup software",
+      "Verify free space on the system drive",
+      "Check disk SMART data before considering a reinstall"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help if the drive reports failures or if Safe Mode will not load either.",
+    "related_slugs": ["fix-boot-recovery-loop", "repair-windows-system-files", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x000000C4",
+    "name": "DRIVER_VERIFIER_DETECTED_VIOLATION",
+    "meaning": "Driver Verifier deliberately crashed the system to prove a driver is faulty. This is not a hardware fault; Verifier is a diagnostic tool that was switched on, usually by a support technician.",
+    "causes": [
+      "Driver Verifier was enabled previously, sometimes by a support technician",
+      "A genuinely faulty driver that Verifier has now identified",
+      "Outdated drivers being tested"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode, which Driver Verifier normally ignores",
+      "Open an elevated Command Prompt and run verifier /reset, then reboot",
+      "If you cannot reach Safe Mode, boot from Windows install media and choose Repair > Command Prompt, then run verifier /reset",
+      "Reboot normally, and the system will now start without the check",
+      "Update the drivers that were being verified, especially chipset and GPU",
+      "Re-enable Verifier in small batches only if you need to keep diagnosing a specific fault"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if you cannot boot into Safe Mode or the Recovery Environment, since verifier /reset must be run from one of those.",
+    "related_slugs": ["fix-boot-recovery-loop", "windows-device-manager-error-codes", "fix-pc-wont-boot-power-on"]
+  },
+  {
+    "code_hex": "0x00000116",
+    "name": "VIDEO_TDR_FAILURE",
+    "meaning": "The graphics driver stopped responding and Windows tried to reset it, then gave up. This is the graphics driver hung family of errors, often accompanied by a black screen and sound cutting out.",
+    "causes": [
+      "Graphics driver bug, frequently after a driver update",
+      "GPU overheating or a failing GPU",
+      "Unstable overclock or undervolt on the GPU",
+      "Insufficient or unstable system memory",
+      "Failing power supply unable to hold up under graphics load",
+      "Loose or reseated GPU or its power cables"
+    ],
+    "fix_steps": [
+      "Clean reinstall the GPU driver with DDU in Safe Mode, then install the newest stable driver",
+      "Disable driver auto-updates in Windows Update so your version is not replaced unexpectedly",
+      "Reset every GPU overclock and undervolt, including profiles in the vendor's own app",
+      "Monitor GPU temperature while reproducing the fault, and clean dust from the cooler",
+      "Test RAM with MemTest86, since video workloads stress memory hard",
+      "Check the GPU power cables are fully seated and the PSU has adequate capacity"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it to a technician if the fault persists at stock clocks with clean memory tests, because that points at the GPU, the PSU or the motherboard.",
+    "related_slugs": ["fix-video-tdr-failure", "clean-gpu-driver-uninstall-ddu", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0x00000117",
+    "name": "VIDEO_TDR_TIMEOUT_DETECTED",
+    "meaning": "A display or miniport driver did not respond in time and Windows could not recover the GPU. Frequently follows a graphics driver update or a multi-monitor configuration change.",
+    "causes": [
+      "Graphics driver fault after an update",
+      "Dangling or unsupported monitor configuration, HDMI or DisplayPort quirks",
+      "GPU overheating",
+      "Failing GPU or power supply",
+      "Third-party overlay or capture software hooking the display driver"
+    ],
+    "fix_steps": [
+      "Roll back or clean reinstall the graphics driver with DDU",
+      "Reconnect display cables and test with a single monitor to isolate multi-monitor issues",
+      "Remove overlays, wallpapers and hardware-accelerated apps",
+      "Check GPU temperatures and clear dust from the cooler",
+      "Update chipset drivers and the monitor's driver through Windows Update"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault survives a clean driver install on a single monitor at stock clocks.",
+    "related_slugs": ["fix-video-tdr-failure", "fix-black-screen-no-display", "clean-gpu-driver-uninstall-ddu"]
+  },
+  {
+    "code_hex": "0x00000119",
+    "name": "VIDEO_SCHEDULER_INTERNAL_ERROR",
+    "meaning": "The graphics scheduler found an internal inconsistency, usually right after waking from sleep or after a display change.",
+    "causes": [
+      "Graphics driver bug on a sleep or wake transition",
+      "Failing GPU or unstable GPU memory",
+      "Aggressive power management during sleep",
+      "Overclocked GPU"
+    ],
+    "fix_steps": [
+      "Update the GPU driver cleanly with DDU",
+      "Set the GPU's power management mode to Balanced or Optimal rather than Maximum Performance",
+      "Reset overclocks and undervolts",
+      "Update chipset drivers",
+      "Test RAM and check GPU temperature under load"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the fault only appears on wake and survives a clean driver install, since it can indicate a failing GPU.",
+    "related_slugs": ["fix-video-tdr-failure", "laptop-sleep-wake-issues", "clean-gpu-driver-uninstall-ddu"]
+  },
+  {
+    "code_hex": "0x0000011B",
+    "name": "DRIVER_RETURNED_HOLDING_CANCEL_LOCK",
+    "meaning": "A driver failed to release a lock it held after an operation was cancelled, which leaves the kernel unable to continue safely.",
+    "causes": [
+      "Buggy storage or network driver",
+      "Failing drive hanging on a bad sector",
+      "Corrupt driver installation",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Update storage and network drivers from their vendors",
+      "Check disk SMART data and run chkdsk /scan",
+      "Test RAM with MemTest86",
+      "Clean reinstall the driver in Safe Mode"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if disk health and memory are clean, since the fault then points at the storage controller or board.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "fix-wifi-driver-windows-11", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000DE",
+    "name": "POOL_CORRUPTION_IN_FILE_AREA",
+    "meaning": "Windows found corruption in a memory allocation used for files. Usually a driver wrote past the end of a buffer, frequently storage or networking related.",
+    "causes": [
+      "Buggy storage or network filter driver",
+      "Antivirus or disk encryption filter driver",
+      "Failing SSD firmware",
+      "Faulty RAM",
+      "Corrupt system files"
+    ],
+    "fix_steps": [
+      "Update storage controller and chipset drivers from your PC vendor",
+      "Update your SSD or NVMe firmware to the latest release",
+      "Temporarily uninstall antivirus and disk encryption software to test",
+      "Test RAM with MemTest86",
+      "Check disk SMART data and run chkdsk /scan"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if the fault repeats across storage driver versions with healthy SMART data, since the drive itself may be failing.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "repair-windows-system-files", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000124",
+    "name": "WHEA_UNCORRECTABLE_ERROR",
+    "meaning": "The Windows Hardware Error Architecture found a hardware fault it could not correct, usually a CPU, memory or PCIe error reported by the processor itself. This is one of the clearest hardware-failure indicators on Windows.",
+    "causes": [
+      "Failing CPU, often a dying core or unstable overclock",
+      "Defective RAM or an unstable memory overclock",
+      "Failing motherboard or power supply delivering unstable voltage",
+      "Overheated CPU or VRM",
+      "Exotic hardware such as an old server board or a modified system",
+      "Failing PCIe device such as a GPU or NVMe drive"
+    ],
+    "fix_steps": [
+      "Note the four parameters at the bottom of the screen, since they identify whether the fault is in the processor, memory or a specific PCIe slot",
+      "Load BIOS defaults and remove every overclock and undervolt, including memory timings",
+      "Test RAM with MemTest86 and try one stick at a time in each slot",
+      "Check CPU and VRM temperatures under load and improve case airflow",
+      "Remove all expansion cards one at a time to isolate a failing PCIe device",
+      "Update BIOS and chipset drivers to current versions",
+      "Check the PSU under load with a tester, since unstable voltage produces this fault"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "This code is a hardware-level warning and usually needs a technician. Go if the fault persists at stock settings with clean memory tests and no overheating, because that points at the CPU, board or PSU.",
+    "related_slugs": ["fix-high-cpu-temperature", "test-ram-memory-errors", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x0000012B",
+    "name": "FAULTY_HARDWARE_CORRUPTED_PAGE",
+    "meaning": "Windows detected that the hardware itself returned corrupted memory. This is a strong signal of failing RAM, a failing CPU or an unstable power supply feeding the memory.",
+    "causes": [
+      "Defective RAM module",
+      "Overheating CPU or memory",
+      "Unstable memory overclock",
+      "Failing CPU or motherboard memory controller",
+      "Failing power supply delivering unstable voltage to memory"
+    ],
+    "fix_steps": [
+      "Run MemTest86 for several full passes and record every failing address",
+      "Test one stick at a time in each slot to isolate a module or slot fault",
+      "Disable XMP/EXPO and any memory overclock",
+      "Improve case airflow and check CPU and memory temperatures under load",
+      "Test the PSU with a load tester or swap in a known-good unit",
+      "Reseat the CPU and check cooler mounting pressure if the fault persists across all RAM"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "This code is a hardware-level warning. See a technician if a single failing address repeats, since that identifies a specific module.",
+    "related_slugs": ["test-ram-memory-errors", "psu-failure-symptoms", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0x00000109",
+    "name": "CRITICAL_STRUCTURE_CORRUPTION",
+    "meaning": "Windows detected corruption in a critical internal structure it relies on. This is serious and usually indicates a driver or memory fault rather than a minor glitch.",
+    "causes": [
+      "Corrupt or mismatched driver",
+      "Faulty RAM",
+      "Corrupted system files",
+      "Failing drive",
+      "Antivirus kernel hook conflict"
+    ],
+    "fix_steps": [
+      "Update all drivers, chipset first",
+      "Test RAM with MemTest86 over multiple passes",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Check disk SMART data",
+      "Remove third-party antivirus and monitoring tools to test"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Seek professional help if the fault continues after clean memory, disk and driver checks.",
+    "related_slugs": ["repair-windows-system-files", "test-ram-memory-errors", "windows-device-manager-error-codes"]
+  },
+  {
+    "code_hex": "0x00000101",
+    "name": "CLOCK_WATCHDOG_TIMEOUT",
+    "meaning": "One of the processor's internal watchdog timers expired, usually because the processor was held in an unrecoverable state for too long. On overclocked systems it is very often an unstable CPU or memory overclock.",
+    "causes": [
+      "Unstable CPU or memory overclock",
+      "Insufficient or incorrect CPU voltage",
+      "CPU overheating",
+      "Failing CPU or motherboard voltage regulation",
+      "Faulty PSU delivering unstable power under load",
+      "Legacy processor running out of address space, on very old hardware"
+    ],
+    "fix_steps": [
+      "Load BIOS defaults and remove every overclock and undervolt",
+      "Increase CPU voltage slightly in small steps only if you intend to tune, and test each change",
+      "Test RAM with MemTest86 with XMP disabled",
+      "Check CPU temperature and cooler mounting under sustained load",
+      "Update BIOS to the latest version",
+      "Test with a known-good PSU if the fault appears under heavy load"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if the fault persists at stock settings with clean memory tests and good cooling, since that indicates failing CPU or board hardware.",
+    "related_slugs": ["fix-high-cpu-temperature", "test-ram-memory-errors", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x00000102",
+    "name": "DPC_WATCHDOG_TIMEOUT",
+    "meaning": "A Deferred Procedure Call also ran past its deadline. This is the sibling of DPC_WATCHDOG_VIOLATION and points at a driver holding the processor too long, usually a network, storage or graphics driver.",
+    "causes": [
+      "Network or Wi-Fi driver stalling",
+      "Storage or NVMe driver bug",
+      "Graphics driver hang",
+      "USB device or hub driver stalling",
+      "Faulty hardware generating excessive interrupts",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Update chipset, network, storage and graphics drivers",
+      "Disconnect external USB devices and retest",
+      "Test RAM with MemTest86",
+      "Check disk SMART data and run chkdsk /scan",
+      "Uninstall VPN and virtualisation software to test"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the fault survives driver updates with clean memory and disk, since the board or a device may be generating bad interrupts.",
+    "related_slugs": ["fix-wifi-driver-windows-11", "check-disk-health-ssd-hdd", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000F7",
+    "name": "DRIVER_OVERRAN_STACK_BUFFER",
+    "meaning": "A driver wrote past the end of its stack allocation. Windows caught the overflow and stopped the system rather than letting it corrupt other memory.",
+    "causes": [
+      "Buggy driver overrunning a buffer",
+      "Faulty or mismatched graphics, network or audio driver",
+      "Antivirus kernel hook",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Identify the driver named in the message and reinstall it from the official source",
+      "Clean reinstall GPU drivers with DDU if graphics related",
+      "Uninstall third-party antivirus, tuning and monitoring tools",
+      "Test RAM with MemTest86",
+      "Run sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Ask a technician if the fault persists across all driver versions and hardware tests are clean.",
+    "related_slugs": ["windows-device-manager-error-codes", "clean-gpu-driver-uninstall-ddu", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000CC",
+    "name": "PAGE_FAULT_IN_FREED_SPECIAL_POOL",
+    "meaning": "A driver used memory after it had been freed. Windows allocates special pool memory with guard pages specifically to catch this class of bug, so this code reliably identifies faulty driver code.",
+    "causes": [
+      "Buggy driver using memory after freeing it",
+      "Antivirus or monitoring driver with a use-after-free bug",
+      "Outdated driver version",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Update or reinstall the driver named in the message",
+      "Remove third-party antivirus, VPN and tuning software and retest",
+      "Clean reinstall GPU drivers with DDU if graphics related",
+      "Test RAM with MemTest86",
+      "Run sfc /scannow to verify system file integrity"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Seek help if the fault survives all driver updates and has no identifiable third-party component.",
+    "related_slugs": ["windows-device-manager-error-codes", "repair-windows-system-files", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000D6",
+    "name": "DRIVER_PAGE_FAULT_BEYOND_END_OF_ALLOCATION",
+    "meaning": "A driver tried to use memory past the end of a buffer it had allocated. Like the freed-special-pool code, this reliably pinpoints faulty driver code rather than hardware.",
+    "causes": [
+      "Driver writing past the end of an allocated buffer",
+      "Outdated or mismatched driver",
+      "Antivirus filter driver bug",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Update or reinstall the driver named in the message",
+      "Clean reinstall GPU and chipset drivers if storage or graphics related",
+      "Remove third-party antivirus and disk filter software to test",
+      "Test RAM with MemTest86",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault survives driver updates and clean hardware tests.",
+    "related_slugs": ["windows-device-manager-error-codes", "test-ram-memory-errors", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x000000BE",
+    "name": "ATTEMPTED_WRITE_TO_READONLY_MEMORY",
+    "meaning": "A driver attempted to write to memory the operating system has marked read-only. Usually a driver bug or software built for an older Windows version.",
+    "causes": [
+      "Old or mismatched driver, frequently from a device no longer supported",
+      "Antivirus, VPN or disk encryption filter driver",
+      "Partially removed software leaving a filter driver loaded",
+      "Failing RAM producing a bad pointer"
+    ],
+    "fix_steps": [
+      "Note the driver or module named in the stop message and identify which program owns it",
+      "Use Safe Mode to uninstall that software completely, then reboot and reinstall an up-to-date version",
+      "Update all drivers: chipset first, then GPU, then peripherals",
+      "Run the hardware changes troubleshooter and scan for hidden devices with no driver",
+      "Test RAM if the named file is a Microsoft system file rather than a third-party driver",
+      "Check Reliability Monitor for the application that was active when the crash occurred"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Contact a technician if you cannot identify the named driver, because guessing at software removal can cost you data.",
+    "related_slugs": ["windows-device-manager-error-codes", "clean-gpu-driver-uninstall-ddu", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x000000F5",
+    "name": "FLTMGR_FILE_SYSTEM",
+    "meaning": "The Windows file system filter manager crashed. Antimalware, backup tools, disk encryption and virtual drive software all install filter drivers here, so third-party software is the usual cause.",
+    "causes": [
+      "Antivirus or backup software filter driver",
+      "Disk encryption or virtual drive filter driver",
+      "Conflicting filter drivers from two security products",
+      "Corrupt system files",
+      "Faulty drive"
+    ],
+    "fix_steps": [
+      "Uninstall third-party antivirus, backup and disk encryption software one at a time and retest",
+      "Avoid running two security suites at once, since their filter drivers conflict",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Check disk SMART data and run chkdsk /scan",
+      "Reinstall the security software cleanly rather than restoring an old image"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault persists with all filter-driver software removed, since that points at the drive or system files.",
+    "related_slugs": ["repair-windows-system-files", "check-disk-health-ssd-hdd", "windows-device-manager-error-codes"]
+  },
+  {
+    "code_hex": "0x00000113",
+    "name": "VIDEO_DXGKRNL_FATAL_ERROR",
+    "meaning": "The DirectX graphics kernel hit a fatal error inside a driver. Almost always a graphics driver problem, and a strong indicator of a driver bug rather than hardware.",
+    "causes": [
+      "Graphics driver bug, often after an update",
+      "GPU overclock or undervolt",
+      "Third-party overlay or antivirus hooking the graphics stack",
+      "Failing GPU",
+      "Insufficient system memory for the graphics workload"
+    ],
+    "fix_steps": [
+      "Clean reinstall GPU drivers with DDU in Safe Mode",
+      "Reset all GPU overclock and undervolt settings, including vendor app profiles",
+      "Disable overlays, screen recording and hardware-accelerated wallpaper software",
+      "Update chipset drivers",
+      "Test RAM with MemTest86 and check GPU temperature under load",
+      "Check the PSU capacity if the fault appears only in demanding games"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the fault persists at stock clocks with a clean driver and clean memory tests.",
+    "related_slugs": ["clean-gpu-driver-uninstall-ddu", "fix-video-tdr-failure", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x0000010E",
+    "name": "VIDEO_MEMORY_MANAGEMENT_INTERNAL",
+    "meaning": "The graphics driver found an internal problem managing video memory. Frequently a failing GPU, but also seen when a card runs out of memory or memory overclock is unstable.",
+    "causes": [
+      "Failing GPU memory",
+      "Insufficient video memory for the application or resolution",
+      "Unstable GPU memory overclock",
+      "Outdated graphics driver",
+      "Integrated graphics running out of shared system RAM"
+    ],
+    "fix_steps": [
+      "Update the GPU driver to the newest stable version",
+      "Close GPU-heavy applications and lower in-game resolution or texture quality",
+      "For integrated graphics, ensure the system has enough free RAM for shared memory",
+      "Reset GPU memory overclocks and undervolts",
+      "Test with a different output cable or port to rule out a cable fault",
+      "Check GPU temperature, since dying GPUs often fail when hot"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault happens at low settings and low temperature, which points to failing GPU memory.",
+    "related_slugs": ["fix-video-tdr-failure", "fix-high-cpu-temperature", "clean-gpu-driver-uninstall-ddu"]
+  },
+  {
+    "code_hex": "0x00000120",
+    "name": "BITLOCKER_FATAL_ERROR",
+    "meaning": "A BitLocker encryption component failed in a way that could risk data loss, so Windows halted. Frequently follows firmware, TPM or storage changes.",
+    "causes": [
+      "TPM or firmware change after enabling BitLocker",
+      "Storage controller or disk change",
+      "Corrupted BitLocker metadata",
+      "BIOS update changing Secure Boot or TPM state",
+      "Insufficient system memory during decryption"
+    ],
+    "fix_steps": [
+      "Find your BitLocker recovery key before anything else, from your Microsoft account, your organisation, or where you saved it",
+      "Boot into the Recovery Environment and enter the recovery key when prompted",
+      "Suspend BitLocker before any BIOS, TPM or hardware change: manage-bde -protectors -disable C:",
+      "Resume protection afterwards with manage-bde -protectors -enable C:",
+      "Check disk SMART data, since storage changes are a common trigger",
+      "Restore BIOS and Secure Boot settings to what they were when encryption was enabled"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get professional help if you do not have a recovery key, because without it the data cannot be decrypted. Also seek help if the drive is failing.",
+    "related_slugs": ["fix-boot-recovery-loop", "check-disk-health-ssd-hdd", "fix-pc-wont-boot-power-on"]
+  },
+  {
+    "code_hex": "0x00000145",
+    "name": "SECURE_BOOT_VIOLATION",
+    "meaning": "Windows refused to load a driver or bootloader because it was not signed as trusted under Secure Boot. Triggered by a modified BIOS setting, an old unsigned driver, or leftover bootloaders from another OS.",
+    "causes": [
+      "Secure Boot disabled or set to a custom key in BIOS",
+      "Unsigned or revoked driver, often a very old chipset or LAN driver",
+      "Leftover GRUB or another OS bootloader installed",
+      "Modified or unsigned BIOS firmware",
+      "Attacker-installed boot component"
+    ],
+    "fix_steps": [
+      "Note which component was blocked, usually named on the blue screen, and remove it in Safe Mode",
+      "In BIOS, check the Secure Boot setting and load the default or factory keys if they were customised",
+      "Uninstall any second operating system bootloader such as GRUB, or restore it from that OS",
+      "Install signed drivers only, from the PC vendor rather than an old third-party pack",
+      "Check BIOS for an unsigned or modified firmware state, which is a serious security concern"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help if Secure Boot was not deliberately disabled and the blocked component cannot be identified. If BIOS firmware itself is reported as unsigned, treat the machine as untrustworthy.",
+    "related_slugs": ["fix-boot-recovery-loop", "windows-device-manager-error-codes", "fix-pc-wont-boot-power-on"]
+  },
+  {
+    "code_hex": "0x0000014C",
+    "name": "FATAL_ABNORMAL_RESET_ERROR",
+    "meaning": "The system recorded an abnormal reset that it could not explain, which usually means a hardware reset event such as a watchdog, overheating or a power problem.",
+    "causes": [
+      "Overheating triggering a hardware shutdown",
+      "Failing power supply cutting out under load",
+      "CPU or GPU hardware fault",
+      "External device forcing a reset, such as a failing USB hub",
+      "Dying CMOS or firmware battery"
+    ],
+    "fix_steps": [
+      "Check CPU and GPU temperatures under sustained load and improve airflow",
+      "Test the PSU with a load tester or swap in a known-good unit",
+      "Test RAM with MemTest86 and remove all overclocks",
+      "Disconnect every external USB device and retest",
+      "Replace the CMOS battery so the firmware state is reliable",
+      "Check for any BIOS update that fixes known reset bugs on your board"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if resets continue with stock settings, clean memory tests and a known-good PSU, since that points at the board.",
+    "related_slugs": ["psu-failure-symptoms", "fix-high-cpu-temperature", "fix-random-restarts-windows"]
+  },
+  {
+    "code_hex": "0x000000A0",
+    "name": "INTERNAL_POWER_ERROR",
+    "meaning": "A power management driver detected an invalid internal state, usually when entering or leaving sleep, or while resuming from hibernation.",
+    "causes": [
+      "Chipset and power management driver faults",
+      "Failing battery or charger on a laptop",
+      "Graphics driver stalling during a power transition",
+      "Aggressive Fast Startup state",
+      "Faulty USB device preventing a clean power transition"
+    ],
+    "fix_steps": [
+      "Update chipset, graphics and power management drivers from your PC vendor",
+      "Run powercfg /h off to disable hibernation and Fast Startup",
+      "Disconnect all USB devices and retry the sleep cycle",
+      "On a laptop, check battery health with the manufacturer's report tool",
+      "Set the active power plan sleep timeout to Never while testing"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the machine cannot complete a power transition at all, or if the battery report shows severe capacity loss.",
+    "related_slugs": ["disable-fast-startup-hibernation", "fix-laptop-battery-health", "laptop-sleep-wake-issues"]
+  },
+  {
+    "code_hex": "0x000000A5",
+    "name": "ACPI_BIOS_ERROR",
+    "meaning": "An ACPI function called by Windows failed, which points at a mismatch between firmware and drivers. Very common on laptops after a BIOS update.",
+    "causes": [
+      "Outdated BIOS firmware",
+      "Chipset or power management driver mismatch",
+      "ACPI setting changed in BIOS such as C-states or Wake on LAN",
+      "Failing laptop battery or charger",
+      "Incompatible Fast Startup state"
+    ],
+    "fix_steps": [
+      "Update BIOS firmware from your PC vendor, then update chipset and power management drivers",
+      "Restore ACPI defaults in BIOS by setting C-States, Wake on LAN and PCI-E to their default values",
+      "Run powercfg /h off to disable hibernation and Fast Startup",
+      "On a laptop, verify the charger is original and the battery health report is reasonable",
+      "Run powercfg /batteryreport /output battery.html to review battery design capacity versus full charge capacity"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the fault appears immediately after a BIOS update, since the firmware may need to be rolled back or further patched.",
+    "related_slugs": ["fix-laptop-battery-health", "disable-fast-startup-hibernation", "laptop-sleep-wake-issues"]
+  },
+  {
+    "code_hex": "0x000000F2",
+    "name": "HARDWARE_INTERRUPT_STORM",
+    "meaning": "A device generated interrupts far faster than expected, overwhelming the system. Usually a failing device, a bad driver, or an IRQ conflict on older hardware.",
+    "causes": [
+      "Failing USB device, hub or controller",
+      "Faulty network or storage adapter",
+      "IRQ conflict on older hardware",
+      "Bad driver generating excessive interrupts",
+      "Failing motherboard interrupt controller"
+    ],
+    "fix_steps": [
+      "Disconnect every external USB device and retest",
+      "Remove expansion cards one at a time to isolate the device",
+      "Update chipset, USB and network drivers from your PC vendor",
+      "Check for conflicting IRQ assignments in Device Manager > View > Resources by input/output",
+      "Reseat internal connectors such as front-panel USB headers",
+      "Test RAM with MemTest86"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Take it to a technician if the fault follows a specific internal device you cannot replace, since that usually means failing hardware.",
+    "related_slugs": ["fix-usb-device-not-recognized", "windows-device-manager-error-codes", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000051",
+    "name": "REGISTRY_ERROR",
+    "meaning": "The registry hive could not be read from disk, usually because the registry file itself is corrupt or the drive is failing. Data recovery matters here, not just a repair.",
+    "causes": [
+      "Corrupt registry hive after a sudden power loss",
+      "Failing drive returning bad reads",
+      "Aggressive shutdown while the registry was being written",
+      "Failed update leaving the registry inconsistent"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode, which uses a reduced registry set and often starts",
+      "Back up your data immediately, because the registry can be rebuilt but files on a failing drive can be lost",
+      "Run chkdsk C: /scan and check disk SMART data",
+      "Restore from a System Restore point in Safe Mode using rstrui.exe",
+      "If nothing else works, use Reset this PC keeping your files, which rebuilds the registry from scratch",
+      "On an advanced system, boot into the Recovery Environment and copy hives from \\Windows\\System32\\config\\RegBack"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get professional help immediately if the drive reports failures, because the data may not be recoverable if the drive continues to degrade.",
+    "related_slugs": ["fix-boot-recovery-loop", "check-disk-health-ssd-hdd", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x000000C1",
+    "name": "SPECIAL_POOL_DETECTED_MEMORY_CORRUPTION",
+    "meaning": "Windows found that a driver had corrupted memory it had allocated. Special pool memory is instrumented specifically to catch driver bugs, so this reliably points at faulty driver code.",
+    "causes": [
+      "Driver overwriting memory outside its allocation",
+      "Antivirus or monitoring driver bug",
+      "Outdated driver version",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Update or reinstall the driver named in the message",
+      "Clean reinstall GPU drivers with DDU if graphics related",
+      "Remove third-party antivirus, VPN and tuning software and retest",
+      "Test RAM with MemTest86",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Ask a technician if the fault persists across all driver versions with clean memory tests.",
+    "related_slugs": ["windows-device-manager-error-codes", "test-ram-memory-errors", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x000000C7",
+    "name": "TIMER_OR_DPC_INVALID",
+    "meaning": "A driver left an invalid timer or Deferred Procedure Call registered. Almost always a driver bug rather than a Windows fault.",
+    "causes": [
+      "Faulty network, storage or graphics driver",
+      "Antivirus or VPN filter driver",
+      "Faulty hardware producing interrupts at high rates",
+      "Corrupt system files"
+    ],
+    "fix_steps": [
+      "Update chipset, network, storage and graphics drivers",
+      "Uninstall third-party antivirus and VPN software to test",
+      "Test RAM with MemTest86",
+      "Check disk SMART data",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the fault survives driver updates with clean memory and disk, since the board or a device may be generating bad interrupts.",
+    "related_slugs": ["fix-wifi-driver-windows-11", "check-disk-health-ssd-hdd", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000018",
+    "name": "REFERENCE_BY_POINTER",
+    "meaning": "A low-level system reference pointed at an invalid memory address. Effectively the same family of fault as IRQL_NOT_LESS_OR_EQUAL and usually shares its causes.",
+    "causes": [
+      "Faulty RAM",
+      "Corrupt or mismatched driver",
+      "Failing drive returning bad data",
+      "Unstable BIOS settings or overclock"
+    ],
+    "fix_steps": [
+      "Test RAM with MemTest86 for two full passes",
+      "Update chipset, GPU and network drivers",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth then sfc /scannow",
+      "Check disk health and free space on the system drive",
+      "Load BIOS defaults and remove overclocks, then retest"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if RAM and disk tests are clean but crashes continue across several different stop codes.",
+    "related_slugs": ["test-ram-memory-errors", "repair-windows-system-files", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x00000019",
+    "name": "BAD_POOL_HEADER",
+    "meaning": "The management information at the start of a kernel memory block was corrupted. This is one of the classic driver-memory-corruption codes and is very often bad RAM rather than a driver.",
+    "causes": [
+      "Faulty RAM",
+      "Corrupt or mismatched driver",
+      "Unstable memory overclock such as XMP or EXPO",
+      "Failing drive"
+    ],
+    "fix_steps": [
+      "Run MemTest86 for at least four full passes with XMP/EXPO disabled",
+      "Reseat and clean RAM slots, testing one module at a time",
+      "Update chipset, GPU and network drivers",
+      "Check disk SMART data and run chkdsk /scan",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if a failing address repeats in MemTest86, since that identifies a specific faulty module.",
+    "related_slugs": ["test-ram-memory-errors", "check-disk-health-ssd-hdd", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x0000004E",
+    "name": "PFN_LIST_CORRUPT",
+    "meaning": "The list Windows keeps of physical memory pages is corrupt. This strongly indicates a memory fault, and it is one of the codes most reliably caused by failing RAM.",
+    "causes": [
+      "Defective RAM module or slot",
+      "Unstable memory timings",
+      "Failing drive corrupting the page file",
+      "Corrupt driver writing outside its allocation",
+      "Overheating"
+    ],
+    "fix_steps": [
+      "Run MemTest86 for four or more full passes, one stick at a time if possible",
+      "Disable XMP/EXPO and all overclocks",
+      "Check disk SMART data, since a failing drive can corrupt the page file",
+      "Update chipset and graphics drivers",
+      "Check case airflow and temperatures under load",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if errors persist across every RAM module and slot with stock timings, because that points at the board or CPU.",
+    "related_slugs": ["test-ram-memory-errors", "check-disk-health-ssd-hdd", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0x00000022",
+    "name": "FILE_SYSTEM",
+    "meaning": "The core file system driver crashed with a generic file system error. Usually the volume is damaged, or a disk filter driver is at fault.",
+    "causes": [
+      "Filesystem corruption on a volume",
+      "Failing drive",
+      "Disk filter driver from antivirus or encryption software",
+      "Dirty shutdown during heavy write activity",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Run chkdsk on each volume, using /f /r /x for the system drive",
+      "Check disk SMART data and replace any drive reporting failures",
+      "Uninstall third-party antivirus and disk encryption software to test",
+      "Update storage controller and chipset drivers",
+      "Test RAM with MemTest86, since bad RAM corrupts files",
+      "Back up your files as soon as the system is usable"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help if the fault recurs after chkdsk repair, since recurring filesystem errors usually mean a dying drive.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "repair-windows-system-files", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000023",
+    "name": "FAT_FILE_SYSTEM",
+    "meaning": "The FAT or exFAT driver crashed. Usually seen on removable media, but it can also occur on a system partition that uses FAT.",
+    "causes": [
+      "Corrupt or failing USB drive, SD card or external disk",
+      "Forced removal of removable media while writing",
+      "Corrupt FAT or exFAT partition table",
+      "Failing card reader",
+      "Faulty RAM corrupting filesystem metadata"
+    ],
+    "fix_steps": [
+      "Back up anything readable from the affected drive immediately",
+      "Run chkdsk on the drive letter, for example chkdsk F: /f",
+      "Check the drive's health with the vendor's tool and replace it if it fails",
+      "Always safely eject removable media using the system tray icon rather than yanking it",
+      "Test RAM if the same fault occurs on the internal drive"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the fault is on your internal drive rather than removable media, since that implies a hardware problem worth checking.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "fix-usb-device-not-recognized", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x0000012C",
+    "name": "EXFAT_FILE_SYSTEM",
+    "meaning": "The exFAT driver crashed. exFAT is used on large SD cards, USB drives and some camera media, so this usually points at removable storage.",
+    "causes": [
+      "Failing SD card or USB drive",
+      "Corrupt exFAT volume structure",
+      "Card reader hardware fault",
+      "Forced removal during a write",
+      "Faulty card reader contact pins"
+    ],
+    "fix_steps": [
+      "Back up readable data from the card or drive immediately",
+      "Run chkdsk X: /f using the correct drive letter",
+      "Test the card in another device to establish whether the card or the reader is at fault",
+      "Reformat the card as exFAT only after backing up, and only if it is healthy",
+      "Replace the card reader if the fault follows the machine rather than the card"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the card works fine in another device but the machine still fails, as the reader hardware is likely damaged.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "fix-usb-device-not-recognized", "windows-device-manager-error-codes"]
+  },
+  {
+    "code_hex": "0x0000009C",
+    "name": "MACHINE_CHECK_EXCEPTION",
+    "meaning": "The CPU detected an unrecoverable hardware error, such as a problem reaching a device on the bus, a cache error, or an unstable voltage. This is a hardware-level fault reported by the processor itself.",
+    "causes": [
+      "Failing CPU or motherboard",
+      "Unstable CPU or memory overclock, or insufficient voltage",
+      "Failing RAM",
+      "Failing power supply delivering unstable voltage",
+      "Overheated CPU or VRM",
+      "Failing PCIe device such as a GPU or NVMe drive"
+    ],
+    "fix_steps": [
+      "Load BIOS defaults and remove every overclock and undervolt",
+      "Test RAM with MemTest86 at stock timings",
+      "Check CPU and VRM temperatures under sustained load and improve airflow",
+      "Remove expansion cards one at a time to isolate a failing PCIe device",
+      "Test the PSU with a load tester or swap in a known-good unit",
+      "Update BIOS and chipset drivers, and confirm any known issues for your board"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if the fault continues at stock settings with clean memory tests and a known-good PSU, since this points at the CPU, board or a connected device.",
+    "related_slugs": ["fix-high-cpu-temperature", "test-ram-memory-errors", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x00000077",
+    "name": "KERNEL_STACK_INPAGE_ERROR",
+    "meaning": "Windows could not read a thread's kernel stack from the page file. The drive could not supply the data, so this is a storage problem.",
+    "causes": [
+      "Failing hard drive or SSD",
+      "Full or corrupted page file",
+      "Loose drive connection",
+      "Excessive memory pressure",
+      "Failing storage controller"
+    ],
+    "fix_steps": [
+      "Back up your files immediately and check disk SMART data",
+      "Verify the page file is system-managed and the system drive has free space",
+      "Run chkdsk C: /f /r /x",
+      "Reseat data and power connections on the drive",
+      "Test RAM with MemTest86",
+      "Replace the drive if SMART reports any failures"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Replace the drive or see a technician if SMART shows failures, because this code usually means the drive is close to failure.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "repair-windows-system-files", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000043",
+    "name": "NO_SUCH_PARTITION",
+    "meaning": "Windows could not find the partition it was configured to boot from. The partition table is damaged, was altered, or the drive letter changed.",
+    "causes": [
+      "Damaged partition table",
+      "Accidental disk formatting or partitioning change",
+      "Drive moved to another machine or controller",
+      "Failed update or installer that rewrote the boot partition",
+      "Failing drive"
+    ],
+    "fix_steps": [
+      "Boot from Windows install media and choose Repair > Command Prompt",
+      "Run diskpart, then list volume, to see what Windows can see",
+      "Check the boot partition is active and has a letter assigned",
+      "Rebuild the boot files with bcdboot C:\\Windows /s C: /f UEFI",
+      "Check disk SMART data; a failing drive will not hold a rebuilt table",
+      "Restore the partition table from backup if you have one"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Take it to a technician if the drive is not listed in diskpart or BIOS, since no software fix applies at that point.",
+    "related_slugs": ["fix-unmountable-boot-volume", "check-disk-health-ssd-hdd", "fix-pc-wont-boot-power-on"]
+  },
+  {
+    "code_hex": "0x00000053",
+    "name": "NO_BOOT_DEVICE",
+    "meaning": "Windows could not find the device it boots from. Either the storage controller is not providing a drive, or no drive is marked as bootable.",
+    "causes": [
+      "Storage controller mode changed in BIOS",
+      "No bootable drive found or boot order wrong",
+      "Drive not detected due to a cabling or controller fault",
+      "Failed boot loader",
+      "Drive formatted or repartitioned"
+    ],
+    "fix_steps": [
+      "Enter BIOS and confirm the drive is listed and set as the first boot device",
+      "Confirm the SATA mode matches the installed Windows configuration",
+      "Boot into the Recovery Environment and run bootrec /fixmbr, bootrec /fixboot and bootrec /rebuildbcd",
+      "Check drive cabling and reseat connectors, including the M.2 screw",
+      "Test the drive in another machine or with a USB enclosure"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Call a technician if the drive is missing from BIOS entirely, because that is a hardware-level problem.",
+    "related_slugs": ["fix-pc-wont-boot-power-on", "fix-unmountable-boot-volume", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x00000074",
+    "name": "BAD_SYSTEM_CONFIG_INFO",
+    "meaning": "The hardware configuration cache Windows keeps at boot is corrupt. Often follows a BIOS change such as a memory or CPU upgrade.",
+    "causes": [
+      "Hardware change not reflected in the configuration cache",
+      "Corrupt BCD store",
+      "Insufficient memory during boot",
+      "BIOS update that changed hardware detection",
+      "Failing CMOS battery"
+    ],
+    "fix_steps": [
+      "Boot into the Recovery Environment and run bootrec /rebuildbcd",
+      "Rebuild the hardware configuration cache with bcdedit /set {default} bootmenupolicy legacy, then retry",
+      "Load BIOS defaults and confirm the hardware is detected correctly",
+      "Replace the CMOS battery so configuration data is reliable",
+      "Run chkdsk C: /f /r /x"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if the fault appears after a hardware upgrade and persists with a rebuilt BCD store.",
+    "related_slugs": ["fix-unmountable-boot-volume", "fix-boot-recovery-loop", "fix-pc-wont-boot-power-on"]
+  },
+  {
+    "code_hex": "0x0000008B",
+    "name": "MBR_CHECKSUM_MISMATCH",
+    "meaning": "Windows found that the master boot record does not match its stored checksum. The boot sector is damaged or has been altered.",
+    "causes": [
+      "Corrupt or damaged MBR",
+      "Interrupted installation or update",
+      "Boot sector virus from an older system",
+      "Failing drive returning bad sectors in the first kilobyte"
+    ],
+    "fix_steps": [
+      "Boot into the Recovery Environment and run bootrec /fixmbr",
+      "Then run bootrec /fixboot and bootrec /rebuildbcd",
+      "Run chkdsk C: /f /r /x to check the rest of the filesystem",
+      "Check disk SMART data",
+      "Uninstall any non-Windows bootloader such as GRUB that may have rewritten the MBR"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if bootrec /fixmbr cannot repair the record or the drive reports failing sectors.",
+    "related_slugs": ["fix-unmountable-boot-volume", "fix-boot-recovery-loop", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x0000019C",
+    "name": "WIN32K_POWER_WATCHDOG_TIMEOUT",
+    "meaning": "The desktop window manager did not respond to a power transition in time, so Windows forced a restart. Extremely common on laptops after sleep or when closing the lid.",
+    "causes": [
+      "Graphics driver stalling on sleep or wake",
+      "Aggressive power management driver",
+      "Failing laptop battery",
+      "External monitor or docking station handshake issue",
+      "Overclocked GPU",
+      "Outdated BIOS power management"
+    ],
+    "fix_steps": [
+      "Update chipset and graphics drivers from your PC vendor",
+      "Run powercfg /h off to disable hibernation and Fast Startup",
+      "Test sleep with all external devices, including monitors and docks, disconnected",
+      "Check the lid close action in Power Options, and set it to Sleep or Hibernate deliberately",
+      "Reset GPU overclocks and check the laptop battery health report",
+      "Update BIOS firmware"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault happens on every sleep cycle with a clean driver install and no external devices connected.",
+    "related_slugs": ["laptop-sleep-wake-issues", "disable-fast-startup-hibernation", "fix-laptop-battery-health"]
+  },
+  {
+    "code_hex": "0x000001DE",
+    "name": "BUGCODE_WIFIADAPTER_DRIVER",
+    "meaning": "The Wi-Fi adapter driver detected a fatal internal fault and reported it directly. Almost always resolved by a clean driver reinstall.",
+    "causes": [
+      "Wi-Fi driver bug or corruption",
+      "Incompatible driver version for the adapter",
+      "Adapter firmware fault",
+      "Interference from an unstable network",
+      "Failing Wi-Fi hardware"
+    ],
+    "fix_steps": [
+      "Uninstall the Wi-Fi adapter in Device Manager with 'Delete the driver software' ticked, then reboot",
+      "Install the official driver from your PC vendor, or from the network adapter manufacturer's site",
+      "Update chipset drivers as well, since the Wi-Fi driver depends on them",
+      "Check the adapter is not disabled by a physical switch or a BIOS setting",
+      "Try removing the adapter in Device Manager and rebooting so Windows reinstalls it",
+      "Test the adapter in another device to rule out failing hardware"
+    ],
+    "difficulty": "easy",
+    "when_to_call_pro": "See a technician if the adapter crashes even with a fresh official driver and it also fails in another computer, since the hardware is then suspect.",
+    "related_slugs": ["fix-wifi-driver-windows-11", "realtek-audio-network-drivers", "windows-device-manager-error-codes"]
+  },
+  {
+    "code_hex": "0x00000144",
+    "name": "BUGCODE_USB3_DRIVER",
+    "meaning": "The USB 3 driver hit a fatal fault. Usually caused by a failing USB device, hub or port rather than Windows itself.",
+    "causes": [
+      "Failing USB device, hub or dock",
+      "USB 3 port or controller hardware fault",
+      "Front-panel USB header wiring or header damage",
+      "Outdated chipset or USB driver",
+      "USB-C port with debris or bent pins"
+    ],
+    "fix_steps": [
+      "Disconnect every USB device and retest, then add them back one at a time",
+      "Try a different port, preferring a rear motherboard port over a front-panel or hub port",
+      "Update chipset and USB controller drivers from your PC vendor",
+      "Inspect and clean USB-C ports with a wooden toothpick or compressed air",
+      "Run the hardware changes troubleshooter and scan for hardware changes in Device Manager",
+      "On a desktop, reseat the front-panel USB headers"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the fault follows a specific internal port or header, which means the connector or controller is failing.",
+    "related_slugs": ["fix-usb-device-not-recognized", "windows-device-manager-error-codes", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x000000FE",
+    "name": "BUGCODE_USB_DRIVER",
+    "meaning": "The older USB driver reported a fatal fault. More common than the USB 3 code and usually points at a specific failing USB device.",
+    "causes": [
+      "Failing USB device such as a keyboard, mouse or printer",
+      "USB hub overload from too many bus-powered devices",
+      "Faulty USB port or controller",
+      "Outdated chipset driver"
+    ],
+    "fix_steps": [
+      "Disconnect all USB devices and reconnect them one at a time to find the offender",
+      "Avoid unpowered hubs with several bus-powered devices attached",
+      "Update chipset and USB drivers from your PC vendor",
+      "Try a different port, preferably one directly on the motherboard",
+      "Replace the USB cable, since a marginal cable is a very common cause"
+    ],
+    "difficulty": "easy",
+    "when_to_call_pro": "See a technician if the fault follows an internal USB port rather than a removable device.",
+    "related_slugs": ["fix-usb-device-not-recognized", "windows-device-manager-error-codes", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x00000190",
+    "name": "SDHC_INTERNAL_FATAL_ERROR",
+    "meaning": "The Secure Digital Host Controller driver failed fatally, which usually means a card reader or an SD card causing a hardware fault.",
+    "causes": [
+      "Failing SD card or card reader",
+      "Faulty or outdated card reader driver",
+      "Card reader hardware damage from forcing a card in",
+      "Corrupted system files",
+      "Damaged card contacts"
+    ],
+    "fix_steps": [
+      "Try the card in another device to confirm the card is healthy",
+      "Update the card reader driver from your laptop vendor",
+      "Reseat or replace the card reader if the fault follows the machine",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth",
+      "Avoid forcing cards in, since damaged contacts are the usual root cause"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the card is fine in another device but the machine still fails, as the reader hardware is likely damaged.",
+    "related_slugs": ["windows-device-manager-error-codes", "repair-windows-system-files", "fix-usb-device-not-recognized"]
+  },
+  {
+    "code_hex": "0x000000B9",
+    "name": "CHIPSET_DETECTED_ERROR",
+    "meaning": "The chipset driver itself reported a fatal fault. This usually means a badly matched or corrupt chipset driver rather than a hardware problem.",
+    "causes": [
+      "Corrupt or mismatched chipset driver",
+      "Chipset driver from the wrong vendor installed",
+      "Motherboard BIOS older than the chipset driver expects",
+      "Overclocked memory or CPU settings",
+      "Failing motherboard"
+    ],
+    "fix_steps": [
+      "Identify your exact motherboard model and install the chipset driver from its vendor only",
+      "In Safe Mode, uninstall the existing chipset drivers with 'Delete the driver software' ticked, then reinstall cleanly",
+      "Update BIOS firmware to the latest version",
+      "Load BIOS defaults and disable memory overclocks",
+      "Test RAM with MemTest86 with XMP disabled",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get professional help if the fault persists with the correct vendor chipset driver and current BIOS, since that points at the motherboard.",
+    "related_slugs": ["windows-device-manager-error-codes", "test-ram-memory-errors", "fix-pc-wont-boot-power-on"]
+  },
+  {
+    "code_hex": "0x000000B4",
+    "name": "VIDEO_DRIVER_INIT_FAILURE",
+    "meaning": "The graphics driver failed during initialisation, usually at boot. Frequently caused by a corrupt driver install or insufficient video memory.",
+    "causes": [
+      "Corrupt graphics driver installation",
+      "Insufficient or incompatible video memory",
+      "GPU overclock applied at startup",
+      "Failing GPU or graphics card",
+      "Inadequate PSU power for the card"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode, which uses the basic display driver",
+      "Clean reinstall GPU drivers with DDU in Safe Mode",
+      "In Safe Mode, set the GPU to stock clocks so no overclock applies at startup",
+      "Update chipset drivers",
+      "Check the card's power cables are fully seated and the PSU has sufficient capacity",
+      "Test the GPU in another slot or another machine to rule out failing hardware"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault survives a clean driver install at stock clocks, since that usually means the card is failing.",
+    "related_slugs": ["fix-black-screen-no-display", "clean-gpu-driver-uninstall-ddu", "psu-failure-symptoms"]
+  },
+  {
+    "code_hex": "0x00000154",
+    "name": "UNEXPECTED_STORE_EXCEPTION",
+    "meaning": "A driver or the kernel hit an unexpected condition while saving state. Often follows a storage fault or an unclean shutdown.",
+    "causes": [
+      "Failing SSD or HDD",
+      "Corrupt or buggy storage driver",
+      "Insufficient free space on the system volume",
+      "Corrupted page file",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Check disk SMART data immediately and back up your files",
+      "Run chkdsk C: /f /r /x",
+      "Verify the system drive has ample free space",
+      "Update storage controller drivers from your PC vendor",
+      "Test RAM with MemTest86"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help if SMART shows failures or chkdsk cannot complete, because the drive is likely failing.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "repair-windows-system-files", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000164",
+    "name": "WIN32K_CRITICAL_FAILURE",
+    "meaning": "A critical function in the Windows graphical interface failed, normally after a problem with a display driver or an unstable memory allocation.",
+    "causes": [
+      "Graphics driver fault",
+      "Faulty RAM",
+      "Overclocked GPU or CPU",
+      "Corrupt system files",
+      "Third-party window manager or overlay software"
+    ],
+    "fix_steps": [
+      "Clean reinstall GPU drivers with DDU in Safe Mode",
+      "Reset GPU and CPU overclocks",
+      "Test RAM with MemTest86",
+      "Remove overlays, window managers and custom shell software",
+      "Update chipset drivers and run sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the fault persists at stock settings with a clean driver and clean memory tests.",
+    "related_slugs": ["clean-gpu-driver-uninstall-ddu", "test-ram-memory-errors", "fix-video-tdr-failure"]
+  },
+  {
+    "code_hex": "0x000001D5",
+    "name": "DRIVER_PNP_WATCHDOG",
+    "meaning": "The Plug and Play manager caught a driver misbehaving when a device was added, removed or started.",
+    "causes": [
+      "Buggy driver during device start or removal",
+      "Failing USB or other hot-plug device",
+      "Outdated chipset driver",
+      "Corrupt driver installation"
+    ],
+    "fix_steps": [
+      "Identify which device was being connected when the fault occurred",
+      "Update the driver for that device from its vendor",
+      "Update chipset and USB controller drivers",
+      "Disconnect all non-essential devices and retest",
+      "Scan for hardware changes in Device Manager > View > Action",
+      "Remove the device with 'Delete the driver software' ticked and reinstall it"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault follows an internal device you cannot easily replace, such as a card reader or a built-in camera.",
+    "related_slugs": ["fix-usb-device-not-recognized", "windows-device-manager-error-codes", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x0000013D",
+    "name": "CRITICAL_INITIALIZATION_FAILURE",
+    "meaning": "A component critical to Windows could not initialise, so the system halted during boot. Usually a driver or firmware problem that appears before the login screen.",
+    "causes": [
+      "Failing boot-critical driver",
+      "BIOS or firmware misconfiguration",
+      "Failing drive",
+      "Corrupt system files",
+      "Memory not seated correctly"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode and uninstall recently added drivers or software",
+      "Load BIOS defaults",
+      "Reseat RAM and check the drive connections",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow from recovery",
+      "Update BIOS and chipset drivers",
+      "Check disk SMART data"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help if Safe Mode will not start either, since that narrows the fault to firmware or core boot hardware.",
+    "related_slugs": ["fix-boot-recovery-loop", "fix-pc-wont-boot-power-on", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x0000013B",
+    "name": "PASSIVE_INTERRUPT_ERROR",
+    "meaning": "A device driver mishandled an interrupt that was supposed to be handled passively, meaning it cannot block other work. Usually a bug in a specific driver.",
+    "causes": [
+      "Buggy network, storage or graphics driver",
+      "Failing device generating bad interrupts",
+      "Outdated chipset driver",
+      "Faulty RAM"
+    ],
+    "fix_steps": [
+      "Update chipset, network, storage and graphics drivers",
+      "Disconnect external devices and expansion cards to isolate the source",
+      "Test RAM with MemTest86",
+      "Check disk SMART data",
+      "Run sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it in if the fault survives driver updates with clean memory and disk, since the board may be at fault.",
+    "related_slugs": ["fix-wifi-driver-windows-11", "check-disk-health-ssd-hdd", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x0000014F",
+    "name": "PDC_WATCHDOG_TIMEOUT",
+    "meaning": "A driver failed to complete a Plug and Control Watchdog timeout in time, so Windows forced a restart. Often seen with storage and network drivers during heavy load.",
+    "causes": [
+      "Storage or network driver stalling under load",
+      "Faulty drive hanging on a bad sector",
+      "Graphics driver hang",
+      "Insufficient memory with heavy paging",
+      "Failing motherboard"
+    ],
+    "fix_steps": [
+      "Update storage, network and chipset drivers",
+      "Check disk SMART data and run chkdsk /scan",
+      "Clean reinstall GPU drivers with DDU",
+      "Verify the system drive has plenty of free space",
+      "Test RAM with MemTest86",
+      "Check for a BIOS update that fixes known watchdog timeouts"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault persists with current drivers, clean memory tests and healthy disk SMART data.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "fix-video-tdr-failure", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x1000007E",
+    "name": "SYSTEM_THREAD_EXCEPTION_NOT_HANDLED_M",
+    "meaning": "The 64-bit variant of SYSTEM_THREAD_EXCEPTION_NOT_HANDLED. The causes and fixes are identical; only the reporting format differs because memory addresses are wider on 64-bit systems.",
+    "causes": [
+      "Faulty RAM or unstable XMP/EXPO timings",
+      "Corrupt graphics, network or antivirus driver",
+      "Bad system file after a partial update",
+      "Overclocked CPU or undervolted GPU",
+      "Failing drive"
+    ],
+    "fix_steps": [
+      "Write down the bracketed code and search this site for it",
+      "Test RAM with MemTest86 for two full passes with XMP disabled",
+      "Clean reinstall GPU drivers with DDU in Safe Mode",
+      "Update chipset and network drivers",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Check disk SMART data"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Get help if the crash survives a clean driver install and a clean memory test with all overclocks removed.",
+    "related_slugs": ["test-ram-memory-errors", "clean-gpu-driver-uninstall-ddu", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x1000008E",
+    "name": "KERNEL_MODE_EXCEPTION_NOT_HANDLED_M",
+    "meaning": "The 64-bit variant of KERNEL_MODE_EXCEPTION_NOT_HANDLED, most often a graphics driver fault. Same causes and fixes.",
+    "causes": [
+      "Graphics driver fault",
+      "Faulty RAM",
+      "Unstable overclock or undervolt",
+      "Corrupt system files or a failing drive"
+    ],
+    "fix_steps": [
+      "Clean reinstall the GPU driver with DDU in Safe Mode",
+      "Update chipset drivers",
+      "Test RAM with MemTest86",
+      "Reset all overclock and undervolt settings",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it to a technician if the crash only happens under graphics load and survives a clean driver install at stock clocks.",
+    "related_slugs": ["clean-gpu-driver-uninstall-ddu", "fix-video-tdr-failure", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x100000EA",
+    "name": "THREAD_STUCK_IN_DEVICE_DRIVER_M",
+    "meaning": "The 64-bit variant of THREAD_STUCK_IN_DEVICE_DRIVER. Identical causes and fixes; the machine freeze before the restart is the key symptom.",
+    "causes": [
+      "Graphics driver stall",
+      "Failing storage or network driver",
+      "Overheating hardware",
+      "Failing drive hanging on bad sectors"
+    ],
+    "fix_steps": [
+      "Clean reinstall GPU drivers with DDU and disable driver auto-updates",
+      "Update chipset, storage and network drivers",
+      "Check disk SMART data and run chkdsk /scan",
+      "Check CPU and GPU temperatures under load",
+      "Test RAM with MemTest86"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it to a technician if the hang persists at stock settings with a clean driver install and healthy hardware.",
+    "related_slugs": ["fix-video-tdr-failure", "check-disk-health-ssd-hdd", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0xC0000218",
+    "name": "STATUS_CANNOT_LOAD_REGISTRY_FILE",
+    "meaning": "Windows could not load a registry hive file during boot, usually the SYSTEM or SOFTWARE hive. Often accompanies a corrupted or failing system drive.",
+    "causes": [
+      "Corrupt registry hive",
+      "Failing drive",
+      "Sudden power loss during a registry write",
+      "Corrupt Boot Configuration Data"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode or the Recovery Environment",
+      "Try restoring the registry from \\Windows\\System32\\config\\RegBack by copying those hives over the ones in config, after renaming the originals",
+      "Run chkdsk C: /f /r /x and check disk SMART data",
+      "Use System Restore from Safe Mode with rstrui.exe",
+      "As a last resort, Reset this PC keeping your files"
+    ],
+    "difficulty": "advanced",
+    "when_to_call_pro": "See a technician before replacing registry hives manually, since it is easy to make a bootable system unbootable. If the drive is failing, recover data first.",
+    "related_slugs": ["fix-boot-recovery-loop", "check-disk-health-ssd-hdd", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0xC000021A",
+    "name": "WINLOGON_FATAL_ERROR",
+    "meaning": "The Windows logon process failed fatally, so no user could be signed in. Frequently caused by a corrupt user profile or a failing system drive.",
+    "causes": [
+      "Corrupt user profile",
+      "Failing drive",
+      "Corrupt system files",
+      "Antivirus blocking the logon process",
+      "Insufficient disk space"
+    ],
+    "fix_steps": [
+      "Boot into Safe Mode and sign in with a different account",
+      "Delete or rename the profile's NTUSER.DAT in C:\\Users\\<name> to force Windows to rebuild the profile",
+      "Run chkdsk C: /f /r /x and check disk SMART data",
+      "Uninstall third-party antivirus that may be blocking logon",
+      "Verify the system drive has plenty of free space",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Get help if no account can sign in and Safe Mode fails too, and back up data before doing anything invasive if the drive is failing.",
+    "related_slugs": ["fix-boot-recovery-loop", "repair-windows-system-files", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x000001D0",
+    "name": "CPI_FIRMWARE_WATCHDOG_TIMEOUT",
+    "meaning": "The firmware's watchdog timed out, which means the platform firmware hung and reset the system. Often linked to BIOS bugs and power management issues.",
+    "causes": [
+      "BIOS firmware bug",
+      "Power management settings causing firmware hangs",
+      "Failing motherboard firmware",
+      "Incompatible memory configuration",
+      "Failing CPU or board"
+    ],
+    "fix_steps": [
+      "Update BIOS firmware to the latest release from your board vendor",
+      "Load BIOS defaults and disable any unusual power or XMP settings",
+      "Test RAM with MemTest86 at stock timings",
+      "Remove all overclocks and undervolts",
+      "Check CPU and VRM temperatures under load",
+      "Check for known BIOS issues or a recommended minimum BIOS version for your CPU"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Take it in if a firmware watchdog timeout recurs on the latest BIOS at stock settings with clean memory tests, since that indicates motherboard or CPU hardware failure.",
+    "related_slugs": ["fix-high-cpu-temperature", "test-ram-memory-errors", "fix-random-restarts-windows"]
+  },
+  {
+    "code_hex": "0x000001CF",
+    "name": "HARDWARE_WATCHDOG_TIMEOUT",
+    "meaning": "A hardware watchdog device timed out. This is usually a firmware or power delivery problem, and it resets the machine without a full blue screen on some systems.",
+    "causes": [
+      "Failing power supply",
+      "Overheating",
+      "Motherboard or CPU firmware fault",
+      "Unstable overclock",
+      "Failing CPU"
+    ],
+    "fix_steps": [
+      "Test the PSU with a load tester or swap in a known-good unit",
+      "Load BIOS defaults and remove all overclocks",
+      "Check CPU and GPU temperatures under sustained load",
+      "Update BIOS firmware",
+      "Test RAM with MemTest86",
+      "Reseat the CPU cooler and confirm mounting pressure"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if the resets continue with a known-good PSU, stock settings and good cooling, as this points at the motherboard.",
+    "related_slugs": ["psu-failure-symptoms", "fix-high-cpu-temperature", "fix-random-restarts-windows"]
+  },
+  {
+    "code_hex": "0x00000147",
+    "name": "ABNORMAL_RESET_DETECTED",
+    "meaning": "The system detected an unexpected reset that was not requested by Windows or the user. It usually points at the power supply, firmware or an overheating component.",
+    "causes": [
+      "Failing power supply",
+      "Power surge or electrical issue",
+      "Overheating triggering a protective shutdown",
+      "Failing motherboard or CPU",
+      "Dying CMOS battery"
+    ],
+    "fix_steps": [
+      "Test the PSU with a load tester or swap in a known-good unit",
+      "Check all power and data cables are fully seated",
+      "Load BIOS defaults and remove all overclocks",
+      "Check CPU and GPU temperatures under load and improve airflow",
+      "Replace the CMOS battery",
+      "Update BIOS firmware"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Take it in if resets continue with a known-good PSU and stock settings, since that points at the board or the electricity supply.",
+    "related_slugs": ["psu-failure-symptoms", "fix-random-restarts-windows", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0x000000F3",
+    "name": "DISORDERLY_SHUTDOWN",
+    "meaning": "Windows was not shut down properly and recorded the fact. It appears after a power loss or forced shutdown rather than pointing at a specific component.",
+    "causes": [
+      "Power loss or forced shutdown",
+      "Failing power supply cutting out",
+      "Overheating shutdown",
+      "System hung and was reset with the reset button"
+    ],
+    "fix_steps": [
+      "Check the PSU if power cuts are recurring, using a load tester",
+      "Review Reliability Monitor history to see what happened before each reset",
+      "Check disk SMART data, since unexpected resets can damage a drive",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Test RAM with MemTest86",
+      "Check temperatures under load"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if resets keep happening with a known-good PSU, clean memory tests and healthy temperatures.",
+    "related_slugs": ["psu-failure-symptoms", "fix-random-restarts-windows", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x000000F0",
+    "name": "STORAGE_MINIPORT_ERROR",
+    "meaning": "The storage miniport driver, the layer between Windows and your drive, reported a fatal error. Often a driver or firmware problem rather than physical failure.",
+    "causes": [
+      "Outdated or corrupt storage miniport driver",
+      "Incompatible third-party storage or RAID software",
+      "NVMe or SATA firmware bug",
+      "Failing drive",
+      "PCIe slot or controller issue with NVMe drives"
+    ],
+    "fix_steps": [
+      "Update storage controller drivers and chipset drivers from your PC vendor",
+      "Update your SSD or NVMe firmware",
+      "Uninstall third-party storage, RAID or disk cloning software to test",
+      "Check disk SMART data and run chkdsk /scan",
+      "Reseat an NVMe drive and try another M.2 slot if available",
+      "Test the drive in a USB enclosure to rule out the motherboard slot"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if the fault follows a specific M.2 slot rather than the drive, since that indicates the slot or controller.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "windows-device-manager-error-codes", "fix-unmountable-boot-volume"]
+  },
+  {
+    "code_hex": "0x00000140",
+    "name": "STORAGE_DEVICE_ABNORMALITY_DETECTED",
+    "meaning": "The storage device reported behaviour that Windows considered abnormal. This is an early warning that the drive is developing a fault.",
+    "causes": [
+      "Failing SSD or HDD",
+      "Failing drive firmware",
+      "Loose or damaged data cable",
+      "Failing storage controller",
+      "Power delivery problems to the drive"
+    ],
+    "fix_steps": [
+      "Check SMART data and treat any failure attribute as urgent",
+      "Back up your files immediately",
+      "Reseat the data and power connections",
+      "Run chkdsk /scan on each volume",
+      "Update drive firmware and chipset drivers",
+      "Replace the drive if SMART reports failures or the fault repeats"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "Replace the drive or see a technician promptly. This code commonly precedes total failure, so do not put off backups.",
+    "related_slugs": ["check-disk-health-ssd-hdd", "fix-unmountable-boot-volume", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x000001A2",
+    "name": "MEMORY_IMAGE_CORRUPT",
+    "meaning": "The in-memory copy of a system image is corrupt, which usually means the file on disk is damaged or was read incorrectly.",
+    "causes": [
+      "Corrupt system file on disk",
+      "Failing drive returning bad reads",
+      "Incomplete update",
+      "Faulty RAM",
+      "Corrupted component store"
+    ],
+    "fix_steps": [
+      "Run DISM /Online /Cleanup-Image /RestoreHealth, which repairs the underlying files",
+      "Then run sfc /scannow to correct anything DISM could not",
+      "Check disk SMART data, because a repaired file cannot be written to a failing drive",
+      "Uninstall the most recent Windows Update",
+      "Test RAM with MemTest86"
+    ],
+    "difficulty": "easy",
+    "when_to_call_pro": "Get help if DISM and sfc cannot repair the image, since the drive is then the likely cause.",
+    "related_slugs": ["repair-windows-system-files", "fix-windows-update-failing", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x00000092",
+    "name": "UP_DRIVER_ON_MP_SYSTEM",
+    "meaning": "A single-processor network driver was loaded on a multiprocessor system. Very rare and usually caused by an ancient driver on a modern machine.",
+    "causes": [
+      "Very old network driver installed on a modern system",
+      "Legacy hardware or driver combination",
+      "Corrupt driver installation"
+    ],
+    "fix_steps": [
+      "Update the network driver from your PC vendor",
+      "Uninstall the legacy driver with 'Delete the driver software' ticked and reboot",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Check for hidden or ghost network devices in Device Manager > View > Show hidden devices"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "See a technician if a legacy device cannot be removed cleanly, since old hardware may need a specific driver version.",
+    "related_slugs": ["fix-wifi-driver-windows-11", "windows-device-manager-error-codes", "repair-windows-system-files"]
+  },
+  {
+    "code_hex": "0x000001D8",
+    "name": "UCMUCSI_FAILURE",
+    "meaning": "The USB-C and power management driver failed to initialise. Usually tied to USB-C hardware, a dock, or firmware problems on a laptop.",
+    "causes": [
+      "Failing USB-C port or cable",
+      "Failing docking station",
+      "Outdated chipset or power management driver",
+      "Firmware issue on a laptop",
+      "Incompatible USB-C charger or power bank"
+    ],
+    "fix_steps": [
+      "Disconnect all USB-C devices, chargers and docks, then retest",
+      "Update chipset and power management drivers from your PC vendor",
+      "Update BIOS firmware",
+      "Inspect and clean the USB-C port",
+      "Try a different certified cable and charger",
+      "Run sfc /scannow and DISM /Online /Cleanup-Image /RestoreHealth"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Take it to a technician if the fault follows the laptop's own USB-C port with no devices connected, since that indicates port or board damage.",
+    "related_slugs": ["fix-usb-device-not-recognized", "fix-laptop-battery-health", "windows-device-manager-error-codes"]
+  },
+  {
+    "code_hex": "0x00000191",
+    "name": "PF_DETECTED_CORRUPTION",
+    "meaning": "The Page Frame database found corruption in its records. Like the other PFN codes, this strongly suggests a memory fault.",
+    "causes": [
+      "Defective RAM",
+      "Failing drive corrupting the page file",
+      "Unstable memory overclock",
+      "Corrupt driver writing outside its allocation",
+      "Overheating"
+    ],
+    "fix_steps": [
+      "Run MemTest86 for four or more full passes",
+      "Disable XMP/EXPO and remove all overclocks",
+      "Check disk SMART data",
+      "Reseat and clean RAM slots, testing one module at a time",
+      "Update chipset and graphics drivers"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician if errors persist across every module and slot at stock timings, since that points at the board or CPU.",
+    "related_slugs": ["test-ram-memory-errors", "check-disk-health-ssd-hdd", "fix-high-cpu-temperature"]
+  },
+  {
+    "code_hex": "0x00000196",
+    "name": "LOADER_ROLLBACK_DETECTED",
+    "meaning": "Windows rolled back a driver or bootloader that was crashing during boot. The machine usually starts, but the update stays uninstalled.",
+    "causes": [
+      "Newly installed driver or update crashing during boot",
+      "Driver incompatible with current hardware or firmware",
+      "Corrupt downloaded update"
+    ],
+    "fix_steps": [
+      "Check Settings > Windows > Update history for a rolled back update and uninstall it",
+      "Update the specific driver from its vendor to a version newer than the one that rolled back",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow",
+      "Check disk SMART data, since rollback can be triggered by a failing drive",
+      "Clear the Windows Update cache and retry the update",
+      "Test RAM with MemTest86 if the rollback repeats"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Ask a technician if rollbacks keep repeating on the same machine, since that suggests a hardware or firmware conflict.",
+    "related_slugs": ["fix-windows-update-failing", "repair-windows-system-files", "check-disk-health-ssd-hdd"]
+  },
+  {
+    "code_hex": "0x0000017E",
+    "name": "MICROCODE_REVISION_MISMATCH",
+    "meaning": "The CPU microcode loaded by the BIOS does not match what the operating system expects. A firmware compatibility problem rather than a Windows fault.",
+    "causes": [
+      "Outdated BIOS firmware for the installed CPU",
+      "CPU swapped without a BIOS update",
+      "Modified or incorrect BIOS image",
+      "Unsupported CPU on an older board firmware"
+    ],
+    "fix_steps": [
+      "Update BIOS firmware to the version that supports your exact CPU",
+      "Check the board vendor's CPU support list before flashing",
+      "Load BIOS defaults after updating",
+      "Clear the CMOS to force the firmware to re-read the CPU, using the clear-CMOS jumper or button",
+      "Reseat the CPU and check that it is fully clicked into its socket"
+    ],
+    "difficulty": "hard",
+    "when_to_call_pro": "See a technician before flashing BIOS on an older board, since an interrupted flash can leave a board unbootable.",
+    "related_slugs": ["fix-pc-wont-boot-power-on", "fix-high-cpu-temperature", "test-ram-memory-errors"]
+  },
+  {
+    "code_hex": "0x00000093",
+    "name": "INVALID_KERNEL_HANDLE",
+    "meaning": "A kernel component tried to use a handle that was invalid or had already been closed. This is normally a driver bookkeeping bug rather than a hardware fault.",
+    "causes": [
+      "Buggy driver closing a handle twice",
+      "Corrupt driver installation",
+      "Faulty RAM producing a bad handle value",
+      "Incompatible third-party filter driver"
+    ],
+    "fix_steps": [
+      "Update or reinstall the driver named in the message",
+      "Clean reinstall GPU and chipset drivers if relevant",
+      "Uninstall third-party antivirus, VPN and tuning software to test",
+      "Test RAM with MemTest86",
+      "Run DISM /Online /Cleanup-Image /RestoreHealth and sfc /scannow"
+    ],
+    "difficulty": "moderate",
+    "when_to_call_pro": "Ask a technician if the fault survives all driver updates and clean memory tests.",
+    "related_slugs": ["windows-device-manager-error-codes", "repair-windows-system-files", "test-ram-memory-errors"]
+  }
+]

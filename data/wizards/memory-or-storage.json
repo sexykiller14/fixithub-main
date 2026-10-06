@@ -1,0 +1,347 @@
+{
+  "id": "memory-or-storage",
+  "title": "Is it my RAM or my drive?",
+  "summary": "Crashes, freezes and random restarts look identical whether the cause is memory or storage. This works out which one to test first, because testing the wrong one wastes hours.",
+  "icon": "memory",
+  "estimated_minutes": 5,
+  "start": "symptom",
+  "nodes": {
+    "symptom": {
+      "question": "What is the main symptom?",
+      "help": "Some symptoms point clearly at one component. Others are common to both, and those are the ones worth working through.",
+      "options": [
+        {
+          "label": "The computer randomly restarts or shows a blue screen",
+          "next": "restart_pattern",
+          "tag": "crash"
+        },
+        {
+          "label": "Everything freezes for a few seconds or minutes, then recovers",
+          "next": "freeze_pattern",
+          "tag": "freeze"
+        },
+        {
+          "label": "Applications crash, or files will not open",
+          "next": "app_crash_pattern",
+          "tag": "application"
+        },
+        {
+          "label": "The computer is very slow, or files take forever to load",
+          "next": "slow_pattern",
+          "tag": "slow"
+        }
+      ]
+    },
+    "restart_pattern": {
+      "question": "Do the restarts happen while you are using the computer, or when you are not touching it at all?",
+      "help": "Memory faults strike while the system is under load. Drive faults often strike during ordinary file access, including when the machine looks idle.",
+      "options": [
+        {
+          "label": "While I am using it, especially under load",
+          "next": "memory_first",
+          "tag": "memory"
+        },
+        {
+          "label": "When I am not using it, or on waking it",
+          "next": "storage_first",
+          "tag": "storage"
+        },
+        {
+          "label": "It happens at random, with no pattern I can see",
+          "next": "check_whea",
+          "tag": "unknown"
+        }
+      ]
+    },
+    "freeze_pattern": {
+      "question": "When it freezes, can you still hear audio, and does the mouse cursor still move?",
+      "help": "A stuttering cursor with audio that repeats is usually a storage stall. A completely frozen screen with sound still playing is more often memory.",
+      "options": [
+        {
+          "label": "Audio stutters or repeats, and the cursor stutters",
+          "next": "storage_first",
+          "tag": "storage"
+        },
+        {
+          "label": "Everything freezes solid, but audio keeps playing",
+          "next": "memory_first",
+          "tag": "memory"
+        },
+        {
+          "label": "It freezes completely, including the audio",
+          "next": "check_whea",
+          "tag": "unknown"
+        }
+      ]
+    },
+    "app_crash_pattern": {
+      "question": "Does Windows ever say the file or folder is corrupted, or that a drive needs to be scanned?",
+      "help": "Corrupted files are a storage symptom. Crashing programs on clean files are more often a memory symptom.",
+      "options": [
+        {
+          "label": "Yes, Windows reports corrupted files or asks me to scan the drive",
+          "next": "storage_first",
+          "tag": "storage"
+        },
+        {
+          "label": "No, the files are fine and the programs still crash",
+          "next": "memory_first",
+          "tag": "memory"
+        },
+        {
+          "label": "Photos or videos open but look wrong, with grey areas or blocks",
+          "next": "storage_first",
+          "tag": "storage"
+        }
+      ]
+    },
+    "slow_pattern": {
+      "question": "Does the slowness come in bursts, dragging one folder or application at a time?",
+      "help": "A drive waiting on a slow sector makes one thing hang at a time. Memory pressure makes everything sluggish together.",
+      "options": [
+        {
+          "label": "Yes, one application or folder hangs at a time",
+          "next": "storage_first",
+          "tag": "storage"
+        },
+        {
+          "label": "No, everything is slow together, especially with many tabs open",
+          "next": "memory_capacity",
+          "tag": "memory"
+        },
+        {
+          "label": "It is slow all the time, and startup is slow too",
+          "next": "check_whea",
+          "tag": "unknown"
+        }
+      ]
+    },
+    "check_whea": {
+      "question": "Does your RAM diagnostics report show any WHEA hardware error events?",
+      "help": "WHEA events report CPU, memory and PCIe faults. They are the single most useful clue when the pattern points at neither component. Run our read-only RAM diagnostics script and look at the hardware error section.",
+      "options": [
+        {
+          "label": "Yes, there are WHEA events",
+          "next": "result_whea_found",
+          "tag": "hardware"
+        },
+        {
+          "label": "No, none found",
+          "next": "result_test_both",
+          "tag": "unknown"
+        },
+        {
+          "label": "I have not run the script yet",
+          "next": "result_test_both",
+          "tag": "unknown"
+        }
+      ]
+    },
+    "memory_capacity": {
+      "question": "Is your memory use sitting above 85 percent when everything is open?",
+      "help": "This is not a fault. It means you have less memory than your workload needs, and Windows is constantly writing to disk to make room, which feels like a slow drive.",
+      "options": [
+        {
+          "label": "Yes, consistently above 85 percent",
+          "next": "result_memory_capacity",
+          "tag": "memory"
+        },
+        {
+          "label": "No, there is plenty free",
+          "next": "result_test_both",
+          "tag": "unknown"
+        },
+        {
+          "label": "I do not know how to check",
+          "next": "result_memory_capacity",
+          "tag": "memory"
+        }
+      ]
+    },
+    "memory_first": {
+      "question": "Before you test, is your XMP or EXPO profile enabled?",
+      "help": "Memory running at its rated speed with tight timings is the single most common cause of crashes that look like a faulty module. Check this first, because a memory test will pass either way.",
+      "options": [
+        {
+          "label": "I enabled XMP or EXPO in the BIOS",
+          "next": "result_xmp_timings",
+          "tag": "bios"
+        },
+        {
+          "label": "I have never touched the BIOS settings",
+          "next": "result_memory_default",
+          "tag": "bios"
+        },
+        {
+          "label": "I do not know what those are",
+          "next": "result_memory_default",
+          "tag": "bios"
+        }
+      ]
+    },
+    "storage_first": {
+      "question": "Is the drive making any noise it should not, such as clicking, grinding or beeping?",
+      "help": "Noises from a mechanical drive are mechanical faults. Silence from an SSD is normal, so if your drive is an SSD the sound test tells you nothing.",
+      "options": [
+        {
+          "label": "Yes, clicking or grinding",
+          "next": "result_replace_drive",
+          "tag": "storage"
+        },
+        {
+          "label": "No, my drive is silent",
+          "next": "result_check_disk",
+          "tag": "storage"
+        },
+        {
+          "label": "My computer has no moving parts at all",
+          "next": "result_check_disk",
+          "tag": "storage"
+        }
+      ]
+    },
+    "result_memory_default": {
+      "type": "result",
+      "title": "Check whether memory is running at full speed",
+      "diagnosis": "Memory with XMP or EXPO off runs at its default speed, which is stable and much slower. This is not a fault, but it is also not the performance you paid for, and it changes how you read the rest of your symptoms.",
+      "steps": [
+        "Run our read-only RAM diagnostics script and read the XMP or EXPO section; it reports your rated speed against your configured speed without touching the BIOS",
+        "If the script shows a rated speed but no configured speed, your profile is off and the memory is running at its default",
+        "To turn it on, restart into the BIOS with the Del or F2 key during startup",
+        "Look for a setting named XMP, XMP Profile, EXPO, or Memory Profile, which is usually on the Overclocking or Tuning screen",
+        "Choose the profile matching your kit, usually Profile 1, save and exit",
+        "Re-run the diagnostics script afterwards to confirm the configured speed now matches the rating"
+      ],
+      "warnings": [
+        "Do not change any other BIOS setting while you are in there. Memory profiles are safe on their own; manual frequency and voltage changes are not.",
+        "If the machine crashes immediately after enabling the profile, the timings are too aggressive for your specific kit. Read the RAM stability guide before trying again.",
+        "The script only reports whether a profile is active. It will not enable one for you."
+      ],
+      "article_slug": "ram-stability-xmp-expo",
+      "difficulty": "easy"
+    },
+    "result_xmp_timings": {
+      "type": "result",
+      "title": "Your timings are the first suspect",
+      "diagnosis": "With a profile already enabled, unstable timings are far more likely than a faulty module. Memory testing will not catch this, because every access is technically valid even when the timing is too tight.",
+      "steps": [
+        "Run our read-only RAM diagnostics script and confirm the configured speed matches your rating, since a profile can be partly applied",
+        "Temporarily disable the XMP or EXPO profile in the BIOS, save and exit",
+        "Use the computer normally for several days; if the crashes stop, the timings were the cause and not the module",
+        "Re-enable the profile and raise the memory frequency down one step, keeping the timings on Auto",
+        "If it stays stable, leave it there; a slightly slower profile that works beats a fast one that crashes",
+        "Only after the profile is ruled out, test the memory itself with MemTest86 for two full passes"
+      ],
+      "warnings": [
+        "Disabling the profile makes your memory slower, not faulty. It is a diagnostic step and is safe to leave in place if it fixes the crashes.",
+        "Do not manually raise memory voltage to make an unstable profile work. Excess voltage shortens the life of the modules.",
+        "One error in MemTest86 means replace the module. Do not retest hoping for a different answer.",
+        "If you also have a failing drive, back it up before running any test that restarts the machine."
+      ],
+      "article_slug": "ram-stability-xmp-expo",
+      "difficulty": "moderate"
+    },
+    "result_check_disk": {
+      "type": "result",
+      "title": "Check the drive before anything else",
+      "diagnosis": "A drive finding unreadable sectors produces crashes, freezes and corrupted files that look exactly like a memory fault. It is also far more urgent, because a failing drive takes your data with it.",
+      "steps": [
+        "Back up your important files to other media first; this is the step people skip and later regret",
+        "Run our disk health script, which decodes the raw SMART counters and gives each one a verdict",
+        "Look at the reallocated, pending and uncorrectable sector counters; anything above zero needs attention",
+        "Read the change-since-last-run section, because a counter climbing between runs matters more than a single reading",
+        "Check the storage event log section for event 51, which means Windows could not read part of a volume",
+        "Run a read-only filesystem scan, which reports errors without writing to the drive"
+      ],
+      "warnings": [
+        "Do not run chkdsk with /f on a drive with unrecoverable data. Repair writes to the drive and can destroy what is left.",
+        "If SMART reports a failure, replace the drive rather than repairing it into service.",
+        "A drive can fail completely without warning. Back up before testing anything else, including the memory.",
+        "USB drives and NVMe drives often hide SMART data entirely. If the script cannot read it, use your drive vendor's own tool."
+      ],
+      "article_slug": "check-disk-health-ssd-hdd",
+      "difficulty": "easy"
+    },
+    "result_replace_drive": {
+      "type": "result",
+      "title": "Replace the drive now",
+      "diagnosis": "Clicking or grinding from a mechanical drive means the heads or the motor are failing. It will not recover, and using it further risks the data on it.",
+      "steps": [
+        "Stop using the drive immediately",
+        "Back up whatever you can, copying the most irreplaceable files first",
+        "Do not run any repair tool, including chkdsk with /f, because it writes to the drive and can destroy recoverable data",
+        "If the data matters more than the drive, use a data recovery service rather than experimenting",
+        "Replace the drive, then restore your files from the backup",
+        "Check your other drives at the same time, since they fail from the same age and environment"
+      ],
+      "warnings": [
+        "Do not keep re-seating a clicking drive. Every attempt moves the heads over damaged areas.",
+        "A failing drive can become completely unreadable at any moment, including during a backup.",
+        "Never open a drive yourself. The platter must be kept in a clean environment, and a home desk is not one."
+      ],
+      "article_slug": "check-disk-health-ssd-hdd",
+      "difficulty": "easy"
+    },
+    "result_memory_capacity": {
+      "type": "result",
+      "title": "You are short on memory, not faulty",
+      "diagnosis": "Sustained memory use above 85 percent means Windows is constantly paging to disk to make room. The result feels like a failing drive, because that is literally what is happening.",
+      "steps": [
+        "Open Task Manager with Ctrl plus Shift plus Esc and look at the Memory column",
+        "Sort by memory to see which applications are using the most",
+        "Close what you do not need, and check browser tabs, which are a common culprit",
+        "Move large files off the system drive and check Startup apps in Task Manager to disable what you do not need",
+        "If you have a free slot, adding a module in the matching channel slot enables dual channel and helps noticeably",
+        "Make sure the page file is set to system managed and has not been manually limited"
+      ],
+      "warnings": [
+        "Do not manually disable the page file to save disk space. With limited memory it is what stops applications crashing outright.",
+        "Adding one module on its own leaves that channel single, so a matched pair of two identical modules performs better.",
+        "This is a capacity problem, not a fault. Memory testing will not help."
+      ],
+      "article_slug": "upgrade-ram-laptop-desktop",
+      "difficulty": "easy"
+    },
+    "result_whea_found": {
+      "type": "result",
+      "title": "A hardware fault is already logged",
+      "diagnosis": "WHEA events mean the machine itself recorded a hardware error. They point at the CPU, the board, the memory controller or the power supply rather than at storage, so replacing a drive would waste your time and money.",
+      "steps": [
+        "Read the WHEA entries in your RAM diagnostics report, which include the error type and the component involved",
+        "Start by updating the motherboard BIOS, since many WHEA errors come from fixed in firmware",
+        "Reseat the memory modules and the CPU cooler, and check that no fan is obstructed",
+        "Update your chipset and graphics drivers from your board vendor",
+        "If the errors persist, test the memory with MemTest86 and then suspect the power supply, since a failing PSU produces exactly these errors",
+        "Note whether the errors mention a PCIe device, in which case reseat and reseat-test that card too"
+      ],
+      "warnings": [
+        "Do not ignore WHEA errors because the computer still works. They are a warning of a fault that will eventually cause a crash.",
+        "Leave the CPU alone if you are not comfortable with it. A reseated cooler is worth checking; anything beyond that is not a beginner task.",
+        "Test the power supply by swapping in a known-good unit if you have one. Never open a power supply."
+      ],
+      "article_slug": "test-ram-memory-errors",
+      "difficulty": "moderate"
+    },
+    "result_test_both": {
+      "type": "result",
+      "title": "Test memory first, then the drive",
+      "diagnosis": "When the pattern points at neither component, test them in this order. Memory testing is free and takes hours, while drive testing can destroy data if you repair it, so memory goes first.",
+      "steps": [
+        "Back up your important files first, regardless of which component you suspect, because either can fail while you work",
+        "Run the read-only RAM diagnostics script and check the XMP or EXPO section, since an active unstable profile causes the same symptoms",
+        "If a profile is active, disable it in the BIOS and use the computer normally for several days before testing anything else",
+        "Run MemTest86 for at least two full passes; one error means the module is faulty and must be replaced",
+        "Run the disk health script and read the reallocated, pending and uncorrectable counters",
+        "Run the read-only filesystem scan on each volume and check the storage event log for event 51 or 157"
+      ],
+      "warnings": [
+        "One error in MemTest86 is a failure. Not a few errors, and not one error only sometimes.",
+        "MemTest86 takes hours on a larger module, so run it overnight rather than stopping early.",
+        "Do not run chkdsk with /f on a drive until you have checked its SMART data.",
+        "If you have a failing drive, back it up before running any memory test that restarts the machine."
+      ],
+      "article_slug": "test-ram-memory-errors",
+      "difficulty": "easy"
+    }
+  }
+}

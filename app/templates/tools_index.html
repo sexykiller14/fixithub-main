@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Network tools - {{ site_name }}{% endblock %}
+{% block description %}Safe server-side DNS, public IP, port, HTTP status and latency tools. Private and internal addresses are blocked.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Network tools</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
+    Five diagnostic tools that run on our server using Python libraries only. No shell commands are
+    ever executed, and private or internal addresses are refused.
+  </p>
+
+  <div class="mt-6 rounded-lg border border-brand-200 dark:border-brand-900 bg-brand-50 dark:bg-brand-950 p-4">
+    <p class="text-sm text-brand-900 dark:text-brand-200">
+      <strong>Rate limit:</strong> {{ rate_limit_max }} requests per {{ rate_limit_window }} seconds per IP address, shared across all five tools.
+      Requests that look like attempts to reach private networks are rejected outright.
+    </p>
+  </div>
+
+  <div class="mt-8 grid gap-4 sm:grid-cols-2">
+    <a href="/tools/dns" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <h2 class="font-semibold text-slate-900 dark:text-white">DNS lookup</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Resolve a hostname and see the A, AAAA, MX, NS, TXT, CNAME, SOA or CAA records, with the TTL and query time.</p>
+    </a>
+    <a href="/tools/ip" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <h2 class="font-semibold text-slate-900 dark:text-white">Public IP info</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">See the public IP address this server appears to come from, with approximate country, city and network operator.</p>
+    </a>
+    <a href="/tools/port" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <h2 class="font-semibold text-slate-900 dark:text-white">Port checker</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Test whether a common TCP port is open, closed or filtered. Restricted to a fixed list of well-known ports.</p>
+    </a>
+    <a href="/tools/status" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+      <h2 class="font-semibold text-slate-900 dark:text-white">HTTP status check</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Check that a website responds, with the status code, server header, content type and response time.</p>
+    </a>
+    <a href="/tools/latency" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-brand-400 dark:hover:border-brand-500 transition focus:outline-none focus:ring-2 focus:ring-brand-500 sm:col-span-2">
+      <h2 class="font-semibold text-slate-900 dark:text-white">Latency test</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Measure TCP connect latency to a host over several attempts, with minimum, average, median and jitter. Uses TCP rather than ICMP, so it needs no special privileges.</p>
+    </a>
+  </div>
+
+  <div class="mt-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <h2 class="font-semibold text-slate-900 dark:text-white">How these tools protect you</h2>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>No shell is ever invoked. Everything uses Python libraries, so there is no command injection surface.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Hostnames are resolved and every returned address is checked. Private, loopback, link-local and reserved ranges are refused, which blocks SSRF attempts against internal services.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Requests connect to the already-validated IP address, so a DNS change cannot redirect them to an internal target afterwards.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Only HTTPS is allowed for web requests, redirects are not followed, and response bodies are capped.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>All timeouts are short and bounded, so a slow target cannot tie up the server.</span></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

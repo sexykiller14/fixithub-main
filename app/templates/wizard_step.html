@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ wizard.title }} - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
+  <nav aria-label="Breadcrumb" class="mb-6 text-sm text-slate-500 dark:text-slate-400">
+    <ol class="flex items-center gap-1.5">
+      <li><a href="/" class="hover:text-brand-700 dark:hover:text-brand-400">Home</a></li>
+      <li aria-hidden="true">/</li>
+      <li><a href="/wizards" class="hover:text-brand-700 dark:hover:text-brand-400">Wizards</a></li>
+      <li aria-hidden="true">/</li>
+      <li class="text-slate-700 dark:text-slate-200" aria-current="page">{{ wizard.title }}</li>
+    </ol>
+  </nav>
+
+  <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{{ wizard.title }}</h1>
+
+  {% if not node.is_result %}
+  <div class="mt-6">
+    <div class="flex items-center justify-between text-sm">
+      <span class="font-medium text-slate-700 dark:text-slate-300">Question {{ progress.answered + 1 }}</span>
+      <span class="text-slate-500 dark:text-slate-400">{{ progress.answered }} answered</span>
+    </div>
+    <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+         role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress.percent }}"
+         aria-label="Wizard progress">
+      <div class="h-full rounded-full bg-brand-600 transition-all" style="width: {{ progress.percent }}%"></div>
+    </div>
+
+    {% if answered_questions %}
+    <ol class="mt-4 space-y-1.5 text-sm">
+      {% for question in answered_questions %}
+      <li class="flex gap-2 text-slate-500 dark:text-slate-400">
+        <svg class="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg>
+        <span>{{ question }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if node.is_result %}
+  <section class="mt-8" aria-labelledby="result-heading">
+    <div class="rounded-xl border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-6">
+      <div class="flex items-start gap-3">
+        <svg class="mt-0.5 h-6 w-6 shrink-0 text-green-600 dark:text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+        <div>
+          <h2 id="result-heading" class="text-xl font-bold text-green-900 dark:text-green-100">{{ node.title }}</h2>
+          <p class="mt-2 text-sm text-green-900 dark:text-green-100">{{ node.diagnosis }}</p>
+        </div>
+      </div>
+    </div>
+
+    {% if node.steps %}
+    <h3 class="mt-8 text-lg font-semibold text-slate-900 dark:text-white">Do this, in order</h3>
+    <ol class="mt-4 space-y-4">
+      {% for step in node.steps %}
+      <li class="flex gap-4">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-950 text-sm font-bold text-brand-800 dark:text-brand-200" aria-hidden="true">{{ loop.index }}</span>
+        <div class="pt-0.5 text-slate-700 dark:text-slate-300">{{ step }}</div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+
+    {% if node.warnings %}
+    <div class="mt-8 space-y-3">
+      {% for warning in node.warnings %}
+      <div class="rounded-lg border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950 p-4">
+        <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">Before you continue</p>
+        <p class="mt-1 text-sm text-amber-900 dark:text-amber-100">{{ warning }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mt-8 flex flex-wrap gap-3">
+      {% if article %}
+      <a href="/articles/{{ article.slug }}" class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Read the full guide: {{ article.title }}</a>
+      {% endif %}
+      <a href="/wizards/{{ wizard.id }}/restart" class="rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Start again</a>
+    </div>
+
+    <div class="mt-10">
+      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Try another wizard</h3>
+      <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+        {% for other in all_wizards %}
+        {% if other.id != wizard.id %}
+        <li>
+          <a href="/wizards/{{ other.id }}" class="block rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white hover:border-brand-400 dark:hover:border-brand-500">{{ other.title }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  {% else %}
+  <section class="mt-8" aria-labelledby="question-heading">
+    <h2 id="question-heading" class="text-xl font-semibold text-slate-900 dark:text-white">{{ node.question }}</h2>
+    {% if node.help %}
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ node.help }}</p>
+    {% endif %}
+
+    <form action="/wizards/{{ wizard.id }}/answer" method="post" class="mt-6 space-y-3">
+      {% for option in node.options %}
+      <button type="submit" name="choice" value="{{ loop.index0 }}"
+              class="flex w-full items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-left hover:border-brand-400 dark:hover:border-brand-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-slate-300 dark:border-slate-600" aria-hidden="true"></span>
+        <span class="text-slate-800 dark:text-slate-200">{{ option.label }}</span>
+      </button>
+      {% endfor %}
+    </form>
+
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      {% if history %}
+      <a href="/wizards/{{ wizard.id }}/back" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Back</a>
+      {% endif %}
+      <a href="/wizards/{{ wizard.id }}/restart" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Start again</a>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

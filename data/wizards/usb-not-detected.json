@@ -1,0 +1,441 @@
+{
+  "id": "usb-not-detected",
+  "title": "USB device not detected",
+  "summary": "Covers the whole path from cable and port through to drivers and dying hardware, tested in the order that costs least.",
+  "icon": "usb",
+  "estimated_minutes": 6,
+  "start": "which_device",
+  "nodes": {
+    "which_device": {
+      "question": "What kind of USB device is not detected?",
+      "help": "Storage devices behave differently from peripherals, and USB-C docking stations have their own common failure.",
+      "options": [
+        {
+          "label": "USB drive, external hard drive or card reader",
+          "next": "storage_device_test",
+          "tag": "storage"
+        },
+        {
+          "label": "Keyboard, mouse or other peripheral",
+          "next": "port_and_cable",
+          "tag": "peripheral"
+        },
+        {
+          "label": "Phone or tablet",
+          "next": "phone_connection",
+          "tag": "phone"
+        },
+        {
+          "label": "A dock, hub or multi-port adapter",
+          "next": "dock_power",
+          "tag": "dock"
+        },
+        {
+          "label": "A USB-C device such as a charger, webcam or headset",
+          "next": "usb_c_device",
+          "tag": "usb-c"
+        }
+      ]
+    },
+    "storage_device_test": {
+      "question": "Does the drive appear in File Explorer, or is it missing entirely?",
+      "help": "Check This PC under This PC and also Disk Management, since a drive can be present but not assigned a letter.",
+      "options": [
+        {
+          "label": "It does not appear anywhere",
+          "next": "port_and_cable",
+          "tag": "hardware"
+        },
+        {
+          "label": "It appears in Disk Management but not File Explorer",
+          "next": "no_drive_letter",
+          "tag": "disk management"
+        },
+        {
+          "label": "It appears but shows raw or unallocated space",
+          "next": "no_drive_letter",
+          "tag": "disk management"
+        },
+        {
+          "label": "It appears with a warning icon or asks to be formatted",
+          "next": "result_drive_recovery",
+          "tag": "storage"
+        }
+      ]
+    },
+    "no_drive_letter": {
+      "question": "Can you assign a drive letter in Disk Management?",
+      "help": "Right-click the volume in Disk Management and choose Change Drive Letter and Paths. This is data-safe and reversible.",
+      "options": [
+        {
+          "label": "Yes, it works after assigning a letter",
+          "next": "result_drive_letter",
+          "tag": "disk management"
+        },
+        {
+          "label": "No, Disk Management reports an error",
+          "next": "result_drive_recovery",
+          "tag": "storage"
+        },
+        {
+          "label": "Disk Management does not show the disk at all",
+          "next": "port_and_cable",
+          "tag": "hardware"
+        }
+      ]
+    },
+    "port_and_cable": {
+      "question": "Have you tried a different USB port and a different cable?",
+      "help": "USB ports on the front of a case and hubs are weaker. Cables that only carry power or data, not both, are common.",
+      "options": [
+        {
+          "label": "No, same port and cable",
+          "next": "result_cable_and_port",
+          "tag": "cable"
+        },
+        {
+          "label": "Yes, tried another port and cable",
+          "next": "device_manager_check",
+          "tag": "hardware"
+        }
+      ]
+    },
+    "device_manager_check": {
+      "question": "Does the device appear in Device Manager, and does it show a yellow exclamation mark?",
+      "help": "Press Win plus X and choose Device Manager, then look for Unknown USB Device, which usually means a driver is missing.",
+      "options": [
+        {
+          "label": "It shows Unknown USB Device or a yellow exclamation mark",
+          "next": "result_usb_driver",
+          "tag": "driver"
+        },
+        {
+          "label": "It is greyed out",
+          "next": "result_enable_usb",
+          "tag": "driver"
+        },
+        {
+          "label": "It does not appear at all",
+          "next": "result_usb_hardware",
+          "tag": "hardware"
+        },
+        {
+          "label": "It appears and looks normal",
+          "next": "result_usb_power",
+          "tag": "power"
+        }
+      ]
+    },
+    "phone_connection": {
+      "question": "Have you tried the cable the phone came with, and a different USB port?",
+      "help": "Many cheap USB-C cables are power-only and never transfer data. A phone also needs a mode selected on screen.",
+      "options": [
+        {
+          "label": "No, using a spare cable",
+          "next": "result_cable_and_port",
+          "tag": "cable"
+        },
+        {
+          "label": "Yes, used the original cable",
+          "next": "phone_mode",
+          "tag": "phone"
+        },
+        {
+          "label": "Yes, but nothing happens at all",
+          "next": "device_manager_check",
+          "tag": "driver"
+        }
+      ]
+    },
+    "phone_mode": {
+      "question": "Does the phone show a notification offering file transfer, charging only, or USB debugging?",
+      "help": "The notification appears on the phone, not the PC, and must be tapped to allow data transfer.",
+      "options": [
+        {
+          "label": "Yes, and I chose file transfer",
+          "next": "result_phone_transfer",
+          "tag": "phone"
+        },
+        {
+          "label": "It only offers charging",
+          "next": "result_cable_and_port",
+          "tag": "cable"
+        },
+        {
+          "label": "No notification appears on the phone",
+          "next": "result_phone_transfer",
+          "tag": "phone"
+        }
+      ]
+    },
+    "dock_power": {
+      "question": "Is the dock connected to a power adapter as well as the PC?",
+      "help": "Most docks need their own power supply. Bus-powered devices without one simply will not be detected.",
+      "options": [
+        {
+          "label": "Yes, power adapter connected",
+          "next": "dock_port_check",
+          "tag": "dock"
+        },
+        {
+          "label": "No, it is plug-and-play only",
+          "next": "result_dock_power",
+          "tag": "dock"
+        },
+        {
+          "label": "I do not know",
+          "next": "dock_port_check",
+          "tag": "dock"
+        }
+      ]
+    },
+    "dock_port_check": {
+      "question": "Is the dock plugged into a rear motherboard port rather than a front panel or hub port?",
+      "help": "Docks are demanding devices and need the full bandwidth a rear port provides.",
+      "options": [
+        {
+          "label": "Yes, rear port",
+          "next": "result_dock_power",
+          "tag": "dock"
+        },
+        {
+          "label": "No, front panel or through a hub",
+          "next": "result_cable_and_port",
+          "tag": "cable"
+        }
+      ]
+    },
+    "usb_c_device": {
+      "question": "Does the USB-C port deliver any sign of life: charging, a light, or any sound?",
+      "help": "This tells you whether the port itself works at all, separately from data.",
+      "options": [
+        {
+          "label": "It charges but data does not work",
+          "next": "result_cable_and_port",
+          "tag": "cable"
+        },
+        {
+          "label": "Nothing at all happens",
+          "next": "usb_c_clean",
+          "tag": "hardware"
+        },
+        {
+          "label": "It works sometimes and stops",
+          "next": "usb_c_clean",
+          "tag": "hardware"
+        }
+      ]
+    },
+    "usb_c_clean": {
+      "question": "Have you inspected and cleaned the USB-C port?",
+      "help": "Pocket lint is the single most common cause of a USB-C port that only works at certain angles.",
+      "options": [
+        {
+          "label": "No, I have not looked at it",
+          "next": "result_usb_c_port",
+          "tag": "hardware"
+        },
+        {
+          "label": "Yes, it is clean and still intermittent",
+          "next": "result_usb_hardware",
+          "tag": "hardware"
+        },
+        {
+          "label": "It is clean and completely dead",
+          "next": "result_usb_hardware",
+          "tag": "hardware"
+        }
+      ]
+    },
+    "result_cable_and_port": {
+      "type": "result",
+      "title": "Try a different cable and port",
+      "diagnosis": "Cables and ports fail far more often than the devices themselves, and swapping both costs nothing.",
+      "steps": [
+        "Test with a different known-good USB cable; cheap cables often lack data lines entirely",
+        "Move to a rear motherboard port, which has more power and bandwidth than a front panel port",
+        "Avoid hubs and extension cables for the first test, since they add a failure point",
+        "On a laptop, try both sides, since ports differ in power delivery on some models",
+        "For USB-C, check the port with a torch for lint and clear it gently with a wooden toothpick",
+        "Check the cable length: cables over 3 metres often fail on high-speed transfers"
+      ],
+      "warnings": [
+        "Do not use metal tools or tweezers inside a USB port; you can short the contacts and permanently damage the port.",
+        "Yank cables out of sockets rather than unplugging them; the solder joints at the device end fail first."
+      ],
+      "article_slug": "fix-usb-device-not-recognized",
+      "difficulty": "easy"
+    },
+    "result_usb_driver": {
+      "type": "result",
+      "title": "Install the right USB driver",
+      "diagnosis": "Unknown USB Device means Windows found hardware it has no driver for, which is normal and easy to fix.",
+      "steps": [
+        "Open Device Manager and expand Universal Serial Bus controllers",
+        "Also check Portable Devices and any entry named Unknown USB Device",
+        "Right-click the unknown device and choose Update driver",
+        "Choose Search automatically for drivers, and let Windows try its built-in catalogue first",
+        "If that fails, download the driver from your PC vendor's support page for your exact model",
+        "For USB storage, update the chipset driver as well, since it manages USB power management",
+        "After installing, run Scan for hardware changes from the Action menu"
+      ],
+      "warnings": [
+        "Do not use driver updater tools or third-party driver packs. They install unsigned drivers that Windows may refuse to load.",
+        "Avoid the optional Windows Update driver for USB hardware unless the vendor one is unavailable; version mismatches cause intermittent failures."
+      ],
+      "article_slug": "fix-usb-device-not-recognized",
+      "difficulty": "easy"
+    },
+    "result_enable_usb": {
+      "type": "result",
+      "title": "Enable the device",
+      "diagnosis": "A greyed-out entry is disabled, which is a setting rather than a fault.",
+      "steps": [
+        "Right-click the greyed-out device and choose Enable device",
+        "If that option is missing, uninstall the device and restart, then let Windows reinstall it",
+        "Check View > Show hidden devices, since disabled devices appear greyed out there",
+        "Run Scan for hardware changes from the Action menu after enabling",
+        "Restart Windows so the driver loads at startup",
+        "Check whether a USB port is disabled in BIOS, since some boards can disable individual ports"
+      ],
+      "warnings": [],
+      "article_slug": "fix-usb-device-not-recognized",
+      "difficulty": "easy"
+    },
+    "result_usb_hardware": {
+      "type": "result",
+      "title": "The port or device has failed",
+      "diagnosis": "When the device does not appear anywhere and other devices work in the same port, the hardware is at fault.",
+      "steps": [
+        "Test the suspect port with a different device to confirm the port works",
+        "Test the suspect device in a different port or on another computer",
+        "If it fails everywhere, the device has failed and needs replacing",
+        "For a desktop, check whether the front-panel USB header or case buttons are wired to the wrong header on the motherboard",
+        "On a laptop, inspect the port for bent pins or lint with a torch",
+        "Update the chipset driver, which can restore badly behaved ports even when the device is listed"
+      ],
+      "warnings": [
+        "Do not force a connector that does not seat easily. Damaged ports usually cannot be repaired except by board-level work.",
+        "A failed USB device can be drawing excessive current. Stop using it if you notice a warm port or any smell of burning."
+      ],
+      "article_slug": "fix-usb-device-not-recognized",
+      "difficulty": "moderate"
+    },
+    "result_drive_letter": {
+      "type": "result",
+      "title": "Assign the drive a letter",
+      "diagnosis": "The drive is detected but has no letter, so File Explorer cannot show it. This is data-safe.",
+      "steps": [
+        "Open Disk Management: right-click Start > Disk Management",
+        "Find the drive by its size and format",
+        "Right-click its volume and choose Change Drive Letter and Paths",
+        "Choose Add and assign an unused letter such as F:",
+        "If it reports that the partition is RAW or unformatted, do not format it, since that will erase the data",
+        "Use our disk health script to check the drive's SMART data before doing anything else to it"
+      ],
+      "warnings": [
+        "Never format a drive that contains data you have not backed up. Formatting is not a reliable way to repair a drive and destroys whatever is still recoverable.",
+        "A drive appearing as RAW usually means the filesystem is damaged or the drive is failing."
+      ],
+      "article_slug": "check-disk-health-ssd-hdd",
+      "difficulty": "easy"
+    },
+    "result_drive_recovery": {
+      "type": "result",
+      "title": "Recover the drive's data first",
+      "diagnosis": "Windows asking to format a drive means it cannot read the filesystem. That is a data situation, not a formatting one.",
+      "steps": [
+        "Stop using the drive immediately and do not format it, because formatting can destroy recoverable data",
+        "Check the drive's SMART health using our disk health script; a failing drive needs data recovered, not repaired",
+        "If the drive is clicky, slow or drops off the system, replace it rather than attempting repairs",
+        "Try a data recovery tool such as TestDisk or PhotoRec, which work on raw devices without writing to the drive",
+        "Check for another copy: OneDrive, File History, a backup, or the same folder on another machine",
+        "If the drive is failing, professional recovery is the only safe option, since further use reduces the chance of recovery"
+      ],
+      "warnings": [
+        "Do not run chkdsk with /f on a drive with unrecoverable data. It writes to the drive and can destroy what is left.",
+        "Do not keep re-plugging a failing drive, since each attempt stresses it further.",
+        "If the drive contains work or photos with no backup, stop and seek professional data recovery before experimenting."
+      ],
+      "article_slug": "check-disk-health-ssd-hdd",
+      "difficulty": "moderate"
+    },
+    "result_dock_power": {
+      "type": "result",
+      "title": "Power the dock properly",
+      "diagnosis": "A dock without its power supply often shows nothing at all, or only works with a few devices attached.",
+      "steps": [
+        "Connect the dock's power adapter, which most docks require even when connected to mains",
+        "Plug the host cable into a rear motherboard port rather than a front panel port or a hub",
+        "Reduce the number of attached devices and test one at a time to find the failing one",
+        "Remove external monitors first, since two displays can exceed the dock's display output capability",
+        "Check the dock's firmware or driver software from its manufacturer",
+        "Confirm your PC's USB port supports the dock's connection, since USB 2.0 cannot drive two displays"
+      ],
+      "warnings": [
+        "Do not power a bus-powered dock from a laptop while also charging the laptop from the same dock. This can cause power problems in both devices.",
+        "Use only the power supply supplied with the dock, since mismatched supplies can damage it."
+      ],
+      "article_slug": "fix-usb-c-dock-problems",
+      "difficulty": "easy"
+    },
+    "result_phone_transfer": {
+      "type": "result",
+      "title": "Set the phone to file transfer mode",
+      "diagnosis": "Android phones default to charging-only over USB, so the PC sees no storage at all until you change it.",
+      "steps": [
+        "Connect the phone and unlock it; the notification only appears on a locked-screen-capable connection",
+        "Pull down the notification shade and tap the USB notification",
+        "Choose File transfer or Android Auto, not Just charging",
+        "If no notification appears, tap the USB icon in Settings > Connected devices > USB preferences and select File transfer",
+        "Enable USB debugging in Developer options only if a specific tool requires it, and disable it afterwards",
+        "Try the original cable, since many third-party USB-C cables are power-only"
+      ],
+      "warnings": [
+        "Turn USB debugging off after use. Leaving debugging enabled allows any computer with your authorisation to control your phone.",
+        "Do not enable 'Charge only' with 'Allow access to all files' permanently on an untrusted computer."
+      ],
+      "article_slug": "fix-usb-device-not-recognized",
+      "difficulty": "easy"
+    },
+    "result_usb_power": {
+      "type": "result",
+      "title": "Check power delivery",
+      "diagnosis": "A device that appears correctly but will not run is usually being starved of power, especially when connected through a hub.",
+      "steps": [
+        "Move the device from any hub or extension cable to a port directly on the PC",
+        "If the device has its own power adapter, connect it before testing",
+        "Check whether the device is drawing more than one port can supply, which affects an entire bus of devices",
+        "Try the port directly beside it, since some adjacent pairs share one controller",
+        "Update the chipset driver, since it manages USB power management",
+        "On a desktop, check whether any other devices are drawing excess current and disabling the same controller"
+      ],
+      "warnings": [
+        "Do not leave a device connected if the port becomes unusually warm, since that indicates overload.",
+        "Always use the power adapter supplied with the device rather than drawing power from the PC where possible."
+      ],
+      "article_slug": "fix-usb-device-not-recognized",
+      "difficulty": "easy"
+    },
+    "result_usb_c_port": {
+      "type": "result",
+      "title": "Clean the USB-C port",
+      "diagnosis": "Pocket lint is the most common cause of a USB-C port that only charges at certain angles.",
+      "steps": [
+        "Power off and unplug the device before inspecting the port",
+        "Look into the port with a torch to see compacted lint at the back",
+        "Clear it gently with a wooden toothpick or a plastic SIM card tray tool, using the flat side",
+        "Work from the edges inward and never force anything metal into the port",
+        "Blow out loose debris with compressed air if available",
+        "Test again; if it still fails, the port's contacts are worn and need solder-level repair"
+      ],
+      "warnings": [
+        "Never use metal tweezers, a knife, or a paperclip in a USB-C port. This bends or shorts the internal contacts and can destroy the port.",
+        "Do not power the device while cleaning the port.",
+        "If the port is bent or has a wobbly tongue, stop using it and get it repaired, since further use can damage the board."
+      ],
+      "article_slug": "fix-usb-c-dock-problems",
+      "difficulty": "easy"
+    }
+  }
+}

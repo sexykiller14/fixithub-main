@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ code.name }} ({{ code.code_hex }}) - {{ site_name }}{% endblock %}
+{% block description %}{{ code.meaning | truncate(160) }}{% endblock %}
+{% set og_title = code.name ~ ' - ' ~ code.code_hex %}
+{% set og_description = code.meaning | truncate(160) %}
+{% set og_type = 'article' %}
+
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": {{ ("Stop code " + code.name) | tojson }},
+  "description": {{ code.meaning | tojson }},
+  "url": "{{ site_url }}{{ canonical_url }}",
+  "inLanguage": "en",
+  "proficiencyLevel": "{{ code.difficulty }}",
+  "publisher": {"@type": "Organization", "name": "{{ site_author }}"}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+  <nav aria-label="Breadcrumb" class="mb-6 text-sm text-slate-500 dark:text-slate-400">
+    <ol class="flex flex-wrap items-center gap-1.5">
+      <li><a href="/" class="hover:text-brand-700 dark:hover:text-brand-400">Home</a></li>
+      <li aria-hidden="true">/</li>
+      <li><a href="/bsod" class="hover:text-brand-700 dark:hover:text-brand-400">Stop codes</a></li>
+      <li aria-hidden="true">/</li>
+      <li class="truncate font-mono text-slate-700 dark:text-slate-200" aria-current="page">{{ code.name }}</li>
+    </ol>
+  </nav>
+
+  <header>
+    <p class="font-mono text-2xl font-bold text-brand-700 dark:text-brand-400">{{ code.code_hex }}</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ code.name }}</h1>
+    <div class="mt-4 flex flex-wrap items-center gap-2 text-xs">
+      <span class="rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-slate-600 dark:text-slate-300">{{ difficulty_labels.get(code.difficulty, code.difficulty) }} difficulty</span>
+      <span class="rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-slate-600 dark:text-slate-300">Windows 10/11</span>
+      <span class="font-mono text-slate-400">{{ code.short_hex }}</span>
+    </div>
+  </header>
+
+  <section class="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6" aria-labelledby="meaning-heading">
+    <h2 id="meaning-heading" class="text-lg font-semibold text-slate-900 dark:text-white">What it means</h2>
+    <p class="mt-3 text-slate-700 dark:text-slate-300">{{ code.meaning }}</p>
+  </section>
+
+  <section class="mt-8" aria-labelledby="causes-heading">
+    <h2 id="causes-heading" class="text-lg font-semibold text-slate-900 dark:text-white">Likely causes</h2>
+    <ul class="mt-3 space-y-2.5">
+      {% for cause in code.causes %}
+      <li class="flex gap-3 text-slate-700 dark:text-slate-300">
+        <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true"></span>
+        <span>{{ cause }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="mt-8" aria-labelledby="fix-heading">
+    <h2 id="fix-heading" class="text-lg font-semibold text-slate-900 dark:text-white">How to fix it</h2>
+    <p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+      These steps are ordered from most to least likely. Do them in order and stop when the problem goes away.
+    </p>
+    <ol class="mt-4 space-y-4">
+      {% for step in code.fix_steps %}
+      <li class="flex gap-4">
+        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-950 text-sm font-bold text-brand-800 dark:text-brand-200" aria-hidden="true">{{ loop.index }}</span>
+        <div class="pt-0.5 text-slate-700 dark:text-slate-300">{{ step }}</div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {% if code.when_to_call_pro %}
+  <section class="mt-8 rounded-xl border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950 p-5" aria-labelledby="pro-heading">
+    <h2 id="pro-heading" class="font-semibold text-amber-900 dark:text-amber-200">When to see a professional</h2>
+    <p class="mt-2 text-sm text-amber-900 dark:text-amber-100">{{ code.when_to_call_pro }}</p>
+  </section>
+  {% endif %}
+
+  {% if request.query_params.get('thanks') %}
+  <p class="mt-6 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200" role="status">
+    Thanks, your feedback has been recorded.
+  </p>
+  {% endif %}
+
+  <section class="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6" aria-labelledby="bsod-feedback-heading">
+    <h2 id="bsod-feedback-heading" class="font-semibold text-slate-900 dark:text-white">Was this helpful?</h2>
+    <form action="/bsod/{{ code.name }}/feedback" method="post" class="mt-3 flex flex-wrap gap-3">
+      <button type="submit" name="helpful" value="true" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Yes, it helped</button>
+      <button type="submit" name="helpful" value="false" class="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">No, it did not</button>
+    </form>
+  </section>
+
+  {% if related %}
+  <section class="mt-8" aria-labelledby="bsod-related-heading">
+    <h2 id="bsod-related-heading" class="text-lg font-semibold text-slate-900 dark:text-white">Full guides</h2>
+    <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+      {% for article in related %}
+      <li>
+        <a href="/articles/{{ article.slug }}" class="block rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white hover:border-brand-400 dark:hover:border-brand-500">
+          {{ article.title }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if siblings %}
+  <section class="mt-8" aria-labelledby="bsod-siblings-heading">
+    <h2 id="bsod-siblings-heading" class="text-lg font-semibold text-slate-900 dark:text-white">Nearby stop codes</h2>
+    <ul class="mt-3 flex flex-wrap gap-2">
+      {% for item in siblings %}
+      <li>
+        <a href="/bsod/{{ item.name }}" class="inline-block rounded-lg bg-white dark:bg-slate-800 px-3 py-1.5 font-mono text-xs text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-brand-400">
+          {{ item.code_hex }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

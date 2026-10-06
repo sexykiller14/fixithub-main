@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Create an account - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md px-4 py-12">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Create an account</h1>
+  <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+    For commenting on guides and downloading the tools. We ask for an email address only so we can
+    confirm it is really yours.
+  </p>
+
+  {% if error_message %}
+  <p class="mt-6 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 text-sm text-red-900 dark:bg-red-950 dark:text-red-100">
+    {{ error_message }}
+  </p>
+  {% endif %}
+
+  <form action="/signup" method="post" class="mt-6 space-y-4">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+
+    <div>
+      <label for="signup-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Email address</label>
+      <input type="email" id="signup-email" name="email" required autocomplete="email" maxlength="254"
+             value="{{ email or '' }}" placeholder="name@example.com"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+    </div>
+
+    <div>
+      <label for="signup-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+      <input type="password" id="signup-password" name="password" required autocomplete="new-password"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        At least 10 characters. A short phrase is stronger and easier to remember than a short one
+        full of symbols.
+      </p>
+    </div>
+
+    <div>
+      <label for="signup-confirm" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Confirm password</label>
+      <input type="password" id="signup-confirm" name="confirm" required autocomplete="new-password"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+    </div>
+
+    <button type="submit" class="w-full rounded-lg bg-brand-600 px-4 py-2.5 font-semibold text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+      Create account
+    </button>
+  </form>
+
+  <div class="mt-8 rounded-xl border border-slate-200 p-5 text-sm dark:border-slate-800">
+    <h2 class="font-semibold text-slate-900 dark:text-white">What we store</h2>
+    <ul class="mt-2 space-y-1.5 text-slate-600 dark:text-slate-400">
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>Your email address and a one-way hash of your password. We cannot read your password.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>Your comments, and a hashed form of your IP address so abuse is traceable without keeping your address.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span><span>When you last signed in. Nothing else, and no tracking across other sites.</span></li>
+    </ul>
+    <p class="mt-3 text-slate-600 dark:text-slate-400">
+      You can delete your account and everything you wrote at any time from your
+      <a href="/account" class="text-brand-700 hover:underline dark:text-brand-400">account page</a>.
+      The details are in the <a href="/privacy" class="text-brand-700 hover:underline dark:text-brand-400">privacy notice</a>.
+    </p>
+    {% if not smtp_configured %}
+    <p class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+      Email sending is not configured on this instance, so accounts will need confirming by the
+      site owner. Commenting still works.
+    </p>
+    {% endif %}
+  </div>
+
+  <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
+    Already registered? <a href="/login" class="text-brand-700 hover:underline dark:text-brand-400">Sign in</a>.
+  </p>
+</div>
+{% endblock %}

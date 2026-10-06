@@ -1,0 +1,603 @@
+/* FixIT Hub - small stylesheet for things Tailwind CDN utilities do not cover. */
+
+.nav-link {
+  display: inline-block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+}
+.nav-link:hover {
+  background-color: rgb(241 245 249);
+  color: rgb(15 23 42);
+}
+.nav-link-active {
+  background-color: rgb(219 234 254);
+  color: rgb(21 94 117);
+}
+
+.dark .nav-link {
+  color: rgb(203 213 225);
+}
+.dark .nav-link:hover {
+  background-color: rgb(30 41 59);
+  color: rgb(248 250 252);
+}
+.dark .nav-link-active {
+  background-color: rgb(30 58 138);
+  color: rgb(191 219 254);
+}
+
+.mobile-nav-link {
+  display: block;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+}
+.mobile-nav-link:hover {
+  background-color: rgb(241 245 249);
+}
+.dark .mobile-nav-link {
+  color: rgb(203 213 225);
+}
+.dark .mobile-nav-link:hover {
+  background-color: rgb(30 41 59);
+}
+
+.footer-link {
+  color: rgb(71 85 105);
+}
+.footer-link:hover {
+  color: rgb(21 94 117);
+  text-decoration: underline;
+}
+.dark .footer-link {
+  color: rgb(148 163 184);
+}
+.dark .footer-link:hover {
+  color: rgb(125 211 252);
+}
+
+/* Article body styling. Markdown is rendered to semantic HTML and styled here. */
+.prose-article {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: rgb(30 41 59);
+}
+.dark .prose-article {
+  color: rgb(203 213 225);
+}
+.prose-article > * + * {
+  margin-top: 1.15em;
+}
+.prose-article h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2em;
+  padding-top: 0.35em;
+  border-top: 1px solid rgb(226 232 240);
+  color: rgb(15 23 42);
+}
+.dark .prose-article h2 {
+  border-top-color: rgb(51 65 65);
+  color: rgb(248 250 252);
+}
+.prose-article h3 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  margin-top: 1.6em;
+  color: rgb(15 23 42);
+}
+.dark .prose-article h3 {
+  color: rgb(248 250 252);
+}
+.prose-article h2 a,
+.prose-article h3 a {
+  text-decoration: none;
+}
+.prose-article ul,
+.prose-article ol {
+  padding-left: 1.4em;
+}
+.prose-article ul {
+  list-style: disc;
+}
+.prose-article ol {
+  list-style: decimal;
+}
+.prose-article li + li {
+  margin-top: 0.4em;
+}
+.prose-article li::marker {
+  color: rgb(100 116 139);
+}
+.prose-article a {
+  color: rgb(21 94 117);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-article a:hover {
+  color: rgb(13 148 136);
+}
+.dark .prose-article a {
+  color: rgb(125 211 252);
+}
+.dark .prose-article a:hover {
+  color: rgb(186 230 253);
+}
+.prose-article strong {
+  font-weight: 650;
+  color: rgb(15 23 42);
+}
+.dark .prose-article strong {
+  color: rgb(248 250 252);
+}
+.prose-article blockquote {
+  border-left: 4px solid rgb(148 163 184);
+  padding-left: 1em;
+  font-style: italic;
+  color: rgb(71 85 105);
+}
+.dark .prose-article blockquote {
+  color: rgb(148 163 184);
+}
+.prose-article code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: rgb(241 245 249);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3rem;
+  color: rgb(15 23 42);
+}
+.dark .prose-article code {
+  background: rgb(30 41 59);
+  color: rgb(226 232 240);
+}
+.prose-article pre {
+  position: relative;
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.65rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.dark .prose-article pre {
+  background: rgb(2 6 23);
+  border: 1px solid rgb(30 41 59);
+}
+.prose-article pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.prose-article table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose-article th,
+.prose-article td {
+  border: 1px solid rgb(226 232 240);
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-article th {
+  background: rgb(248 250 252);
+  font-weight: 600;
+}
+.dark .prose-article th,
+.dark .prose-article td {
+  border-color: rgb(51 65 85);
+}
+.dark .prose-article th {
+  background: rgb(30 41 59);
+}
+.prose-article img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+.prose-article hr {
+  border-color: rgb(226 232 240);
+}
+
+/* Warning and danger callouts rendered from [!WARNING] blocks. */
+.callout {
+  border-radius: 0.65rem;
+  padding: 1rem 1.15rem;
+  border-left: 4px solid;
+  font-size: 0.975rem;
+}
+.callout > *:first-child {
+  margin-top: 0;
+}
+.callout > *:last-child {
+  margin-bottom: 0;
+}
+.callout-title {
+  font-weight: 700;
+  margin-bottom: 0.4em;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.callout-warning {
+  background: rgb(255 251 235);
+  border-color: rgb(245 158 11);
+  color: rgb(120 53 15);
+}
+.callout-warning .callout-title {
+  color: rgb(180 83 9);
+}
+.callout-danger {
+  background: rgb(254 242 242);
+  border-color: rgb(220 38 38);
+  color: rgb(127 29 29);
+}
+.callout-danger .callout-title {
+  color: rgb(185 28 28);
+}
+.callout-tip {
+  background: rgb(240 253 250);
+  border-color: rgb(13 148 136);
+  color: rgb(19 78 74);
+}
+.callout-tip .callout-title {
+  color: rgb(13 148 136);
+}
+.callout-note,
+.callout-important {
+  background: rgb(239 246 255);
+  border-color: rgb(59 130 246);
+  color: rgb(30 58 138);
+}
+.callout-note .callout-title,
+.callout-important .callout-title {
+  color: rgb(37 99 235);
+}
+.dark .callout-warning {
+  background: rgb(66 46 8);
+  color: rgb(253 230 138);
+}
+.dark .callout-warning .callout-title {
+  color: rgb(252 211 77);
+}
+.dark .callout-danger {
+  background: rgb(69 20 20);
+  color: rgb(254 202 202);
+}
+.dark .callout-danger .callout-title {
+  color: rgb(252 165 165);
+}
+.dark .callout-tip {
+  background: rgb(9 60 55);
+  color: rgb(204 255 251);
+}
+.dark .callout-tip .callout-title {
+  color: rgb(94 234 212);
+}
+.dark .callout-note,
+.dark .callout-important {
+  background: rgb(22 40 78);
+  color: rgb(191 219 254);
+}
+.dark .callout-note .callout-title,
+.dark .callout-important .callout-title {
+  color: rgb(147 197 253);
+}
+
+/* Copy button injected on code blocks by site.js */
+.code-block {
+  position: relative;
+}
+.copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 0.35rem;
+  background: rgb(51 65 85);
+  color: rgb(226 232 240);
+  border: 1px solid rgb(71 85 105);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+}
+.code-block:hover .copy-button,
+.copy-button:focus {
+  opacity: 1;
+}
+.copy-button:hover {
+  background: rgb(71 85 105);
+}
+.copy-button.copied {
+  background: rgb(5 150 105);
+  border-color: rgb(4 120 87);
+  color: white;
+}
+
+/* Ask us anything widget, built by ask-widget.js.
+
+   ACCENT COLOUR: change it in the two --ask-accent declarations below and
+   nowhere else. They hold space-separated RGB channels so tints can be written
+   as rgb(var(--ask-accent) / 0.1). The light value matches the brand palette's
+   brand-600, the dark value matches brand-400. */
+:root {
+  --ask-accent: 27 110 245;
+}
+.dark {
+  --ask-accent: 88 166 255;
+}
+
+.ask-widget {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  /* Above the sticky header, which sits at z-40. */
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  max-width: calc(100vw - 2rem);
+}
+
+/* Launcher button */
+.ask-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  padding: 0.7rem 1.1rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgb(var(--ask-accent));
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -8px rgb(var(--ask-accent) / 0.65);
+  transition: filter 140ms ease-in-out;
+}
+.ask-fab:hover {
+  filter: brightness(1.08);
+}
+.ask-fab-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+
+/* Panel. visibility is used instead of display so the panel can animate, and
+   it still removes the panel from the tab order while closed. */
+.ask-panel {
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 7rem);
+  max-height: calc(100dvh - 7rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.9rem;
+  background: #fff;
+  color: rgb(15 23 42);
+  box-shadow: 0 18px 40px -12px rgb(15 23 42 / 0.35);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 140ms ease-in-out, transform 140ms ease-in-out,
+    visibility 140ms ease-in-out;
+}
+.ask-panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.dark .ask-panel {
+  border-color: rgb(51 65 85);
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+}
+
+.ask-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.ask-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.ask-close {
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.45rem;
+  background: transparent;
+  color: rgb(71 85 105);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.ask-close:hover {
+  background: rgb(241 245 249);
+}
+.dark .ask-close {
+  border-color: rgb(51 65 85);
+  color: rgb(203 213 225);
+}
+.dark .ask-close:hover {
+  background: rgb(30 41 59);
+}
+
+.ask-intro {
+  margin: 0.4rem 0 0.75rem;
+  font-size: 0.875rem;
+  color: rgb(71 85 105);
+}
+.dark .ask-intro {
+  color: rgb(148 163 184);
+}
+
+.ask-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+.ask-chip {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgb(var(--ask-accent) / 0.45);
+  border-radius: 9999px;
+  background: rgb(var(--ask-accent) / 0.08);
+  color: rgb(var(--ask-accent));
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ask-chip:hover {
+  background: rgb(var(--ask-accent) / 0.18);
+}
+
+.ask-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.ask-input {
+  display: block;
+  width: 100%;
+  min-height: 5.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.6rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+.dark .ask-input {
+  border-color: rgb(51 65 85);
+  background: rgb(2 6 23);
+}
+
+.ask-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+.ask-status {
+  margin: 0.7rem 0 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.ask-status-ok {
+  color: rgb(4 120 87);
+}
+.dark .ask-status-ok {
+  color: rgb(52 211 153);
+}
+.ask-status-error {
+  color: rgb(185 28 28);
+}
+.dark .ask-status-error {
+  color: rgb(252 165 165);
+}
+
+/* Send button */
+.ask-send {
+  width: 100%;
+  margin-top: 0.85rem;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: rgb(var(--ask-accent));
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ask-send[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Visible focus for every interactive part of the widget. */
+.ask-widget :focus-visible {
+  outline: 2px solid rgb(var(--ask-accent));
+  outline-offset: 2px;
+}
+
+/* Ad slots. The min-height keeps the slot from collapsing to zero before the
+   AdSense iframe loads, then lets the slot grow if the iframe is taller. The
+   device classes are coupled to the Tailwind breakpoints that decide whether
+   an ad is shown to a visitor on a phone-sized screen. */
+.ad-slot {
+  display: block;
+  margin: 0 auto;
+}
+.ad-slot--desktop {
+  display: none;
+}
+@media (min-width: 640px) {
+  .ad-slot--desktop {
+    display: block;
+  }
+  .ad-slot--mobile {
+    display: none;
+  }
+}
+.ad-slot--both {
+  display: block;
+}
+
+/* Skip link visibility when focused */
+[hidden] {
+  display: none !important;
+}
+
+/* Clamp a summary to a fixed number of lines so cards on a grid stay the same
+   height. Tailwind ships line-clamp, but the CDN build is not version-pinned
+   in base.html, so this is defined here as well: identical output either way. */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Respect reduced motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

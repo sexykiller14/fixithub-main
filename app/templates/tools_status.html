@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}HTTP status check - {{ site_name }}{% endblock %}
+{% block description %}Check that a website responds and see its status code, server header and response time.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+  <nav aria-label="Breadcrumb" class="mb-5 text-sm text-slate-500 dark:text-slate-400">
+    <a href="/tools" class="hover:text-brand-700 dark:hover:text-brand-400">Network tools</a>
+    <span aria-hidden="true"> / </span>
+    <span class="text-slate-700 dark:text-slate-200">HTTP status check</span>
+  </nav>
+
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">HTTP status check</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">
+    Check that a website is responding from here. Useful for telling a DNS problem apart from a
+    server problem, and for timing how slow a site is.
+  </p>
+
+  <form action="/tools/status" method="post" data-tool-form class="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <label for="status-url" class="block text-sm font-medium text-slate-700 dark:text-slate-300">URL</label>
+    <input id="status-url" type="url" name="url" value="{{ url }}" maxlength="2048" required autofocus
+           placeholder="https://example.com"
+           class="mt-1.5 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+    <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+      {{ rate_limit_max }} checks per {{ rate_limit_window }} seconds per IP address. Only HTTPS is
+      allowed, redirects are not followed, and the response body is never stored.
+    </p>
+    <button type="submit" class="mt-4 rounded-lg bg-brand-600 px-5 py-2 font-semibold text-white hover:bg-brand-700">Check URL</button>
+  </form>
+
+  {% if error %}
+  <div class="mt-6 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4" role="alert">
+    <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  {% if result %}
+  {% set d = result.data %}
+  <section class="mt-8" aria-labelledby="status-result-heading" aria-live="polite">
+    <h2 id="status-result-heading" class="sr-only">HTTP status result</h2>
+
+    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="min-w-0">
+          <p class="truncate font-mono text-sm text-slate-600 dark:text-slate-400">{{ d.hostname }} &rarr; {{ d.ip }}</p>
+          <p class="mt-1 font-mono text-lg font-bold break-all text-slate-900 dark:text-white">{{ d.method }} {{ d.display_url }}</p>
+        </div>
+        <span class="rounded-full px-4 py-1.5 text-sm font-bold
+          {% if d.status < 300 %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+          {% elif d.status < 400 %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+          {% elif d.status < 500 %}bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200
+          {% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+          {{ d.status }} {{ d.status_text }}
+        </span>
+      </div>
+
+      <dl class="mt-5 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
+          <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Response time</dt>
+          <dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white">{{ d.elapsed_ms }} ms</dd>
+        </div>
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
+          <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Protocol</dt>
+          <dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white">{{ d.protocol }}</dd>
+        </div>
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
+          <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Server</dt>
+          <dd class="mt-1 text-sm font-medium break-all text-slate-900 dark:text-white">{{ d.server }}</dd>
+        </div>
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
+          <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Content type</dt>
+          <dd class="mt-1 text-sm font-medium break-all text-slate-900 dark:text-white">{{ d.content_type or 'not declared' }}</dd>
+        </div>
+        {% if d.redirect_to %}
+        <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 sm:col-span-2">
+          <dt class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Redirects to</dt>
+          <dd class="mt-1 text-sm font-medium break-all text-slate-900 dark:text-white">{{ d.redirect_to }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Reading this result</h3>
+      <ul class="mt-2 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+        <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>200 to 399 means the site is working.</span></li>
+        <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>403 or 404 from a browser that works fine usually means the site is blocking automated requests, which is not a fault.</span></li>
+        <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>A 5xx response means the site itself is failing. Nothing on your computer is broken.</span></li>
+        <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>A failure to connect suggests DNS, a firewall, or that the site is down for everyone rather than just you.</span></li>
+      </ul>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

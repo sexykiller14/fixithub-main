@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Device Manager error codes - {{ site_name }}{% endblock %}
+{% block description %}Every Device Manager error code with what it means and the specific fix for each one.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+  <nav aria-label="Breadcrumb" class="mb-5 text-sm text-slate-500 dark:text-slate-400">
+    <a href="/drivers" class="hover:text-brand-700 dark:hover:text-brand-400">Drivers</a>
+    <span aria-hidden="true"> / </span>
+    <span class="text-slate-700 dark:text-slate-200">Device Manager error codes</span>
+  </nav>
+
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Device Manager error codes</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
+    A yellow exclamation mark always has a numbered code behind it. Open the device's Properties,
+    read the General tab, and find the code below.
+  </p>
+
+  <div class="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+    <h2 class="font-semibold text-slate-900 dark:text-white">How to find the code</h2>
+    <ol class="mt-2.5 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+      <li class="flex gap-2"><span class="font-semibold">1.</span> Press Windows key plus X and choose Device Manager.</li>
+      <li class="flex gap-2"><span class="font-semibold">2.</span> Find the device with the yellow exclamation mark.</li>
+      <li class="flex gap-2"><span class="font-semibold">3.</span> Double-click it and read the General tab.</li>
+    </ol>
+  </div>
+
+  <div class="mt-10 space-y-6">
+    {% for code in codes %}
+    <section class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6" aria-labelledby="code-{{ code.code }}">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="rounded-lg bg-brand-100 dark:bg-brand-950 px-3 py-1 font-mono text-sm font-bold text-brand-800 dark:text-brand-200">
+          {% if code.code == 'no_code' %}Exclamation mark{% else %}Code {{ code.code }}{% endif %}
+        </span>
+        <h2 id="code-{{ code.code }}" class="text-lg font-semibold text-slate-900 dark:text-white">{{ code.name }}</h2>
+        <span class="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
+          {{ difficulty_labels.get(code.difficulty, code.difficulty) }}
+        </span>
+      </div>
+
+      <p class="mt-3 text-slate-700 dark:text-slate-300">{{ code.meaning }}</p>
+
+      <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-white">How to fix it</h3>
+      <ol class="mt-2.5 space-y-2.5">
+        {% for fix in code.fixes %}
+        <li class="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+          <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300" aria-hidden="true">{{ loop.index }}</span>
+          <span>{{ fix }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+    {% endfor %}
+  </div>
+
+  <section class="mt-10 rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-6">
+    <h2 class="font-semibold text-red-900 dark:text-red-200">Where not to get drivers</h2>
+    <p class="mt-2 text-sm text-red-900 dark:text-red-100">
+      Never install drivers from sites that host every driver from every manufacturer, from pop-ups,
+      or from "driver updater" software. These install unsigned drivers that Windows either refuses
+      to load or that cause crashes. Use your PC vendor, the chip vendor, or the official
+      <a href="https://www.catalog.update.microsoft.com/" class="underline">Microsoft Update Catalog</a>.
+    </p>
+  </section>
+
+  <p class="mt-8">
+    <a href="/articles/windows-device-manager-error-codes" class="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
+      Read the full Device Manager guide
+    </a>
+  </p>
+</div>
+{% endblock %}

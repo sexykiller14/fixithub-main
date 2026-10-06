@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Link check - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Broken link check</h1>
+  <p class="mt-1.5 text-sm text-slate-600 dark:text-slate-400">First 50 unique external URLs from article bodies, checked with a 5 second timeout.</p>
+
+  {% if links %}
+  <div class="mt-8 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+    <table class="w-full text-sm">
+      <caption class="sr-only">Link check results</caption>
+      <thead class="bg-slate-50 dark:bg-slate-800">
+        <tr>
+          <th class="px-4 py-2.5 text-left">URL</th>
+          <th class="px-4 py-2.5 text-left">Source</th>
+          <th class="px-4 py-2.5 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in links %}
+        <tr class="border-t border-slate-200 dark:border-slate-800">
+          <td class="max-w-md truncate px-4 py-2.5 font-mono text-xs text-slate-700 dark:text-slate-300">{{ row.url }}</td>
+          <td class="px-4 py-2.5 text-slate-600 dark:text-slate-400">{{ row.source }}</td>
+          <td class="px-4 py-2.5 text-center">
+            {% if row.status == 200 %}
+            <span class="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-200">200</span>
+            {% elif row.status %}
+            <span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900 dark:text-amber-200">{{ row.status }}</span>
+            {% else %}
+            <span class="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-900 dark:text-red-200">unreachable</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="mt-8 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">No external links found, or the check failed to run.</p>
+  {% endif %}
+</div>
+{% endblock %}

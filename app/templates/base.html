@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ seo_description | default(og_description, site_description) }}{% endblock %}">
+  <meta name="author" content="{{ site_author }}">
+  <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+  {% if canonical_url %}<link rel="canonical" href="{{ site_url }}{{ canonical_url }}">{% endif %}
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:site_name" content="{{ site_name }}">
+  <meta property="og:title" content="{{ seo_title | default(og_title, site_name) }}">
+  <meta property="og:description" content="{{ seo_description | default(og_description, site_description) }}">
+  {% if seo_image %}<meta property="og:image" content="{{ seo_image }}">{% endif %}
+  <meta property="og:url" content="{{ site_url }}{{ canonical_url }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ seo_title | default(og_title, site_name) }}">
+  <meta name="twitter:description" content="{{ seo_description | default(og_description, site_description) }}">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+
+  <script>
+    // Apply the saved theme before first paint so there is no flash of the wrong theme.
+    (function () {
+      try {
+        var saved = localStorage.getItem('fixit-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = saved || (prefersDark ? 'dark' : 'light');
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) { /* localStorage can be blocked; default light theme is fine */ }
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef7ff', 100: '#d9edff', 200: '#bce0ff', 300: '#8ecdff',
+              400: '#59b0ff', 500: '#338dfb', 600: '#1b6ef5', 700: '#1457e1',
+              800: '#1747b6', 900: '#193f8f', 950: '#142756'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="/static/css/site.css">
+  {# Advertising is injected only when the admin has switched it on. The script
+     tag goes first so the slots can activate later in the body without
+     hitting the network again. #}
+  {% if ads_on and ads_config %}
+  <script async src="{{ ads_script }}" crossorigin="anonymous"></script>
+  {% endif %}
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 antialiased flex flex-col min-h-screen">
+
+<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-brand-600 focus:text-white">
+  Skip to main content
+</a>
+
+{# A dismissible banner. The title and body are plain text and escaped by
+   Jinja; there is no way for an admin to inject markup into it. #}
+{% if announcement and announcement.enabled and announcement.title %}
+<div id="announcement-banner" class="relative bg-brand-600 text-white text-sm py-2.5 px-4 pr-10 text-center" role="status">
+  <p class="inline">
+    <span class="font-semibold">{{ announcement.title }}</span>
+    {% if announcement.body %}{{ announcement.body }}{% endif %}
+    {% if announcement.link_url %}<a href="{{ announcement.link_url }}" class="underline font-semibold">Learn more</a>{% endif %}
+  </p>
+  <button type="button" id="announcement-dismiss" class="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white" aria-label="Dismiss announcement">&times;</button>
+</div>
+<script>
+  (function () {
+    var banner = document.getElementById('announcement-banner');
+    var btn = document.getElementById('announcement-dismiss');
+    if (!banner || !btn) return;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem('fixit-banner-dismissed') === '{{ announcement.id }}'; } catch (e) {}
+    if (dismissed) banner.style.display = 'none';
+    btn.addEventListener('click', function () {
+      banner.style.display = 'none';
+      try { localStorage.setItem('fixit-banner-dismissed', '{{ announcement.id }}'); } catch (e) {}
+    });
+  })();
+</script>
+{% endif %}
+
+<header class="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="flex h-16 items-center justify-between gap-4">
+      <a href="/" class="flex items-center gap-2 shrink-0 font-bold text-lg" aria-label="{{ site_name }} home">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white" aria-hidden="true">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        </span>
+        <span class="text-slate-900 dark:text-white">FixIT <span class="text-brand-600 dark:text-brand-400">Hub</span></span>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-1" aria-label="Main navigation">
+        <a href="/articles" class="nav-link {% if nav_open == 'articles' %}nav-link-active{% endif %}">Articles</a>
+        <a href="/bsod" class="nav-link {% if nav_open == 'bsod' %}nav-link-active{% endif %}">BSOD Lookup</a>
+        <a href="/wizards" class="nav-link {% if nav_open == 'wizards' %}nav-link-active{% endif %}">Wizards</a>
+        <a href="/tools" class="nav-link {% if nav_open == 'tools' %}nav-link-active{% endif %}">Network Tools</a>
+        <a href="/drivers" class="nav-link {% if nav_open == 'drivers' %}nav-link-active{% endif %}">Drivers</a>
+        <a href="/hardware" class="nav-link {% if nav_open == 'hardware' %}nav-link-active{% endif %}">Hardware</a>
+        <a href="/scripts" class="nav-link {% if nav_open == 'scripts' %}nav-link-active{% endif %}">Scripts</a>
+        <a href="/apps" class="nav-link {% if nav_open == 'apps' %}nav-link-active{% endif %}">Tools</a>
+      </nav>
+
+      {# Account state lives in the header, so a reader always knows whether
+         they are signed in without hunting for it. #}
+      <div class="hidden sm:block">
+        {% if current_user %}
+        <a href="/account" class="text-sm font-medium text-slate-600 hover:text-brand-700 dark:text-slate-300 dark:hover:text-brand-400">
+          {{ current_user.email.split('@')[0] }}
+        </a>
+        {% elif registration_open %}
+        <a href="/login" class="text-sm font-medium text-slate-600 hover:text-brand-700 dark:text-slate-300 dark:hover:text-brand-400">Sign in</a>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center gap-2">
+        <form action="/search" method="get" role="search" class="hidden sm:block">
+          <label for="nav-search" class="sr-only">Search guides and stop codes</label>
+          <input id="nav-search" type="search" name="q" placeholder="Search..." maxlength="200"
+                 class="w-40 lg:w-52 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </form>
+
+        <button type="button" id="theme-toggle" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Switch to dark theme" aria-pressed="false" title="Toggle dark mode">
+          <svg class="h-5 w-5 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/>
+          </svg>
+          <svg class="h-5 w-5 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+          </svg>
+        </button>
+
+        <button type="button" id="menu-button" class="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700"
+                aria-label="Open main menu" aria-expanded="false" aria-controls="mobile-menu">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M3 6h18M3 12h18M3 18h18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mobile-menu" class="hidden lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <nav class="mx-auto max-w-7xl px-4 py-3 flex flex-col gap-1" aria-label="Mobile navigation">
+      <form action="/search" method="get" role="search" class="mb-2">
+        <label for="mobile-search" class="sr-only">Search guides and stop codes</label>
+        <input id="mobile-search" type="search" name="q" placeholder="Search guides and stop codes..." maxlength="200"
+               class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
+      </form>
+      <a href="/articles" class="mobile-nav-link">Articles</a>
+      <a href="/bsod" class="mobile-nav-link">BSOD Lookup</a>
+      <a href="/wizards" class="mobile-nav-link">Troubleshooting Wizards</a>
+      <a href="/tools" class="mobile-nav-link">Network Tools</a>
+      <a href="/drivers" class="mobile-nav-link">Driver Help</a>
+      <a href="/hardware" class="mobile-nav-link">Hardware Diagnostics</a>
+      <a href="/scripts" class="mobile-nav-link">Diagnostic Scripts</a>
+      <a href="/apps" class="mobile-nav-link">Downloadable Tools</a>
+      <a href="/privacy" class="mobile-nav-link">Privacy</a>
+      {% if current_user %}
+      <a href="/account" class="mobile-nav-link">Your account</a>
+      <a href="/logout" class="mobile-nav-link">Sign out</a>
+      {% elif registration_open %}
+      <a href="/login" class="mobile-nav-link">Sign in</a>
+      <a href="/signup" class="mobile-nav-link">Create an account</a>
+      {% endif %}
+      <a href="/admin" class="mobile-nav-link">Admin</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main-content" class="flex-1">
+  {% if ads_on and ads_units["above-content"] %}
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
+    {% for slot in ads_units["above-content"] %}{{ slot.markup | safe }}{{ slot.push | safe }}{% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  {% if ads_on and ads_units["below-content"] %}
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8">
+    {% for slot in ads_units["below-content"] %}{{ slot.markup | safe }}{{ slot.push | safe }}{% endfor %}
+  </div>
+  {% endif %}
+</main>
+
+<footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-16">
+  {% if ads_on and ads_units["footer"] %}
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
+    {% for slot in ads_units["footer"] %}{{ slot.markup | safe }}{{ slot.push | safe }}{% endfor %}
+  </div>
+  {% endif %}
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <div class="flex items-center gap-2 font-bold">
+          <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white" aria-hidden="true">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+          </span>
+          <span>{{ site_name }}</span>
+        </div>
+        <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">
+          {{ site_description }}
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Categories</h2>
+        <ul class="mt-3 space-y-2 text-sm">
+          {% for key, meta in categories.items() %}
+          <li><a href="/category/{{ key }}" class="footer-link">{{ meta.name }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tools</h2>
+        <ul class="mt-3 space-y-2 text-sm">
+          <li><a href="/bsod" class="footer-link">BSOD stop code lookup</a></li>
+          <li><a href="/bsod/analyze" class="footer-link">Minidump analyzer</a></li>
+          <li><a href="/wizards" class="footer-link">Guided troubleshooting</a></li>
+          <li><a href="/tools/dns" class="footer-link">DNS lookup</a></li>
+          <li><a href="/tools/port" class="footer-link">Port checker</a></li>
+          <li><a href="/tools/status" class="footer-link">HTTP status check</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reference</h2>
+        <ul class="mt-3 space-y-2 text-sm">
+          <li><a href="/drivers" class="footer-link">Driver guides</a></li>
+          <li><a href="/hardware" class="footer-link">Hardware diagnostics</a></li>
+          <li><a href="/scripts" class="footer-link">Diagnostic scripts</a></li>
+          <li><a href="/apps" class="footer-link">Downloadable tools</a></li>
+          <li><a href="/privacy" class="footer-link">Privacy</a></li>
+          <li><a href="/about" class="footer-link">About and safety</a></li>
+          <li><a href="/sitemap.xml" class="footer-link">Sitemap</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-10 pt-6 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-2">
+      <p>
+        Everything here is written for Windows 10 and 11. Follow warnings carefully:
+        registry edits, BIOS changes and opening a PC can cause damage if done
+        without understanding the risk.
+      </p>
+      <p>
+        FixIT Hub is not affiliated with Microsoft, NVIDIA, AMD, Intel or Realtek.
+        Driver links point to official vendor pages only.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<script src="/static/js/site.js" defer></script>
+{# The "Ask us anything" widget is injected by ask-widget.js, so it appears on
+   every page without this template being edited again. #}
+<script src="/static/js/ask-widget.js" defer></script>
+{% block scripts_extra %}{% endblock %}
+</body>
+</html>

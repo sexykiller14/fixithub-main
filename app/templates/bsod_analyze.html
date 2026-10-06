@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Minidump analyzer - {{ site_name }}{% endblock %}
+{% block description %}Upload a Windows .dmp file and get the bugcheck code and parameters extracted and explained.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Minidump analyzer</h1>
+  <p class="mt-2 text-slate-600 dark:text-slate-400">
+    Windows records every blue screen. Upload the .dmp file and we will read the bugcheck code and its
+    four parameters, then show you the matching fix guide.
+  </p>
+
+  <div class="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+    <h2 class="font-semibold text-slate-900 dark:text-white">Where to find your minidump</h2>
+    <ol class="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+      <li class="flex gap-2"><span class="font-semibold">1.</span> Open File Explorer and paste <code class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-xs">C:\Windows\Minidump</code> into the address bar.</li>
+      <li class="flex gap-2"><span class="font-semibold">2.</span> Sort by date and pick the most recent <code class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-xs">.dmp</code> file.</li>
+      <li class="flex gap-2"><span class="font-semibold">3.</span> Upload it below.</li>
+    </ol>
+    <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">
+      If that folder is empty, enable crash dumps: press Windows key plus R, type
+      <code class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-xs">sysdm.cpl</code>,
+      go to Advanced &gt; Startup and Recovery &gt; Settings, and set
+      <em>Write debugging information to</em> to <em>Small memory dump</em>.
+    </p>
+  </div>
+
+  {% if analysis_error %}
+  <p class="mt-6 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-sm text-red-800 dark:text-red-200" role="alert">
+    {{ analysis_error }}
+  </p>
+  {% endif %}
+
+  <form action="/bsod/analyze" method="post" enctype="multipart/form-data" class="mt-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6" aria-labelledby="upload-heading">
+    <h2 id="upload-heading" class="font-semibold text-slate-900 dark:text-white">Upload a dump file</h2>
+
+    <div class="mt-4">
+      <label for="dump-file" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Dump file (.dmp)</label>
+      <input id="dump-file" type="file" name="dump_file" accept=".dmp" required
+             aria-describedby="dump-constraints"
+             class="mt-1.5 block w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700">
+      <p id="dump-constraints" class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        Maximum {{ max_upload_mb }} MB. We accept the PMDMP, PAGEDU and PAGE signatures that Windows writes.
+      </p>
+      <p id="dump-info" class="mt-2 text-sm text-slate-600 dark:text-slate-400" role="status" aria-live="polite"></p>
+    </div>
+
+    <button type="submit" class="mt-5 rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+      Analyze
+    </button>
+  </form>
+
+  <div class="mt-6 rounded-xl border-l-4 border-brand-500 bg-brand-50 dark:bg-brand-950 p-5">
+    <h2 class="font-semibold text-brand-900 dark:text-brand-200">How your file is handled</h2>
+    <ul class="mt-2.5 space-y-1.5 text-sm text-brand-900 dark:text-brand-100">
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Parsed in memory only. It is never written to disk and never stored.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Nothing inside the file is executed. A dump is data, not a program.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>The header signature is checked before any parser sees the file.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Only metadata about the upload is recorded, so administrators can see abuse.</span></li>
+      <li class="flex gap-2"><span aria-hidden="true">&bull;</span> <span>Dump files can contain fragments of your filenames, so treat yours as private.</span></li>
+    </ul>
+  </div>
+
+  <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
+    Prefer to do it yourself? Open the file in Microsoft's WinDbg and run
+    <code class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-xs">!analyze -v</code>.
+  </p>
+</div>
+{% endblock %}

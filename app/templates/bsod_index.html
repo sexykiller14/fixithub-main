@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}BSOD stop code lookup - {{ site_name }}{% endblock %}
+{% block description %}Look up {{ counts.stop_codes }} blue screen stop codes with plain-English explanations, likely causes and ordered fixes.{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+  <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Blue screen stop code lookup</h1>
+  <p class="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
+    {{ counts.stop_codes }} stop codes, each with what it actually means, the likely causes,
+    and fixes ordered from most to least likely.
+  </p>
+
+  <form action="/bsod/lookup" method="get" class="mt-6 flex flex-col gap-2 sm:flex-row" role="search">
+    <label for="bsod-search" class="sr-only">Stop code name or hex value</label>
+    <input id="bsod-search" type="search" name="q" maxlength="100" placeholder="0x0000007E, 7B, IRQL_NOT_LESS_OR_EQUAL..."
+           class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 font-mono text-sm placeholder:font-sans placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
+    <button type="submit" class="rounded-lg bg-brand-600 px-5 py-2.5 font-semibold text-white hover:bg-brand-700">Look up</button>
+  </form>
+
+  <div class="mt-4 flex flex-wrap gap-2 text-sm">
+    <a href="/bsod/analyze" class="rounded-lg bg-slate-900 dark:bg-white px-4 py-2 text-sm font-semibold text-white dark:text-slate-900 hover:bg-brand-700 dark:hover:bg-brand-300">
+      Analyze my .dmp file
+    </a>
+    <span class="self-center text-slate-500 dark:text-slate-400">
+      Upload a minidump and we will extract the bugcheck code and its parameters.
+    </span>
+  </div>
+
+  <div class="mt-8 flex flex-wrap items-center gap-2">
+    <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Jump to:</span>
+    {% for letter in letters %}
+    <a href="#letter-{{ letter }}" class="rounded-md bg-white dark:bg-slate-800 px-2.5 py-1 font-mono text-sm text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-brand-400">{{ letter }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-6 space-y-10">
+    {% for letter in letters %}
+    <section aria-labelledby="letter-{{ letter }}">
+      <h2 id="letter-{{ letter }}" class="text-lg font-bold text-slate-900 dark:text-white">{{ letter }}</h2>
+      <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+        {% for code in stop_codes if code.name.startswith(letter) %}
+        <li>
+          <a href="/bsod/{{ code.name }}" class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-brand-400 dark:hover:border-brand-500 transition">
+            <span class="min-w-0">
+              <span class="block truncate font-mono text-sm font-semibold text-slate-900 dark:text-white">{{ code.name }}</span>
+              <span class="block font-mono text-xs text-slate-400">{{ code.code_hex }}</span>
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
