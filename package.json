@@ -1,0 +1,16 @@
+{
+  "name": "fixithub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser audit tooling for FixIT Hub. The site itself is Python; this exists only to drive Lighthouse and headless Chrome against a running instance.",
+  "type": "module",
+  "scripts": {
+    "audit:measure": "node scripts/measure.mjs",
+    "audit:shots": "node scripts/shoot.mjs",
+    "audit:lighthouse": "node scripts/lighthouse.mjs"
+  },
+  "dependencies": {
+    "lighthouse": "^13.5.0",
+    "puppeteer-core": "^25.12.0"
+  }
+}

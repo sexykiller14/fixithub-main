@@ -38,6 +38,17 @@ _tmp_*.txt
 *.log
 *.err
 
+# Node tooling used only for the browser audits: Lighthouse runs, screenshots
+# from scripts/shoot.mjs, and the DOM measurement output from scripts/measure.mjs.
+# 130 MB of dependencies and 3 MB of generated images, none of it source.
+node_modules/
+.screenshots/
+.lighthouse/
+
+# Lighthouse writes a temporary profile per run and leaves it behind on a
+# failed run.
+.lighthouse-tmp-*
+
 # Environment overrides for docker-compose
 .env
 
