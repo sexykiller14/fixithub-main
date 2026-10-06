@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -551,6 +552,70 @@ def test_csp_allows_tailwind_but_blocks_frames(client):
 
 def test_canonical_url_present(client):
     assert 'rel="canonical"' in client.get("/about").text
+
+
+def test_canonical_and_og_url_are_well_formed(client):
+    """canonical_url must be a path, never an absolute URL.
+
+    base.html builds both tags as site_url + canonical_url. When the view
+    layer passed an already-absolute request.url the two concatenated into
+    "http://localhost:8000http://testserver/about", which Lighthouse scored
+    as a canonical failure on every single page. Assert the value, not just
+    the attribute - the previous version of this test passed on the broken
+    output.
+    """
+    from app.config import SITE_URL
+
+    for path in ("/", "/about", "/articles", "/bsod"):
+        body = client.get(path).text
+        expected = f"{SITE_URL}{path}" if path != "/" else f"{SITE_URL}/"
+
+        canonical = re.search(r'<link rel="canonical" href="([^"]+)"', body)
+        assert canonical, f"no canonical on {path}"
+        assert canonical.group(1) == expected, f"{path}: {canonical.group(1)}"
+
+        og = re.search(r'<meta property="og:url" content="([^"]+)"', body)
+        assert og, f"no og:url on {path}"
+        assert og.group(1) == expected, f"{path}: {og.group(1)}"
+
+        # A doubled scheme is the exact signature of the old bug.
+        assert "http://http" not in body
+
+
+def test_every_public_page_has_a_meta_description(client):
+    """No page may ship an empty meta description.
+
+    seo_description was assigned "" whenever no admin override existed, and
+    Jinja's default() only falls back on undefined, never on empty - so the
+    homepage and every wizard step rendered content="". base.html now
+    resolves the chain with `or`.
+    """
+    paths = [
+        "/",
+        "/articles",
+        "/about",
+        "/privacy",
+        "/wizards",
+        "/wizards/no-internet",
+        "/tools",
+        "/tools/dns",
+        "/drivers",
+        "/hardware",
+        "/apps",
+        "/scripts",
+        "/bsod",
+        "/bsod/MEMORY_MANAGEMENT",
+        "/search?q=wifi",
+    ]
+    for path in paths:
+        body = client.get(path).text
+        m = re.search(r'<meta name="description" content="([^"]*)"', body)
+        assert m, f"no meta description tag on {path}"
+        desc = m.group(1).strip()
+        # Non-empty is the actual requirement. The bound is only there to
+        # catch an accidentally-truncated fallback; per-page descriptions
+        # like the search page's legitimately run shorter.
+        assert len(desc) >= 30, f"{path}: meta description too short ({len(desc)}): {desc!r}"
 
 
 def test_json_ld_on_article(client):

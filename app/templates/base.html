@@ -1,22 +1,31 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
+  {# Resolved once, explicitly, because the chain used to be
+     `seo_description | default(og_description, site_description)`.
+     Jinja's default() takes exactly one fallback - the second value was
+     being read as its boolean flag - and default() only falls back on
+     undefined, never on an empty string. Both of those together shipped an
+     empty meta description on every page without a per-page og_description.
+     `or` treats "", None and undefined alike, which is what was wanted. #}
+  {% set meta_description = seo_description or og_description or site_description %}
+  {% set meta_title = seo_title or og_title or site_name %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ site_name }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}{{ seo_description | default(og_description, site_description) }}{% endblock %}">
+  <title>{% block title %}{{ meta_title }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ meta_description }}{% endblock %}">
   <meta name="author" content="{{ site_author }}">
   <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
   {% if canonical_url %}<link rel="canonical" href="{{ site_url }}{{ canonical_url }}">{% endif %}
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:site_name" content="{{ site_name }}">
-  <meta property="og:title" content="{{ seo_title | default(og_title, site_name) }}">
-  <meta property="og:description" content="{{ seo_description | default(og_description, site_description) }}">
+  <meta property="og:title" content="{{ meta_title }}">
+  <meta property="og:description" content="{{ meta_description }}">
   {% if seo_image %}<meta property="og:image" content="{{ seo_image }}">{% endif %}
   <meta property="og:url" content="{{ site_url }}{{ canonical_url }}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ seo_title | default(og_title, site_name) }}">
-  <meta name="twitter:description" content="{{ seo_description | default(og_description, site_description) }}">
+  <meta name="twitter:title" content="{{ meta_title }}">
+  <meta name="twitter:description" content="{{ meta_description }}">
   <meta name="theme-color" content="#0f172a">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 

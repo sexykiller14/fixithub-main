@@ -195,6 +195,25 @@ async function main() {
         failedRequests.push(`${r.failure()?.errorText} ${r.url().slice(0, 80)}`)
       );
 
+      /* Subresource failures only.
+       *
+       * Chrome logs the *main document's own* 404 as a console error
+       * ("Failed to load resource: the server responded with a status of
+       * 404"), so visiting the 404 page looks like a broken asset when
+       * nothing is broken at all. Checking responses instead of console text
+       * distinguishes the two: the document's status is expected, a
+       * stylesheet or script 404 is not. */
+      const badSubresources = [];
+      page.on('response', (res) => {
+        const status = res.status();
+        if (status < 400) return;
+        const type = res.request().resourceType();
+        if (type === 'document' && res.url().replace(/\/$/, '') === `${BASE}${PAGES[name]}`.replace(/\/$/, '')) {
+          return; // the page itself, which is expected to 404
+        }
+        badSubresources.push(`${status} ${type} ${res.url().slice(0, 90)}`);
+      });
+
       await page.goto(`${BASE}${PAGES[name]}`, { waitUntil: 'networkidle2', timeout: 45000 });
       // Let the Tailwind CDN compile and JS settle.
       await new Promise((r) => setTimeout(r, 1200));
@@ -211,6 +230,7 @@ async function main() {
       if (!result.canonical) flags.push('no-canonical');
       if (!result.lang) flags.push('no-lang');
       if (consoleErrors.length) flags.push(`console=${consoleErrors.length}`);
+      if (badSubresources.length) flags.push(`bad-asset=${badSubresources.length}`);
       if (failedRequests.length) flags.push(`failed-req=${failedRequests.length}`);
 
       if (flags.length) problems += 1;
@@ -224,6 +244,7 @@ async function main() {
           console.log(`     small tap: <${t.tag}> ${t.w}x${t.h} "${t.text}"`);
         for (const c of consoleErrors.slice(0, 3)) console.log(`     console: ${c}`);
         for (const f of failedRequests.slice(0, 3)) console.log(`     request: ${f}`);
+        for (const b of badSubresources.slice(0, 3)) console.log(`     asset: ${b}`);
       }
 
       await page.close();

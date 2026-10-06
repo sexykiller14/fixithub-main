@@ -54,7 +54,12 @@ def render(
     """Render a template with the shared context merged in."""
     merged = {**BASE_CONTEXT, **(context or {})}
     merged.setdefault("request", request)
-    merged.setdefault("canonical_url", str(request.url).split("?")[0])
+    # A path, not a URL. base.html builds the absolute canonical and og:url
+    # from site_url plus this, and it used to prefix an already-absolute
+    # request.url to it - producing
+    # "http://localhost:8000http://127.0.0.1:8000/". Lighthouse scored
+    # canonical 0 on every page because of it.
+    merged.setdefault("canonical_url", request.url.path)
     merged.setdefault("current_path", request.url.path)
 
     # Ads are injected by the base template. The flag is off on admin pages,
@@ -119,7 +124,13 @@ def render(
         pass
 
     merged["seo_title"] = seo_override.title if seo_override and seo_override.title else ""
-    merged["seo_description"] = seo_override.description if seo_override and seo_override.description else ""
+    # None when there is no override, so base.html's `or` chain falls through
+    # to og_description and then SITE_DESCRIPTION. Assigning "" here instead
+    # is what made the homepage ship an empty meta description - a falsy
+    # string is indistinguishable from "no description" to the template.
+    merged["seo_description"] = (
+        seo_override.description if seo_override and seo_override.description else None
+    )
     merged["seo_image"] = seo_override.og_image if seo_override else ""
     merged["seo_sitemap_priority"] = seo_override.sitemap_priority if seo_override else ""
     merged["seo_sitemap_changefreq"] = seo_override.sitemap_changefreq if seo_override else ""

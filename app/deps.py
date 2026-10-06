@@ -40,7 +40,7 @@ def build_context(request: Request, db: Session, **extra) -> dict:
         "site_description": SITE_DESCRIPTION,
         "site_author": SITE_AUTHOR,
         "site_url": SITE_URL,
-        "canonical_url": str(request.url).split("?")[0],
+        "canonical_url": request.url.path,
         "categories": categories,
         "category_names": {key: value["name"] for key, value in categories.items()},
         "difficulty_labels": DIFFICULTY_LABELS,

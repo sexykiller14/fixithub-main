@@ -244,7 +244,7 @@ def install_handlers(app: FastAPI) -> None:
         context: dict = {
             "site_name": SITE_NAME,
             "site_description": SITE_DESCRIPTION,
-            "canonical_url": str(request.url).split("?")[0],
+            "canonical_url": request.url.path,
             "categories": {},
             "category_names": {},
             "difficulty_labels": {},
@@ -277,7 +277,7 @@ def install_handlers(app: FastAPI) -> None:
         context = {
             "site_name": SITE_NAME,
             "site_description": SITE_DESCRIPTION,
-            "canonical_url": str(request.url).split("?")[0],
+            "canonical_url": request.url.path,
             "categories": {},
             "category_names": {},
             "difficulty_labels": {},
@@ -305,7 +305,7 @@ def install_handlers(app: FastAPI) -> None:
                 {
                     "site_name": SITE_NAME,
                     "site_description": SITE_DESCRIPTION,
-                    "canonical_url": str(request.url).split("?")[0],
+                    "canonical_url": request.url.path,
                     "categories": {},
                     "category_names": {},
                     "difficulty_labels": {},
