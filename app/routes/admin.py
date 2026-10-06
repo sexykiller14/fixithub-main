@@ -35,6 +35,7 @@ from ..models import (
     User,
 )
 from ..services import apps
+from ..services import audit, totp
 from ..services.apps import (
     ALLOWED_IMAGE_SUFFIXES,
     ALLOWED_SUFFIXES,
@@ -185,6 +186,32 @@ def _pending_counts(db: Session) -> dict:
 
 LOGIN_CSRF_COOKIE = "fixithub_login_csrf"
 
+# Held between the password step and the second-factor step. Signed, so it
+# cannot be forged, and short-lived, so an abandoned login cannot be resumed
+# hours later. It carries no secrets: just which step has been completed and
+# when.
+PENDING_2FA_COOKIE = "fixithub_2fa_pending"
+PENDING_2FA_MAX_AGE = 300  # 5 minutes to type a 6-digit code
+
+
+def _mint_2fa_pending() -> str:
+    from ..security import _serialiser
+
+    return _serialiser.dumps({"stage": "2fa"}, salt="fixithub-2fa-pending")
+
+
+def _has_valid_2fa_pending(request: Request) -> bool:
+    from ..security import _serialiser
+
+    cookie = request.cookies.get(PENDING_2FA_COOKIE)
+    if not cookie:
+        return False
+    try:
+        data = _serialiser.loads(cookie, salt="fixithub-2fa-pending", max_age=PENDING_2FA_MAX_AGE)
+    except Exception:  # noqa: BLE001 - expired or forged
+        return False
+    return isinstance(data, dict) and data.get("stage") == "2fa"
+
 
 def _mint_login_csrf() -> str:
     """Create a signed, short-lived CSRF token for the login form.
@@ -303,14 +330,150 @@ def admin_login_post(
 
     if not verify_password(password, stored):
         record_login_failure(identifier)
+        audit.record(
+            db,
+            "auth.login_failed",
+            ip_hash=audit.hash_ip(identifier),
+            detail=f"password rejected for {identifier}",
+            commit=False,
+        )
+        db.commit()
         return back("", "Incorrect password.", code=401)
 
     clear_login_failures(identifier)
+
+    # Second factor, if one is enrolled. The password has already been checked
+    # at this point, so the pending cookie is only ever set after a correct
+    # password - it is the "half authenticated" state, not a bypass.
+    if _two_factor_required():
+        response = RedirectResponse("/admin/login/2fa", status_code=303)
+        response.set_cookie(
+            PENDING_2FA_COOKIE,
+            _mint_2fa_pending(),
+            max_age=PENDING_2FA_MAX_AGE,
+            httponly=True,
+            secure=settings.secure_cookies,
+            samesite="lax",
+            path="/",
+        )
+        response.delete_cookie(LOGIN_CSRF_COOKIE, path="/")
+        return response
+
+    return _complete_login(request, db, identifier)
+
+
+def _two_factor_required() -> bool:
+    """Whether the admin must supply a second factor to sign in."""
+    if settings.disable_2fa:
+        return False
+    return totp.is_enrolled()
+
+
+def _complete_login(request: Request, db: Session, identifier: str):
+    """Issue the session cookie and record the sign-in."""
     token = create_session_token()
     response = RedirectResponse("/admin/dashboard", status_code=303)
     set_session_cookie(response, token)
     response.delete_cookie(LOGIN_CSRF_COOKIE, path="/")
+    response.delete_cookie(PENDING_2FA_COOKIE, path="/")
+    audit.record(
+        db,
+        "auth.login",
+        ip_hash=audit.hash_ip(identifier),
+        detail=f"signed in from {identifier}",
+    )
     return response
+
+
+@router.get("/admin/login/2fa", name="admin_login_2fa")
+def admin_login_2fa(request: Request, db: Session = Depends(get_db)):
+    """The second step of a two-factor sign-in."""
+    if is_authenticated(request):
+        return RedirectResponse("/admin/dashboard", status_code=303)
+    if not _has_valid_2fa_pending(request):
+        return RedirectResponse("/admin", status_code=303)
+
+    context = admin_context(
+        request,
+        db,
+        login_error="",
+        need_2fa=True,
+        recovery_left=totp.remaining_recovery_codes(),
+        login_csrf=_mint_login_csrf(),
+    )
+    response = render(request, "admin_login_2fa.html", context)
+    _set_login_csrf_cookie(response, context["login_csrf"])
+    return response
+
+
+@router.post("/admin/login/2fa", name="admin_login_2fa_post")
+def admin_login_2fa_post(
+    request: Request,
+    code: str = Form("", max_length=32),
+    csrf: str = Form("", max_length=400),
+    db: Session = Depends(get_db),
+):
+    if is_authenticated(request):
+        return RedirectResponse("/admin/dashboard", status_code=303)
+    if not _has_valid_2fa_pending(request):
+        return RedirectResponse("/admin", status_code=303)
+
+    identifier = client_ip(request)
+
+    def back(message: str, code_status: int = 401):
+        fresh = _mint_login_csrf()
+        response = render(
+            request,
+            "admin_login_2fa.html",
+            admin_context(
+                request,
+                db,
+                login_error=message,
+                need_2fa=True,
+                recovery_left=totp.remaining_recovery_codes(),
+                login_csrf=fresh,
+            ),
+            status_code=code_status,
+        )
+        _set_login_csrf_cookie(response, fresh)
+        return response
+
+    # The pending cookie is only set after a correct password, but a bad code is
+    # still a guess, so it is throttled on the same counter as the password.
+    locked, retry_after = login_locked_out(identifier)
+    if locked:
+        return back(f"Too many attempts. Try again in {retry_after} seconds.", code_status=429)
+
+    if not _login_csrf_valid(request, csrf):
+        return back("Your form expired. Please try again.", code_status=400)
+
+    secret = totp._load().get("secret", "")
+    if not secret:
+        return RedirectResponse("/admin", status_code=303)
+
+    if totp.verify(secret, code):
+        clear_login_failures(identifier)
+        return _complete_login(request, db, identifier)
+
+    if totp.consume_recovery_code(code):
+        clear_login_failures(identifier)
+        response = _complete_login(request, db, identifier)
+        audit.record(
+            db,
+            "auth.2fa.recovery_used",
+            ip_hash=audit.hash_ip(identifier),
+            detail=f"recovery code used, {totp.remaining_recovery_codes()} left",
+        )
+        return response
+
+    record_login_failure(identifier)
+    audit.record(
+        db,
+        "auth.login_failed",
+        ip_hash=audit.hash_ip(identifier),
+        detail=f"second factor rejected for {identifier}",
+    )
+    return back("That code is not valid.", code_status=401)
 
 
 @router.get("/admin/reissue-csrf", name="admin_reissue_csrf")
@@ -456,13 +619,23 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/admin/logout", name="admin_logout")
-def admin_logout(request: Request, csrf: str = Form("", max_length=200)):
+def admin_logout(
+    request: Request,
+    csrf: str = Form("", max_length=200),
+    db: Session = Depends(get_db),
+):
     # Every other mutating admin route checks the session first. Logging out
     # does not need it, since the CSRF token is derived from the very cookie
     # being cleared and an unauthenticated caller has none to present, but the
     # check is here so this route is not the one exception to the pattern.
     if not require_auth(request) or not guard_csrf(request, csrf):
         return RedirectResponse("/admin", status_code=303)
+    audit.record(
+        db,
+        "auth.logout",
+        ip_hash=audit.hash_ip(client_ip(request)),
+        detail=f"signed out from {client_ip(request)}",
+    )
     response = RedirectResponse("/admin", status_code=303)
     clear_session_cookie(response)
     return response
@@ -548,6 +721,12 @@ def admin_ads_settings(
     except ValueError as exc:
         return RedirectResponse(f"/admin/ads?error={str(exc)}", status_code=303)
 
+    audit.record(
+        db,
+        "ad.settings",
+        detail=f"enabled={clean['enabled']}, publisher_id set={bool(clean['publisher_id'])}",
+        commit=False,
+    )
     row.enabled = clean["enabled"]
     row.publisher_id = clean["publisher_id"]
     row.auto_ads = clean["auto_ads"]
@@ -609,6 +788,15 @@ def admin_ads_unit_save(
 
     for key, value in clean.items():
         setattr(row, key, value)
+    audit.record(
+        db,
+        "ad.unit.save",
+        target_type="adunit",
+        target_id=row.id,
+        detail=f"slot {clean['slot_id']}, placement {clean['placement']}, show_on {clean['show_on']}",
+        ip_hash=audit.hash_ip(client_ip(request)),
+        commit=False,
+    )
     db.commit()
 
     return RedirectResponse("/admin/ads?unit_saved=1", status_code=303)
@@ -631,6 +819,15 @@ def admin_ads_unit_toggle(
     row = db.get(AdUnit, unit_id)
     if row is not None:
         row.enabled = not row.enabled
+        audit.record(
+            db,
+            "ad.unit.toggle",
+            target_type="adunit",
+            target_id=unit_id,
+            detail=f"slot {row.slot_id} turned {'on' if row.enabled else 'off'}",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
     return RedirectResponse("/admin/ads", status_code=303)
 
@@ -651,7 +848,17 @@ def admin_ads_unit_delete(
 
     row = db.get(AdUnit, unit_id)
     if row is not None:
+        slot = row.slot_id
         db.delete(row)
+        audit.record(
+            db,
+            "ad.unit.delete",
+            target_type="adunit",
+            target_id=unit_id,
+            detail=f"slot {slot} removed",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
     return RedirectResponse("/admin/ads", status_code=303)
 
@@ -741,6 +948,7 @@ def admin_seo_save(
     site_row.default_changefreq = default_changefreq.strip() or "monthly"
     site_row.default_priority = default_priority.strip() or "0.5"
 
+    audit.record(db, "seo.save", target_type="path", target_id=row.path, detail="override written", commit=False)
     db.commit()
     return RedirectResponse("/admin/seo?saved=1", status_code=303)
 
@@ -761,7 +969,16 @@ def admin_seo_delete(
 
     row = db.get(SeoOverride, override_id)
     if row is not None:
+        path = row.path
         db.delete(row)
+        audit.record(
+            db,
+            "seo.delete",
+            target_type="path",
+            target_id=path,
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
     return RedirectResponse("/admin/seo", status_code=303)
 
@@ -833,6 +1050,14 @@ def admin_announcement_save(
     row.body = body.strip()
     row.link_url = link_url
     row.enabled = bool(enabled)
+    audit.record(
+        db,
+        "announcement.save",
+        target_type="banner",
+        target_id=row.id,
+        detail=f"enabled={bool(enabled)}",
+        commit=False,
+    )
     db.commit()
     return RedirectResponse("/admin/announcement?saved=1", status_code=303)
 
@@ -875,6 +1100,14 @@ def admin_backup(request: Request, db: Session = Depends(get_db)):
             zf.writestr("admin.json", admin_json.read_bytes())
 
     buf.seek(0)
+    # Recorded because a backup that leaves the machine is a copy of the admin
+    # password hash and every reader address in one file.
+    audit.record(
+        db,
+        "backup.created",
+        detail="database and admin.json written to a zip",
+        ip_hash=audit.hash_ip(client_ip(request)),
+    )
     headers = {"Content-Disposition": f'attachment; filename="fixithub-backup-{datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")}.zip"'}
     return Response(buf.getvalue(), media_type="application/zip", headers=headers)
 
@@ -961,6 +1194,9 @@ def admin_restore(
     tmp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     tmp_db.close()
     tmp_path = Path(tmp_db.name)
+    # The session is about to be invalidated: the restored database carries its
+    # own password_changed_at history, so this connection's cookie may stop
+    # verifying. Written with a short-lived separate session for that reason.
     try:
         with open(tmp_path, "wb") as out:
             out.write(zf.read("fixithub.db"))
@@ -978,6 +1214,8 @@ def admin_restore(
         log.exception("Restore failed")
         return _forbidden(request, db, f"Restore failed: {exc}")
 
+    _record_after_restore(request, snapshot.name)
+
     return render(
         request,
         "admin_restore_done.html",
@@ -988,6 +1226,27 @@ def admin_restore(
             snapshot_download=f"/admin/restore/snapshot/{snapshot_dir.name}",
         ),
     )
+
+
+def _record_after_restore(request: Request, snapshot_name: str) -> None:
+    """Write the audit row for a completed restore.
+
+    On a fresh session rather than the request's: the restore has just replaced
+    the database file, so the request's session and identity map may be stale,
+    and the failure that would cause must not be able to lose the audit trail.
+    """
+    from ..db import SessionLocal
+
+    try:
+        with SessionLocal() as fresh:
+            audit.record(
+                fresh,
+                "restore.performed",
+                detail=f"database replaced; pre-restore snapshot {snapshot_name}",
+                ip_hash=audit.hash_ip(client_ip(request)),
+            )
+    except Exception:  # noqa: BLE001 - never fail a restore over a log row
+        log.exception("Could not write the restore audit row")
 
 
 @router.get("/admin/restore/snapshot/{directory}", name="admin_restore_snapshot")
@@ -1220,6 +1479,14 @@ def admin_change_password_post(
 
     # The old cookies are now invalid. Issue a fresh one so the admin who made
     # the change stays signed in and everyone else is signed out.
+    audit.record(
+        db,
+        "password.changed",
+        detail=f"password rotated at {int(changed_at)}; other sessions invalidated",
+        ip_hash=audit.hash_ip(client_ip(request)),
+        commit=False,
+    )
+    db.commit()
     response = RedirectResponse("/admin/change-password?notice=changed", status_code=303)
     set_session_cookie(response, create_session_token())
     return response
@@ -1431,6 +1698,15 @@ def admin_article_save(
     existing.reading_time = rendered.reading_time
     existing.source_path = reloaded.source_path
     existing.status = "draft" if reloaded.draft else "published"
+    audit.record(
+        db,
+        "article.save",
+        target_type="article",
+        target_id=clean_slug,
+        detail=f"title: {reloaded.title}",
+        ip_hash=audit.hash_ip(client_ip(request)),
+        commit=False,
+    )
     db.commit()
 
     _index_after_write(db)
@@ -1451,9 +1727,19 @@ def admin_article_delete(
 
     article = db.scalar(select(Article).where(Article.slug == slug))
     if article is not None:
+        title = article.title
         # Per-day view rows reference the article, so clear them first.
         db.execute(delete(ArticleView).where(ArticleView.article_id == article.id))
         db.delete(article)
+        audit.record(
+            db,
+            "article.delete",
+            target_type="article",
+            target_id=slug,
+            detail=f"removed '{title}' and its markdown file",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     path = _article_path(slug)
@@ -1641,6 +1927,15 @@ def admin_stop_code_save(
     record.related_slugs = [
         s.strip() for s in re.split(r"[,;\s]+", related_slugs or "") if s.strip()
     ][:10]
+    audit.record(
+        db,
+        "stopcode.save",
+        target_type="stopcode",
+        target_id=clean_name,
+        detail=f"hex {record.code_hex}, {record.difficulty}",
+        ip_hash=audit.hash_ip(client_ip(request)),
+        commit=False,
+    )
     db.commit()
 
     return RedirectResponse(f"/admin/stop-codes?saved={clean_name}", status_code=303)
@@ -1662,10 +1957,221 @@ def admin_stop_code_delete(
 
     code = db.scalar(select(StopCode).where(func.upper(StopCode.name) == normalise_query(name)))
     if code is not None:
+        label = code.name
         db.delete(code)
+        audit.record(
+            db,
+            "stopcode.delete",
+            target_type="stopcode",
+            target_id=label,
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/stop-codes?deleted=1", status_code=303)
+
+
+# ------------------------------------------------------------ two-factor
+
+# The secret under enrolment is held in a signed cookie rather than on disk, so
+# an abandoned setup leaves nothing behind and a half-finished enrolment cannot
+# lock the admin out.
+PENDING_SECRET_COOKIE = "fixithub_2fa_secret"
+PENDING_SECRET_MAX_AGE = 900  # 15 minutes to scan and type a code
+
+
+def _mint_pending_secret(secret: str) -> str:
+    from ..security import _serialiser
+
+    return _serialiser.dumps({"secret": secret}, salt="fixithub-2fa-secret")
+
+
+def _read_pending_secret(request: Request) -> str:
+    from ..security import _serialiser
+
+    cookie = request.cookies.get(PENDING_SECRET_COOKIE)
+    if not cookie:
+        return ""
+    try:
+        data = _serialiser.loads(
+            cookie, salt="fixithub-2fa-secret", max_age=PENDING_SECRET_MAX_AGE
+        )
+    except Exception:  # noqa: BLE001 - expired or forged
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    return str(data.get("secret") or "")
+
+
+@router.get("/admin/two-factor", name="admin_two_factor")
+def admin_two_factor(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+
+    pending = _read_pending_secret(request)
+    enrolled_at = ""
+    if totp.is_enrolled():
+        enrolled_at = datetime.fromtimestamp(
+            totp._load().get("enabled_at") or 0, tz=timezone.utc
+        ).strftime("%Y-%m-%d %H:%M UTC")
+
+    return render(
+        request,
+        "admin_two_factor.html",
+        admin_context(
+            request,
+            db,
+            enrolled=totp.is_enrolled(),
+            enrolled_at=enrolled_at,
+            recovery_left=totp.remaining_recovery_codes(),
+            pending_secret=pending,
+            pending_uri=totp.provisioning_uri(pending) if pending else "",
+            disabled_by_env=settings.disable_2fa,
+            new_codes=request.query_params.get("codes", "").split(",") if request.query_params.get("codes") else [],
+        ),
+    )
+
+
+@router.post("/admin/two-factor/start", name="admin_two_factor_start")
+def admin_two_factor_start(request: Request, csrf: str = Form("", max_length=200), db: Session = Depends(get_db)):
+    """Mint a secret and show it. Nothing is stored until it is confirmed."""
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+    if not guard_csrf(request, csrf):
+        return _forbidden(request, db, "Your session expired.")
+
+    secret = totp.generate_secret()
+    audit.record(db, "auth.2fa.enrol", detail="enrolment started")
+    response = RedirectResponse("/admin/two-factor", status_code=303)
+    response.set_cookie(
+        PENDING_SECRET_COOKIE,
+        _mint_pending_secret(secret),
+        max_age=PENDING_SECRET_MAX_AGE,
+        httponly=True,
+        secure=settings.secure_cookies,
+        samesite="lax",
+        path="/",
+    )
+    return response
+
+
+@router.post("/admin/two-factor/confirm", name="admin_two_factor_confirm")
+def admin_two_factor_confirm(
+    request: Request,
+    secret: str = Form("", max_length=64),
+    code: str = Form("", max_length=6),
+    csrf: str = Form("", max_length=200),
+    db: Session = Depends(get_db),
+):
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+    if not guard_csrf(request, csrf):
+        return _forbidden(request, db, "Your session expired.")
+
+    # The posted secret is ignored in favour of the signed cookie, so a
+    # tampered form field cannot enrol a secret of the attacker's choosing.
+    pending = _read_pending_secret(request)
+    if not pending:
+        return _forbidden(request, db, "That setup link expired. Start again.")
+
+    if not totp.verify(pending, code):
+        return _forbidden(request, db, "That code did not match. Check your app and try again.")
+
+    codes = totp.generate_recovery_codes()
+    totp.save(pending, codes)
+    audit.record(db, "auth.2fa.enabled", detail=f"{len(codes)} recovery codes issued")
+
+    response = RedirectResponse(
+        f"/admin/two-factor?codes={','.join(codes)}",
+        status_code=303,
+    )
+    response.delete_cookie(PENDING_SECRET_COOKIE, path="/")
+    return response
+
+
+@router.post("/admin/two-factor/discard", name="admin_two_factor_discard")
+def admin_two_factor_discard(request: Request, csrf: str = Form("", max_length=200), db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+    if not guard_csrf(request, csrf):
+        return _forbidden(request, db, "Your session expired.")
+
+    response = RedirectResponse("/admin/two-factor", status_code=303)
+    response.delete_cookie(PENDING_SECRET_COOKIE, path="/")
+    return response
+
+
+@router.post("/admin/two-factor/disable", name="admin_two_factor_disable")
+def admin_two_factor_disable(
+    request: Request,
+    password: str = Form("", max_length=200),
+    csrf: str = Form("", max_length=200),
+    db: Session = Depends(get_db),
+):
+    """Turn the second factor off. Requires the password again.
+
+    An authenticated session alone is not enough: this is the one control that
+    weakens authentication, so a stolen session cookie should not be able to
+    use it without also knowing the password.
+    """
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+    if not guard_csrf(request, csrf):
+        return _forbidden(request, db, "Your session expired.")
+
+    stored = load_admin_hash()
+    if not verify_password(password, stored):
+        limited = enforce(request, password_limiter, prefix="disable-2fa")
+        if limited is not None:
+            return limited
+        return _forbidden(request, db, "That password is not correct.")
+
+    totp.clear()
+    audit.record(db, "auth.2fa.disabled", detail="two-factor turned off by the admin")
+    response = RedirectResponse("/admin/two-factor", status_code=303)
+    response.delete_cookie(PENDING_SECRET_COOKIE, path="/")
+    return response
+
+
+@router.post("/admin/two-factor/recovery-codes", name="admin_two_factor_recovery_codes")
+def admin_two_factor_recovery_codes(
+    request: Request, csrf: str = Form("", max_length=200), db: Session = Depends(get_db)
+):
+    """Replace the recovery codes. The secret is unchanged."""
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+    if not guard_csrf(request, csrf):
+        return _forbidden(request, db, "Your session expired.")
+
+    secret = totp._load().get("secret", "")
+    if not secret:
+        return _forbidden(request, db, "Two-factor is not set up.")
+
+    codes = totp.generate_recovery_codes()
+    totp.save(secret, codes)
+    audit.record(db, "auth.2fa.enrol", detail=f"{len(codes)} replacement recovery codes issued")
+    return RedirectResponse(f"/admin/two-factor?codes={','.join(codes)}", status_code=303)
+
+
+# ---------------------------------------------------------------- audit log
+
+
+@router.get("/admin/audit", name="admin_audit")
+def admin_audit(request: Request, action: str = "", db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/admin", status_code=303)
+
+    wanted = action if action in audit.ACTIONS else ""
+    context = admin_context(
+        request,
+        db,
+        entries=audit.recent(db, limit=200, action=wanted),
+        action_counts=audit.counts_by_action(db),
+        active_action=wanted,
+        action_labels=audit.ACTIONS,
+    )
+    return render(request, "admin_audit.html", context)
 
 
 # --------------------------------------------------------- uploaded apps
@@ -1990,6 +2496,18 @@ async def admin_app_save(
 
     if record.id is None:
         db.add(record)
+    audit.record(
+        db,
+        "app.save",
+        target_type="app",
+        target_id=clean_slug,
+        detail=(
+            f"'{title.strip()}' v{record.version or '-'}, "
+            f"published={bool(is_published)}, file={'replaced' if upload else 'unchanged'}"
+        ),
+        ip_hash=audit.hash_ip(client_ip(request)),
+        commit=False,
+    )
     db.commit()
 
     _index_after_write(db)
@@ -2065,6 +2583,15 @@ def admin_comment_moderate(
         comment.status = new_status
         comment.moderated_at = datetime.now(timezone.utc)
         comment.moderated_by = session_id(request)
+        audit.record(
+            db,
+            {"approve": "comment.approve", "reject": "comment.reject"}.get(action, "comment.approve"),
+            target_type="comment",
+            target_id=comment.id,
+            detail=f"status set to {new_status}",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/comments", status_code=303)
@@ -2084,7 +2611,17 @@ def admin_comment_delete(
 
     comment = db.get(Comment, comment_id)
     if comment is not None:
+        author = comment.user.email if comment.user else "deleted user"
         db.delete(comment)
+        audit.record(
+            db,
+            "comment.delete",
+            target_type="comment",
+            target_id=comment_id,
+            detail=f"comment by {author} removed",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/comments", status_code=303)
@@ -2148,6 +2685,17 @@ def admin_question_reply(
         question.status = Question.STATUS_ANSWERED
         question.replied_at = datetime.now(timezone.utc)
         question.replied_by = session_id(request)
+        # The prompt is recorded, not the reply: an audit log is not the place
+        # to keep a second copy of what was said to a visitor.
+        audit.record(
+            db,
+            "question.reply",
+            target_type="question",
+            target_id=question_id,
+            detail=f"answered: {question.prompt[:120]}",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/questions", status_code=303)
@@ -2169,6 +2717,14 @@ def admin_question_reopen(
     question = db.get(Question, question_id)
     if question is not None:
         question.status = Question.STATUS_NEW
+        audit.record(
+            db,
+            "question.reopen",
+            target_type="question",
+            target_id=question_id,
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/questions", status_code=303)
@@ -2189,6 +2745,14 @@ def admin_question_delete(
     question = db.get(Question, question_id)
     if question is not None:
         db.delete(question)
+        audit.record(
+            db,
+            "question.delete",
+            target_type="question",
+            target_id=question_id,
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/questions", status_code=303)
@@ -2215,7 +2779,18 @@ def admin_user_delete(
     if user is not None:
         from ..services.accounts import delete_user
 
+        address = user.email
         delete_user(db, user)
+        # Recorded after the delete, because delete_user commits. The address
+        # is kept: an erasure request needs an audit note saying it happened.
+        audit.record(
+            db,
+            "user.delete",
+            target_type="user",
+            target_id=user_id,
+            detail=f"reader {address} and their comments removed",
+            ip_hash=audit.hash_ip(client_ip(request)),
+        )
 
     return RedirectResponse("/admin/comments", status_code=303)
 
@@ -2245,10 +2820,21 @@ def admin_app_delete(
 
     record = db.scalar(select(AppDownload).where(AppDownload.slug == slug.lower()))
     if record is not None:
+        title = record.title
+        downloads = record.download_count
         apps.remove_stored(record.filename)
         # Remove the screenshot too, or it is orphaned on disk forever.
         apps.remove_stored_image(record.screenshot_filename or "")
         db.delete(record)
+        audit.record(
+            db,
+            "app.delete",
+            target_type="app",
+            target_id=record.slug,
+            detail=f"removed '{title}' and its file ({downloads} downloads)",
+            ip_hash=audit.hash_ip(client_ip(request)),
+            commit=False,
+        )
         db.commit()
 
     return RedirectResponse("/admin/apps?deleted=1", status_code=303)

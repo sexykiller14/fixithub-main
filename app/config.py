@@ -327,6 +327,12 @@ class Settings:
             "FIXITHUB_SECRET_KEY", secrets.token_urlsafe(48)
         )
     )
+    # Whether FIXITHUB_SECRET_KEY was actually supplied. Tracked separately
+    # because the value itself is indistinguishable from a generated one: both
+    # are 48 random bytes, so code cannot tell "configured" from "rotating".
+    secret_key_configured: bool = field(
+        default_factory=lambda: bool(os.environ.get("FIXITHUB_SECRET_KEY"))
+    )
     admin_password_hash: str = field(
         default_factory=lambda: os.environ.get("FIXITHUB_ADMIN_PASSWORD_HASH", "")
     )
@@ -357,6 +363,13 @@ class Settings:
     max_response_bytes: int = 1_000_000
     secure_cookies: bool = field(
         default_factory=lambda: os.environ.get("FIXITHUB_SECURE_COOKIES", "0") == "1"
+    )
+    # Two-factor authentication for the admin account. Not opt-in per account
+    # but escapable: if a device is lost and every recovery code is spent,
+    # FIXITHUB_DISABLE_2FA=1 is the way back in. Turning it on does not
+    # enrol anything; the admin has to enrol deliberately.
+    disable_2fa: bool = field(
+        default_factory=lambda: os.environ.get("FIXITHUB_DISABLE_2FA", "0") == "1"
     )
     # Only enable behind a reverse proxy you control, otherwise a client could
     # spoof X-Forwarded-For and defeat the rate limiter.

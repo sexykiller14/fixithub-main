@@ -1,0 +1,74 @@
+{% extends "admin_base.html" %}
+{% block title %}Audit log - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% set admin_title = 'Audit log' %}
+{% set admin_subtitle = 'Every state-changing action taken in this panel, newest first. Reads are not recorded.' %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl">
+  {{ admin_page_header(admin_subtitle) }}
+
+  {# Filter by action. Always sends the parameter, including for the default,
+     because an empty value means "everything". #}
+  <div class="mb-4 flex flex-wrap gap-2">
+    <a href="/admin/audit"
+       class="rounded-lg border px-3 py-1.5 text-xs font-semibold {% if not active_action %}border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-blue-200{% else %}border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-200{% endif %}">
+      All
+    </a>
+    {% for name, label in action_labels.items() %}
+    {% if action_counts.get(name) %}
+    <a href="/admin/audit?action={{ name }}"
+       class="rounded-lg border px-3 py-1.5 text-xs font-semibold {% if active_action == name %}border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-blue-200{% else %}border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-200{% endif %}">
+      {{ label }}
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if entries %}
+  <div class="admin-panel">
+    <div class="admin-panel-body admin-panel-body-flush overflow-x-auto">
+      <table class="w-full min-w-[46rem] text-sm">
+        <caption class="sr-only">Admin action log</caption>
+        <thead class="bg-slate-50 dark:bg-slate-800">
+          <tr>
+            <th scope="col" class="px-4 py-2.5 text-left font-semibold text-slate-700 dark:text-slate-300">When</th>
+            <th scope="col" class="px-4 py-2.5 text-left font-semibold text-slate-700 dark:text-slate-300">Action</th>
+            <th scope="col" class="px-4 py-2.5 text-left font-semibold text-slate-700 dark:text-slate-300">Target</th>
+            <th scope="col" class="px-4 py-2.5 text-left font-semibold text-slate-700 dark:text-slate-300">Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in entries %}
+          <tr class="border-t border-slate-200 dark:border-slate-800">
+            <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-slate-600 dark:text-slate-400">
+              {{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+            </td>
+            <td class="px-4 py-2.5">
+              <span class="font-medium text-slate-900 dark:text-white">{{ action_labels.get(row.action, row.action) }}</span>
+              <span class="block font-mono text-xs text-slate-500 dark:text-slate-400">{{ row.action }}</span>
+            </td>
+            <td class="px-4 py-2.5 font-mono text-xs text-slate-600 dark:text-slate-400">
+              {% if row.target_type %}{{ row.target_type }}{% if row.target_id %} #{{ row.target_id }}{% endif %}{% else %}-{% endif %}
+            </td>
+            <td class="px-4 py-2.5 text-slate-600 dark:text-slate-400">{{ row.detail or '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <p class="admin-panel admin-panel-body text-sm text-slate-500 dark:text-slate-400">
+    Nothing recorded yet{% if active_action %} for this action{% endif %}.
+  </p>
+  {% endif %}
+
+  <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">
+    The last 200 entries are kept in the table. Addresses are stored hashed and
+    salted, never in the clear. Passwords, tokens and file contents are never
+    recorded.
+  </p>
+</div>
+{% endblock %}

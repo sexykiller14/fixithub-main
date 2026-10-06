@@ -620,6 +620,36 @@ class EmailLog(Base):
     )
 
 
+class AdminAuditLog(Base):
+    """A record of state-changing actions taken in the admin panel.
+
+    There is exactly one admin account, so "who" is always the same person.
+    What this table is actually for is *when* and *what*: if the panel is ever
+    misused, or an admin session is stolen, the sequence of changes is the only
+    way to find out what happened. Moderation rows used to record a hardcoded
+    admin id of 1, which carried no information at all.
+
+    Deliberately not a security log of reads. Only writes are recorded, because
+    a row per page view would grow without bound and nobody would read it.
+    """
+
+    __tablename__ = "admin_audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action: Mapped[str] = mapped_column(String(60), index=True)
+    target_type: Mapped[str] = mapped_column(String(40), default="", index=True)
+    target_id: Mapped[str] = mapped_column(String(120), default="")
+    # A short human summary of the change. Never the whole record and never
+    # anything secret: no passwords, tokens or file bytes.
+    detail: Mapped[str] = mapped_column(String(300), default="")
+    ip_hash: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+    __table_args__ = (Index("ix_admin_audit_action_created", "action", "created_at"),)
+
+
 class Announcement(Base):
     """A banner shown on every public page. Kept simple: one row, one banner."""
 

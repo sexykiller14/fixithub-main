@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -28,6 +29,13 @@ SECURITY_HEADERS = {
     "X-XSS-Protection": "0",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
     "Cross-Origin-Opener-Policy": "same-origin",
+}
+
+# Sent only when the deployment is actually on HTTPS. Emitting HSTS over plain
+# HTTP is meaningless at best and locks a developer out of http://localhost at
+# worst, so it is gated on the same flag as the Secure cookie.
+HSTS_HEADER = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 }
 
 CSP = (
@@ -59,7 +67,31 @@ AD_FRAME_SRC = " https://googleads.g.doubleclick.net https://tpc.googlesyndicati
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Create tables on startup so a fresh clone runs without a manual step."""
+    """Create tables on startup so a fresh clone runs without a manual step.
+
+    Also refuses to start in production with an unset FIXITHUB_SECRET_KEY. The
+    fallback is a random key per process, which looks like it works - the
+    server boots, one admin signs in - and then silently breaks: every restart
+    invalidates every session, and under multiple workers a cookie is rejected
+    by whichever worker did not sign it. Failing here is louder and cheaper
+    than an unexplained logout later.
+    """
+    if settings.secret_key_configured:
+        log.info("%s started with a configured secret key", SITE_NAME)
+    else:
+        message = (
+            "FIXITHUB_SECRET_KEY is not set. Sessions and CSRF tokens are signed "
+            "with a key generated at startup, so they do not survive a restart "
+            "and are rejected by other workers. Set FIXITHUB_SECRET_KEY to a "
+            "long random value in production."
+        )
+        # Dev must keep working without ceremony: seed.py, the tests and a
+        # first local run all rely on the generated key. Production should not
+        # boot with it.
+        if _is_production(settings):
+            raise RuntimeError(message)
+        log.warning("%s WARNING: %s", SITE_NAME, message)
+
     create_all()
     log.info("%s started (debug=%s)", SITE_NAME, settings.debug)
     yield
@@ -163,12 +195,30 @@ def _build_csp() -> str:
     return CSP
 
 
+def _is_production(settings_obj) -> bool:
+    """Whether this process should be treated as a real deployment.
+
+    Deliberately conservative, because the alternative is refusing to start a
+    developer who has not read the README. It does not trust debug mode either
+    way: a production deploy with debug accidentally off is exactly the case
+    worth catching. FIXITHUB_ENV is the explicit switch, and serving over HTTPS
+    (secure cookies on) counts as production, since nothing else does that.
+    """
+    if os.environ.get("FIXITHUB_ENV", "").strip().lower() == "production":
+        return True
+    return bool(settings_obj.secure_cookies)
+
+
 def install_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         response = await call_next(request)
         for header, value in SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
+        if settings.secure_cookies:
+            # Only over HTTPS, for the reason on HSTS_HEADER.
+            for header, value in HSTS_HEADER.items():
+                response.headers.setdefault(header, value)
         # Tailwind needs to load from its CDN, and our own CSS/JS from 'self'.
         response.headers.setdefault("Content-Security-Policy", _build_csp())
         return response

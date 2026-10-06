@@ -1,0 +1,136 @@
+{% extends "admin_base.html" %}
+{% block title %}Two-factor authentication - {{ site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% set admin_title = 'Two-factor authentication' %}
+{% set admin_subtitle = 'A one-time code from an authenticator app, required in addition to your password.' %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+
+  {% if disabled_by_env %}
+  <p class="admin-alert admin-alert-warning" role="alert">
+    This deployment sets <code class="font-mono text-xs">FIXITHUB_DISABLE_2FA=1</code>,
+    which turns the second factor off regardless of this page. Remove that
+    variable and restart for these settings to take effect.
+  </p>
+  {% endif %}
+
+  {% if enrolled %}
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2 class="admin-panel-title">Enabled</h2>
+      <span class="admin-badge">active</span>
+    </div>
+    <div class="admin-panel-body text-sm text-slate-600 dark:text-slate-400">
+      <p>
+        Enrolled since {{ enrolled_at }}. Sign-in needs your password and a code
+        from the app.
+      </p>
+      <p class="mt-3">
+        <span class="font-semibold text-slate-900 dark:text-white">{{ recovery_left }}</span>
+        recovery code{{ '' if recovery_left == 1 else 's' }} left.
+        {% if not recovery_left %}
+        <span class="text-red-600 dark:text-red-400">You have none. If you lose the device,
+        set <code class="font-mono text-xs">FIXITHUB_DISABLE_2FA=1</code> to get back in.</span>
+        {% endif %}
+      </p>
+    </div>
+  </section>
+
+  <div class="mt-4 flex flex-wrap gap-2">
+    <form action="/admin/two-factor/recovery-codes" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="admin-button-secondary">Generate new recovery codes</button>
+    </form>
+    <form action="/admin/two-factor/disable" method="post" data-confirm="Turn off two-factor authentication? Your password alone will sign you in again.">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="admin-button-danger">Turn off</button>
+    </form>
+  </div>
+
+  {% else %}
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2 class="admin-panel-title">Set up</h2>
+    </div>
+    <div class="admin-panel-body">
+      <p class="text-sm text-slate-600 dark:text-slate-400">
+        Two steps, in this order:
+      </p>
+      <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-400">
+        <li>Open your authenticator app and add a new account.</li>
+        <li>Scan the code, or type the secret shown below.</li>
+        <li>Come back and confirm with a 6-digit code.</li>
+      </ol>
+
+      {% if pending_secret %}
+      {# Shown between "start" and "confirm": the enrolment is not live yet, so
+         a half-finished setup cannot lock anyone out. #}
+      <div class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800">
+        <p class="text-sm font-semibold text-slate-900 dark:text-white">
+          Scan this, or enter the secret by hand
+        </p>
+        <p class="mt-3 break-all font-mono text-lg tracking-wider text-slate-900 dark:text-white">
+          {{ pending_secret }}
+        </p>
+        <p class="mt-3 break-all font-mono text-xs text-slate-500 dark:text-slate-400">
+          {{ pending_uri }}
+        </p>
+      </div>
+
+      <form action="/admin/two-factor/confirm" method="post" class="mt-6 space-y-4">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="secret" value="{{ pending_secret }}">
+        <div>
+          <label for="confirm-code" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Code from the app
+          </label>
+          <input id="confirm-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="6" required autofocus
+                 class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-lg tracking-widest dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        </div>
+        <button type="submit" class="admin-button-primary">Confirm and turn on</button>
+      </form>
+
+      <form action="/admin/two-factor/discard" method="post" class="mt-3">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="admin-button-secondary">Cancel</button>
+      </form>
+
+      {% else %}
+      <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">
+        Nothing is set up yet. Turning this on is reversible, but if you lose the
+        device and every recovery code you will need
+        <code class="font-mono text-xs">FIXITHUB_DISABLE_2FA=1</code> and server access
+        to get back in.
+      </p>
+      <form action="/admin/two-factor/start" method="post" class="mt-4">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="admin-button-primary">Set up two-factor</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if new_codes %}
+  <section class="admin-panel mt-4">
+    <div class="admin-panel-header">
+      <h2 class="admin-panel-title">Save these recovery codes</h2>
+    </div>
+    <div class="admin-panel-body">
+      <p class="text-sm text-amber-800 dark:text-amber-200">
+        Each code works once. This is the only time they are shown - only hashes
+        are stored - so copy them somewhere safe now.
+      </p>
+      <ul class="mt-4 grid grid-cols-2 gap-2 font-mono text-sm text-slate-900 dark:text-white">
+        {% for code in new_codes %}
+        <li class="rounded border border-slate-200 px-2 py-1 dark:border-slate-800">{{ code }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
