@@ -15,15 +15,10 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from .config import ADMIN_HASH_FILE, settings
 
 SESSION_COOKIE = "fixithub_admin"
-CSRF_FIELD = "csrf_token"
-CSRF_SESSION_KEY = "_csrf"
 
 SESSION_MAX_AGE = 60 * 60 * 8  # 8 hours
 
 _serialiser = URLSafeTimedSerializer(settings.secret_key, salt="fixithub-session")
-
-_csrf_tokens: dict[str, float] = {}
-CSRF_TOKEN_TTL = SESSION_MAX_AGE
 
 
 # --------------------------------------------------------------------------
@@ -350,3 +345,12 @@ def safe_link_url(value: str) -> str:
 
 def new_token(length: int = 32) -> str:
     return secrets.token_urlsafe(length)
+
+
+# Removed rather than left in place, because dead security constants are worse
+# than absent ones - they read as if they are load-bearing:
+#   CSRF_FIELD, CSRF_SESSION_KEY, _csrf_tokens, CSRF_TOKEN_TTL
+# Those were the remains of a stored-CSRF-token scheme that was replaced by a
+# token derived from the session cookie. Every form and route uses the field
+# name "csrf"; nothing reads CSRF_FIELD, which claimed the name was
+# "csrf_token".

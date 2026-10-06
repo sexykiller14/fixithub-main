@@ -13,6 +13,11 @@
 <div class="mx-auto max-w-7xl">
   {{ admin_page_header(stop_codes|length ~ ' bugcheck references loaded into SQLite.') }}
 
+  {# stop_codes is the page's rows here, so the count comes from the pager. #}
+  {% with base = '/admin/stop-codes', placeholder = 'name, hex or meaning' %}
+    {% include "_admin_pager.html" %}
+  {% endwith %}
+
   {% if request.query_params.get('saved') %}
   <p class="mt-6 rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-sm text-green-800 dark:text-green-200" role="status">
     Saved &ldquo;{{ request.query_params.get('saved') }}&rdquo;.

@@ -1,0 +1,81 @@
+{# A pager and a search box for an admin list page.
+
+   Expects:
+     pager     - the dict from _paginate(), or nothing
+     search_q  - the current search text
+     base      - the path to page, e.g. "/admin/articles"
+     placeholder- what the search covers, e.g. "title or slug"
+
+   The page number is a query parameter rather than a path segment so that a
+   search and a page number compose without the route needing both. #}
+
+{% if search_q is not none %}
+<form action="{{ base }}" method="get" role="search" class="mb-4 flex flex-wrap gap-2">
+  <label for="admin-search" class="sr-only">Search {{ placeholder|default('this list') }}</label>
+  <input id="admin-search" type="search" name="q" value="{{ search_q }}" maxlength="120"
+         placeholder="Search {{ placeholder|default('this list') }}..."
+         class="w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+  <button type="submit" class="admin-button-secondary">Search</button>
+  {% if search_q %}
+  <a href="{{ base }}" class="admin-button-secondary">Clear</a>
+  {% endif %}
+</form>
+{% endif %}
+
+{% if pager and pager.pages > 1 %}
+<nav class="mt-6 flex flex-wrap items-center justify-between gap-3" aria-label="Pagination">
+  <p class="text-xs text-slate-500 dark:text-slate-400">
+    Showing {{ pager.showing_from }}&ndash;{{ pager.showing_to }} of {{ pager.total }}
+  </p>
+
+  <div class="flex flex-wrap items-center gap-1.5">
+    {% if pager.has_prev %}
+    <a href="{{ base }}?page={{ pager.prev }}{% if search_q %}&amp;q={{ search_q|urlencode }}{% endif %}"
+       class="admin-button-secondary" rel="prev">Previous</a>
+    {% else %}
+    <span class="admin-button-secondary opacity-50" aria-disabled="true">Previous</span>
+    {% endif %}
+
+    {# A window of pages around the current one, so the pager does not grow to
+       fifty links on a large library. First and last are always offered. #}
+    {% set window_start = [1, pager.page - 2]|max %}
+    {% set window_end = [pager.last, pager.page + 2]|min %}
+
+    {% if window_start > 1 %}
+    <a href="{{ base }}?page=1{% if search_q %}&amp;q={{ search_q|urlencode }}{% endif %}"
+       class="admin-button-secondary">1</a>
+    {% if window_start > 2 %}
+    <span class="px-1 text-slate-400" aria-hidden="true">&hellip;</span>
+    {% endif %}
+    {% endif %}
+
+    {% for n in range(window_start, window_end + 1) %}
+    {% if n == pager.page %}
+    <span class="admin-button-primary" aria-current="page">{{ n }}</span>
+    {% else %}
+    <a href="{{ base }}?page={{ n }}{% if search_q %}&amp;q={{ search_q|urlencode }}{% endif %}"
+       class="admin-button-secondary">{{ n }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if window_end < pager.last %}
+    {% if window_end < pager.last - 1 %}
+    <span class="px-1 text-slate-400" aria-hidden="true">&hellip;</span>
+    {% endif %}
+    <a href="{{ base }}?page={{ pager.last }}{% if search_q %}&amp;q={{ search_q|urlencode }}{% endif %}"
+       class="admin-button-secondary">{{ pager.last }}</a>
+    {% endif %}
+
+    {% if pager.has_next %}
+    <a href="{{ base }}?page={{ pager.next }}{% if search_q %}&amp;q={{ search_q|urlencode }}{% endif %}"
+       class="admin-button-secondary" rel="next">Next</a>
+    {% else %}
+    <span class="admin-button-secondary opacity-50" aria-disabled="true">Next</span>
+    {% endif %}
+  </div>
+</nav>
+{% elif pager and pager.total %}
+<p class="mt-6 text-xs text-slate-500 dark:text-slate-400">
+  {{ pager.total }} item{{ '' if pager.total == 1 else 's' }}.
+</p>
+{% endif %}

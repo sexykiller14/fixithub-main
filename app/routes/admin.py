@@ -44,7 +44,6 @@ from ..services.apps import (
     AppUploadError,
 )
 from ..security import (
-    CSRF_FIELD,
     SESSION_COOKIE,
     clear_login_failures,
     clear_session_cookie,
@@ -484,6 +483,61 @@ def admin_reissue_csrf(request: Request):
     _set_login_csrf_cookie(response, token)
     response.headers["X-CSRF-Token"] = token
     return response
+
+
+# ------------------------------------------------------------- pagination
+
+# Admin list pages were loading every row and letting the browser render it.
+# That is fine at 43 articles and quietly wrong at 4,000: one page render costs
+# a full table scan plus every row's payload, and the markup grows without
+# bound. Fifty rows a page keeps the response small and the page responsive.
+
+PAGE_SIZE = 50
+MAX_PAGE = 1_000_000  # a nonsense page number should be refused, not wrapped
+
+
+def _page_number(raw: str) -> int:
+    """Parse a page parameter, clamping anything implausible to page 1."""
+    try:
+        page = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    if page < 1 or page > MAX_PAGE:
+        return 1
+    return page
+
+
+def _paginate(db: Session, query, page: int, per_page: int = PAGE_SIZE) -> tuple[list, dict]:
+    """Run a count plus one windowed page.
+
+    Returns the rows and a dict the templates read for the pager. The count is
+    a second query, which is the trade for not rendering "next" on the last page
+    and letting the reader jump to a page number.
+    """
+    total = db.scalar(
+        select(func.count()).select_from(query.order_by(None).subquery())
+    ) or 0
+    pages = max(1, -(-total // per_page))  # ceiling division
+    # A page past the end shows the last page rather than an empty table, which
+    # is what happens when a row is deleted while someone is on page 3.
+    page = min(page, pages)
+    rows = list(db.execute(query.limit(per_page).offset((page - 1) * per_page)).scalars())
+    return rows, {
+        "page": page,
+        "pages": pages,
+        "per_page": per_page,
+        "total": total,
+        "has_prev": page > 1,
+        "has_next": page < pages,
+        "prev": max(1, page - 1),
+        "next": min(pages, page + 1),
+        # The first and last page numbers worth offering, so the pager does not
+        # grow to fifty links.
+        "first": 1,
+        "last": pages,
+        "showing_from": (page - 1) * per_page + 1 if total else 0,
+        "showing_to": min(page * per_page, total),
+    }
 
 
 # ------------------------------------------------------- dashboard analytics
@@ -1496,14 +1550,27 @@ def admin_change_password_post(
 
 
 @router.get("/admin/articles", name="admin_articles")
-def admin_articles(request: Request, db: Session = Depends(get_db)):
+def admin_articles(request: Request, page: str = "1", q: str = "", db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/admin", status_code=303)
 
-    rows = list(
-        db.execute(select(Article).order_by(Article.category, func.lower(Article.title))).scalars()
-    )
-    context = admin_context(request, db, articles=rows)
+    query = select(Article)
+    # The filter runs in SQL rather than in the template. Filtering after a
+    # LIMIT would silently drop matching rows on later pages, which is the
+    # classic way a paginated search ends up lying about what exists.
+    needle = (q or "").strip()
+    if needle:
+        like = f"%{needle}%"
+        query = query.where(
+            Article.title.ilike(like)
+            | Article.slug.ilike(like)
+            | Article.category.ilike(like)
+        )
+
+    query = query.order_by(Article.category, func.lower(Article.title))
+    rows, pager = _paginate(db, query, _page_number(page))
+
+    context = admin_context(request, db, articles=rows, pager=pager, search_q=needle)
     return render(request, "admin_articles.html", context)
 
 
@@ -1779,12 +1846,24 @@ def admin_article_preview(
 
 
 @router.get("/admin/stop-codes", name="admin_stop_codes")
-def admin_stop_codes(request: Request, db: Session = Depends(get_db)):
+def admin_stop_codes(request: Request, page: str = "1", q: str = "", db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/admin", status_code=303)
 
-    rows = list(db.execute(select(StopCode).order_by(StopCode.code_uint)).scalars())
-    context = admin_context(request, db, stop_codes=rows)
+    query = select(StopCode)
+    needle = (q or "").strip()
+    if needle:
+        like = f"%{needle}%"
+        query = query.where(
+            StopCode.name.ilike(like)
+            | StopCode.code_hex.ilike(like)
+            | StopCode.meaning.ilike(like)
+        )
+
+    query = query.order_by(StopCode.code_uint)
+    rows, pager = _paginate(db, query, _page_number(page))
+
+    context = admin_context(request, db, stop_codes=rows, pager=pager, search_q=needle)
     return render(request, "admin_stop_codes.html", context)
 
 
@@ -2202,16 +2281,28 @@ def _app_form_context(
 
 
 @router.get("/admin/apps", name="admin_apps")
-def admin_apps(request: Request, db: Session = Depends(get_db)):
+def admin_apps(request: Request, page: str = "1", q: str = "", db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/admin", status_code=303)
 
-    rows = list(db.execute(select(AppDownload).order_by(AppDownload.updated_at.desc())).scalars())
+    query = select(AppDownload)
+    needle = (q or "").strip()
+    if needle:
+        like = f"%{needle}%"
+        query = query.where(
+            AppDownload.title.ilike(like) | AppDownload.slug.ilike(like)
+        )
+
+    query = query.order_by(AppDownload.updated_at.desc())
+    rows, pager = _paginate(db, query, _page_number(page))
 
     # The checksum check reads and SHA-256s a whole file per row, up to 50 MB
     # each. Doing that inside the template meant every page view hashed every
     # uploaded binary, so it is computed here once per app and cached on the
     # request-scoped row copy rather than recomputed per column.
+    #
+    # Paginating before this is what makes it affordable: it now hashes one
+    # page's worth rather than the whole library.
     listings = []
     for row in rows:
         item = _AppListing(row)
@@ -2222,6 +2313,8 @@ def admin_apps(request: Request, db: Session = Depends(get_db)):
         request,
         db,
         apps=listings,
+        pager=pager,
+        search_q=needle,
         app_categories=APP_CATEGORIES,
         max_app_mb=MAX_APP_BYTES // 1024 // 1024,
         allowed_suffixes=", ".join(ALLOWED_SUFFIXES),

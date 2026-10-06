@@ -11,7 +11,11 @@
 
 {% block content %}
 <div class="mx-auto max-w-6xl">
-  {{ admin_page_header('Binaries you uploaded. Unlike the scripts, a visitor cannot read these before downloading.') }}
+  {{ admin_page_header(admin_subtitle) }}
+
+  {% with base = '/admin/apps', placeholder = 'title or slug' %}
+    {% include "_admin_pager.html" %}
+  {% endwith %}
 
   {% if request.query_params.get('saved') %}
   <p class="mt-6 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
