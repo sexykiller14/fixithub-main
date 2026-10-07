@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
-from sqlalchemy import delete, desc, func, select
+from sqlalchemy import String, delete, desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from ..config import CATEGORIES, CONTENT_DIR, DIFFICULTY_LABELS, settings
@@ -552,7 +552,14 @@ def _daily_series(db: Session, days: int = 30) -> list[dict]:
 
     ArticleView.view_date is stored as a YYYY-MM-DD string, which SQLite groups
     and sorts correctly as text. SearchQuery.created_at is a real timestamp and
-    is grouped by date() in SQLite.
+    is grouped by date().
+
+    date() is cast to text because its return type is backend-dependent: SQLite
+    hands back a string, PostgreSQL a datetime.date. The window below is built
+    from isoformat() strings and every key is looked up against it, so on
+    PostgreSQL an uncast date() missed every key and the searches chart read zero
+    even with data present. The cast is a no-op on SQLite, where date() is
+    already text.
     """
     from datetime import timedelta
 
@@ -571,7 +578,7 @@ def _daily_series(db: Session, days: int = 30) -> list[dict]:
     search_rows = dict(
         db.execute(
             select(
-                func.date(SearchQuery.created_at).label("day"),
+                func.date(SearchQuery.created_at).cast(String).label("day"),
                 func.count(SearchQuery.id),
             )
             .where(SearchQuery.created_at >= start.isoformat())

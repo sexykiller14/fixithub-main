@@ -266,20 +266,20 @@ For a deployment that needs those four, use a host with a persistent disk
 (Docker, Render with a disk, Railway with a volume) rather than a serverless
 one.
 
-### Two PostgreSQL-specific behaviours worth knowing
+### PostgreSQL-specific behaviour worth knowing
 
-Neither is a misconfiguration, and both are cosmetic rather than fatal:
+Search is unranked. `fts_available()` in `app/db.py` probes for SQLite FTS5. The
+probe throws on PostgreSQL, is caught, and returns `False`, so search falls back
+to the `LIKE` scan in `_like_query`. Results are correct but unranked, there is
+no prefix matching, and `body` is scanned on every query. At 43 articles that is
+acceptable.
 
-- **Search is unranked.** `fts_available()` in `app/db.py` probes for SQLite
-  FTS5. The probe throws on PostgreSQL, is caught, and returns `False`, so
-  search falls back to the `LIKE` scan in `_like_query`. Results are correct but
-  unranked, there is no prefix matching, and `body` is scanned on every query.
-  At 43 articles that is acceptable.
-- **The admin dashboard "searches" chart reads zero.** `func.date()` in
-  `app/routes/admin.py` returns a string on SQLite and a `datetime.date` on
-  PostgreSQL. The chart looks the result up against ISO strings, so every key
-  misses. Article views on the same chart are unaffected, since they are stored
-  as strings.
+Additive schema changes apply to both backends. `create_all` only creates whole
+tables, so a column added to a model afterwards is invisible to a database that
+already exists. `_add_missing_columns` fills that gap with `ALTER TABLE ... ADD
+COLUMN`, reading the live column set through SQLAlchemy's inspector so the same
+loop runs against PostgreSQL. It only ever adds; nothing is dropped, renamed or
+retyped. The project ships no migration tool, so this is the whole of it.
 
 ### CLI Deployment
 

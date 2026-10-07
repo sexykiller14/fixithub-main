@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from app.models import Article, ArticleView
+from app.models import Article, ArticleView, SearchQuery
 
 
 def _today() -> str:
@@ -99,6 +99,44 @@ def test_a_day_with_no_rows_reports_zero_not_missing(db, seeded_views):
     zero_days = [p for p in series["points"] if p["views"] == 0]
     assert zero_days, "every day reported a view, which cannot be right"
     assert all("day" in p and "views" in p for p in zero_days)
+
+
+def test_the_series_day_keys_are_strings(db):
+    """Every point's day must be a YYYY-MM-DD string, not a date object.
+
+    This is the invariant that broke on PostgreSQL. date() returns a string on
+    SQLite and a datetime.date on PostgreSQL, and the points are looked up
+    against isoformat() strings, so a date object misses every key and the
+    searches chart silently reads zero. Asserting the type rather than a value
+    catches it on SQLite too, which is the only backend this suite runs.
+    """
+    from app.db import SessionLocal
+    from app.routes.admin import _daily_series
+
+    row = SearchQuery(
+        query="a search that finds something",
+        normalised="a search that finds something",
+        result_count=1,
+        hits=1,
+    )
+    db.add(row)
+    db.commit()
+    try:
+        with SessionLocal() as probe:
+            series = _daily_series(probe, days=30)
+    finally:
+        # The prepared database is session-scoped and a later test asserts on an
+        # all-zero window, so this row has to go rather than be left behind.
+        db.delete(row)
+        db.commit()
+
+    for point in series["points"]:
+        assert isinstance(point["day"], str), (
+            f"day is {type(point['day']).__name__}, not str"
+        )
+        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", point["day"]), (
+            f"day is {point['day']!r}, which is not YYYY-MM-DD"
+        )
 
 
 @pytest.mark.usefixtures("admin_client")

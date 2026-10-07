@@ -7,7 +7,8 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy.exc import NoSuchTableError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import settings
@@ -81,17 +82,32 @@ def create_all() -> None:
     _add_missing_columns()
 
 
+def _existing_columns(conn, table_name: str) -> set[str]:
+    """Column names the live table already has.
+
+    Read through SQLAlchemy's inspector rather than PRAGMA table_info, because
+    PRAGMA is SQLite-only. The inspector speaks both dialects, which is what lets
+    the same additive-migration loop run against Postgres on Vercel instead of
+    silently skipping it.
+    """
+    try:
+        return {col["name"] for col in inspect(conn).get_columns(table_name)}
+    except (NoSuchTableError, SQLAlchemyError):
+        # Table absent, or the connection cannot describe it. Either way there
+        # is nothing to add to.
+        return set()
+
+
 def _add_missing_columns() -> None:
     """ALTER TABLE ... ADD COLUMN for every column a model declares and the
-    table lacks. SQLite only, since that is the database this app ships with."""
-    if not _is_sqlite:
-        return
+    table lacks.
 
+    Runs on SQLite and Postgres alike. Only additive changes are made: nothing is
+    dropped, renamed or retyped, so it is safe against a live database.
+    """
     with engine.connect() as conn:
         for table in Base.metadata.sorted_tables:
-            existing = {
-                row[1] for row in conn.execute(text(f'PRAGMA table_info("{table.name}")'))
-            }
+            existing = _existing_columns(conn, table.name)
             if not existing:
                 # Freshly created by create_all, so it already has every column.
                 continue
