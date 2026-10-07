@@ -14,43 +14,38 @@ if str(ROOT_DIR) not in sys.path:
 # Ensure VERCEL environment marker is set
 os.environ.setdefault("VERCEL", "1")
 
-from app.main import app as _fastapi_app
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+from app.main import app
 
 
-class VercelPathMiddleware:
-    """ASGI middleware to resolve the real request path on Vercel.
+class _VercelPathFix(BaseHTTPMiddleware):
+    """Fix the request path when Vercel routes everything to api/index.py.
 
-    When Vercel routes or rewrites requests to api/index.py, the ASGI scope
-    path may be passed as '/api/index.py' instead of the client's actual requested
-    URL path (e.g. '/' or '/articles'). This middleware restores the true path
-    from Vercel's x-matched-path or x-forwarded-uri header, preventing 404s.
+    Vercel's rewrite rule sends all requests to api/index.py, which makes the
+    ASGI scope path '/api/index.py'. The real URL is available in the
+    x-matched-path header. We restore it so FastAPI routes work correctly.
     """
 
-    def __init__(self, app):
-        self.app = app
+    async def dispatch(self, request: Request, call_next):
+        # x-matched-path contains the original URL path (e.g. '/' or '/articles')
+        real_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
+        if real_path:
+            real_path = real_path.split("?")[0]
+            # Only override if it is not pointing back at the entrypoint itself
+            if real_path and real_path not in ("/api/index.py", "/api/index", "/api/index.py/"):
+                request.scope["path"] = real_path
+        elif request.scope.get("path") in ("/api/index.py", "/api/index", "/api/index.py/"):
+            request.scope["path"] = "/"
+        elif request.scope.get("path", "").startswith("/api/index.py/"):
+            request.scope["path"] = request.scope["path"][len("/api/index.py"):]
 
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            path = scope.get("path", "")
-            headers = dict(scope.get("headers", []))
-
-            # Check headers injected by Vercel's edge routing layer
-            matched_header = headers.get(b"x-matched-path") or headers.get(b"x-forwarded-uri")
-            if matched_header:
-                real_path = matched_header.decode("latin-1").split("?")[0]
-                if real_path and real_path not in ("/api/index.py", "/api/index"):
-                    scope["path"] = real_path
-                    path = real_path
-
-            # If path is still pointing directly to the entrypoint script
-            if path in ("/api/index.py", "/api/index", "/api/index.py/"):
-                scope["path"] = "/"
-            elif path.startswith("/api/index.py/"):
-                scope["path"] = path[len("/api/index.py"):]
-
-        await self.app(scope, receive, send)
+        return await call_next(request)
 
 
-app = VercelPathMiddleware(_fastapi_app)
+# Add the Vercel path-fix middleware directly to the FastAPI app.
+# Vercel requires `app` to be the FastAPI instance itself.
+app.add_middleware(_VercelPathFix)
 
 __all__ = ["app"]
