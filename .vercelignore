@@ -16,5 +16,12 @@ node_modules
 scripts
 apps_download
 _tmp_*
+data/fixithub.db
+data/fixithub.db-wal
+data/fixithub.db-shm
+data/admin.json
+data/admin_2fa.json
+.env
+.env.*
 *.log
 *.err
