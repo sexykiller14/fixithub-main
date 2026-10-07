@@ -323,12 +323,78 @@ DEVICE_MANAGER_CODES: list[dict] = [
 ]
 
 
+def _with_explicit_driver(raw: str) -> str:
+    """Normalise a Postgres URL onto the driver that is actually installed.
+
+    A bare ``postgresql://`` or ``postgres://`` leaves the driver choice to
+    SQLAlchemy, and that choice is version-dependent: from SQLAlchemy 2.1 a
+    bare ``postgresql://`` resolves to psycopg 3, which is a different
+    distribution from the psycopg2-binary in requirements.txt. The engine then
+    fails to build with ``ModuleNotFoundError: No module named 'psycopg'`` at
+    import time, which on Vercel means the function never boots rather than
+    degrading in some visible way.
+
+    Naming psycopg2 explicitly means a connection string pasted straight from
+    Supabase, Neon or Vercel Postgres works unmodified, and the driver no longer
+    moves underneath us on a dependency bump. A URL that already names a driver
+    is returned untouched, so installing psycopg 3 and saying so still works.
+    """
+    for prefix in ("postgres://", "postgresql://"):
+        if raw.startswith(prefix):
+            return "postgresql+psycopg2://" + raw[len(prefix):]
+    return raw
+
+
+def _with_sslmode(raw: str) -> str:
+    """Make sure a managed Postgres URL asks for TLS.
+
+    Managed providers - Supabase, Neon, Vercel Postgres - require it, and
+    several of them hand out a connection string with no ``sslmode`` in it.
+    psycopg2 defaults to *prefer*, which will happily attempt plaintext and
+    fail late and less clearly, so the requirement is stated outright here.
+
+    An existing ``sslmode`` or ``ssl`` parameter is left alone, because that is
+    the operator making a deliberate choice.
+    """
+    if not raw.startswith(("postgres://", "postgresql://", "postgresql+")):
+        return raw
+    if "?" not in raw:
+        return f"{raw}?sslmode=require"
+    query = raw.split("?", 1)[1]
+    if "sslmode=" in query or "ssl=" in query:
+        return raw
+    separator = "&" if query else "?"
+    return f"{raw}{separator}sslmode=require"
+
+
+# Environment variables that hosting-provider integrations set on their own.
+# Ordered by preference.
+#
+# POSTGRES_URL is what the Supabase and Neon Vercel Marketplace integrations
+# inject, and it is the pooled, transaction-mode string (port 6543), which is
+# the one that works from a serverless function. Two siblings are deliberately
+# ignored: POSTGRES_URL_NON_POOLING is a direct connection to an IPv6-only
+# host, which times out on Vercel, and POSTGRES_PRISMA_URL carries Prisma's
+# `?pgbouncer=true&connection_limit=1` query, which is meaningless to
+# SQLAlchemy.
+#
+# DATABASE_URL is picked up as a second choice because that is the convention
+# for most managed Postgres providers. FIXITHUB_DATABASE_URL still wins over
+# both, so an operator who wants to override this never has to unset anything
+# in the dashboard.
+_PROVIDER_DATABASE_ENV_VARS = ("POSTGRES_URL", "DATABASE_URL")
+
+
 def _resolve_database_url() -> str:
     raw = os.environ.get("FIXITHUB_DATABASE_URL", "").strip()
     if raw:
-        if raw.startswith("postgres://"):
-            return "postgresql://" + raw[len("postgres://"):]
-        return raw
+        return _with_explicit_driver(_with_sslmode(raw))
+
+    for name in _PROVIDER_DATABASE_ENV_VARS:
+        candidate = os.environ.get(name, "").strip()
+        if candidate:
+            return _with_explicit_driver(_with_sslmode(candidate))
+
     if IS_SERVERLESS:
         temp_db = Path(tempfile.gettempdir()) / "fixithub.db"
         return f"sqlite:///{temp_db.as_posix()}"

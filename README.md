@@ -139,7 +139,7 @@ FixIT Hub runs either as a traditional persistent process (Docker, Render, Railw
 
 | Platform | Works as written | Notes |
 | --- | --- | --- |
-| Vercel | Yes | Native serverless support via `vercel.json` & `api/index.py`. Auto-seeds SQLite in `/tmp`, or connects to external Postgres |
+| Vercel | Yes | Serverless ASGI via `api/index.py`. Auto-seeds SQLite in `/tmp`, or connects to external Postgres. No persistent disk, so admin file writes are lost — see [Serverless limitations](#serverless-limitations) |
 | Docker, systemd, Render, Railway, Fly.io | Yes | Persistent disk keeps the SQLite file and file-backed markdown edits |
 | Netlify, Cloudflare Pages, AWS Lambda | Requires adapter | Serverless container platforms |
 
@@ -153,28 +153,150 @@ FixIT Hub is configured to run on Vercel as a serverless ASGI application using 
 
 1. **Push your code to GitHub / GitLab / Bitbucket**.
 2. Go to [vercel.com/new](https://vercel.com/new) and **Import** your repository.
-3. In the **Environment Variables** section, add the following variables:
-   - `FIXITHUB_SECRET_KEY`: A long random string (generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
-   - `FIXITHUB_SITE_URL`: Your Vercel deployment URL (e.g. `https://your-app.vercel.app`).
-   - `FIXITHUB_SECURE_COOKIES`: Set to `1`.
-   - `FIXITHUB_ADMIN_PASSWORD`: Your admin panel password (e.g. `choose-a-strong-password`).
-4. (Optional) **Persistent Database**:
-   - By default, Vercel uses SQLite in `/tmp`. On cold starts, FixIT Hub automatically seeds all 43 guides, 92 stop codes, and wizards in less than a second.
-   - For persistent comments, reader registrations, and feedback votes, attach a free cloud PostgreSQL database (e.g. [Neon](https://neon.tech), [Supabase](https://supabase.com), or Vercel Postgres) and set:
-     `FIXITHUB_DATABASE_URL` = `postgresql://user:password@host/database?sslmode=require`
-5. Click **Deploy**.
+3. In the **Environment Variables** section, add the variables listed in
+   [Vercel environment variables](#vercel-environment-variables) below. Apply
+   them to Production and Preview at minimum.
+4. Click **Deploy**.
+
+Without a database configured, Vercel runs SQLite in `/tmp` and FixIT Hub
+auto-seeds all 43 guides and 92 stop codes on cold start in under a second. That
+is fine for a read-only site but loses every comment, reader account and
+feedback vote on each deploy, so attach a Postgres database for anything beyond
+a demo.
+
+### Vercel environment variables
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `FIXITHUB_SECRET_KEY` | Yes | 48 random bytes. Generate with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Without it sessions are signed with a per-process key, so every cold start signs everyone out. |
+| `FIXITHUB_SITE_URL` | Yes | Your deployed origin. Drives canonical URLs and the sitemap. |
+| `FIXITHUB_SECURE_COOKIES` | Yes | `1`. Also flips the app into production mode, which is what makes the missing secret key a hard boot failure rather than a warning. |
+| `FIXITHUB_ADMIN_PASSWORD` | Yes | Admin panel password. Set it here because the on-disk hash file does not survive a redeploy. |
+| `FIXITHUB_DATABASE_URL` | Optional | Overrides everything else. Omit it entirely if you use the Supabase/Neon Marketplace integration, which sets `POSTGRES_URL` for you. See [Postgres on Vercel](#postgres-on-vercel). |
+| `FIXITHUB_TRUST_PROXY` | Yes | `1`. Vercel's edge forwards the real client in `X-Forwarded-For`, but `security.py` ignores that header unless this is set. Leaving it off makes every visitor share a single rate-limit bucket, so the site-wide limit of 10 tool requests per minute applies to all users at once and the admin login lockout triggers on other people's failed attempts. |
+| `FIXITHUB_DISABLE_2FA` | Recommended | `1`. The TOTP secret is a file, and Vercel's filesystem is wiped on redeploy, so admin two-factor enrolment cannot persist. See [Serverless limitations](#serverless-limitations). |
+
+### Postgres on Vercel
+
+`psycopg2-binary` is already in `requirements.txt`, and `_resolve_database_url`
+in `app/config.py` accepts the connection string from `FIXITHUB_DATABASE_URL`,
+from the `POSTGRES_URL` that managed-provider integrations inject, or from
+`DATABASE_URL` as a fallback — in that order of preference. `sslmode=require` is
+added automatically when a managed URL does not already specify one.
+
+Note that `postgresql://` and `postgres://` are rewritten to
+`postgresql+psycopg2://` before the engine is built. SQLAlchemy picks the driver
+for a bare `postgresql://` itself, and from 2.1 onwards that resolves to psycopg
+3 — a different distribution from the `psycopg2-binary` in `requirements.txt` —
+so the engine would fail to construct and the function would never boot. A URL
+that already names a driver is left alone, so installing psycopg 3 and saying so
+explicitly still works.
+
+When using **Supabase**, there are two ways in.
+
+#### Option A: the Vercel Marketplace integration
+
+In the Vercel dashboard: **Storage → Create → Supabase**. The integration
+creates a Supabase project, wires up billing through Vercel, and synchronises a
+set of environment variables into your Vercel project automatically.
+
+FixIT Hub reads `POSTGRES_URL`, which is the one it injects that carries a usable
+connection string, so no manual copying is required. Two siblings that the
+integration *also* sets are deliberately ignored, because either one would
+produce a broken connection:
+
+| Variable | Ignored because |
+| --- | --- |
+| `POSTGRES_URL_NON_POOLING` | A direct connection to an IPv6-only host. It times out from Vercel function egress. |
+| `POSTGRES_PRISMA_URL` | Carries Prisma's `?pgbouncer=true&connection_limit=1` query, which means nothing to SQLAlchemy. |
+
+`DATABASE_URL` is accepted as a fallback after `POSTGRES_URL`, since that is the
+convention for most managed Postgres providers. `FIXITHUB_DATABASE_URL` overrides
+both, so you never have to edit the integration's dashboard entry to change the
+database.
+
+Two things to know about the Marketplace: it is in public alpha, and per Supabase's
+own documentation it does **not** create separate variables for preview builds —
+preview deployments receive the production connection string, so anything
+written during a preview goes to the live database.
+
+#### Option B: paste the connection string yourself
+
+Use the **Connection pooler** string from *Project Settings → Database →
+Connection string → URI*, not the direct connection:
+
+```
+postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
+```
+
+Two details in that string are load-bearing:
+
+- **Port 6543 (transaction mode) rather than 5432.** SQLAlchemy's default pool
+  holds 5 connections plus 10 overflow *per warm function instance*, so a dozen
+  concurrent Lambdas want ~180 connections. The transaction-mode pooler
+  collapses that client-side queue into a small fixed number of real database
+  connections. With 5432 (session mode) or a direct connection you will hit
+  `too many clients already` at random.
+- **The pooler host, not `db.<project-ref>.supabase.co`.** Supabase direct
+  connections are IPv6-only, and Vercel function egress is frequently IPv4-only,
+  so a direct connection times out.
+
+Percent-encode the database password if it contains `@ : / ? #`. Supabase
+generates passwords with those characters often, and an unencoded `@` breaks the
+URL parse in a way that surfaces as an unhelpful connection error.
+
+`sslmode=require` encrypts the traffic without pinning the server certificate
+chain. That is the pragmatic choice for a web app; `verify-full` additionally
+authenticates the server but requires shipping Supabase's root certificate.
+
+### Serverless limitations
+
+Moving the database to Postgres does not move the filesystem. Vercel's
+filesystem is read-only and is discarded on every deploy, so these features are
+broken there regardless of which database you use:
+
+| Feature | Why |
+| --- | --- |
+| Admin two-factor authentication | The TOTP secret lives in `data/admin_2fa.json`, which `.vercelignore` excludes and `app/services/totp.py` redirects to `/tmp`. Enrolment appears to succeed and then stops validating after the next cold start. Set `FIXITHUB_DISABLE_2FA=1`. |
+| `/apps` tool uploads | Binary and screenshot bytes go to `/tmp`. The `app_downloads` metadata rows persist in Postgres, so the site will list tools whose download 404s. |
+| Admin article and stop-code editing | Saving writes back to `content/*.md`, which is read-only. The database row is updated and the file write fails. |
+| Admin backup and restore | Already degrades safely: `_sqlite_db_path()` returns `None` on a non-SQLite URL and the routes report that instead of writing to a garbage path. |
+
+For a deployment that needs those four, use a host with a persistent disk
+(Docker, Render with a disk, Railway with a volume) rather than a serverless
+one.
+
+### Two PostgreSQL-specific behaviours worth knowing
+
+Neither is a misconfiguration, and both are cosmetic rather than fatal:
+
+- **Search is unranked.** `fts_available()` in `app/db.py` probes for SQLite
+  FTS5. The probe throws on PostgreSQL, is caught, and returns `False`, so
+  search falls back to the `LIKE` scan in `_like_query`. Results are correct but
+  unranked, there is no prefix matching, and `body` is scanned on every query.
+  At 43 articles that is acceptable.
+- **The admin dashboard "searches" chart reads zero.** `func.date()` in
+  `app/routes/admin.py` returns a string on SQLite and a `datetime.date` on
+  PostgreSQL. The chart looks the result up against ISO strings, so every key
+  misses. Article views on the same chart are unaffected, since they are stored
+  as strings.
 
 ### CLI Deployment
 
-If you prefer using the Vercel CLI:
+If you prefer using the Vercel CLI, link the directory to an existing project
+first so the environment variables above are picked up rather than prompted for
+on every run:
 
 ```bash
-# Install / run Vercel CLI
-npx vercel
-
-# Deploy to production with environment variables
+npx vercel link
+npx vercel env pull .env.local     # optional: confirms what the project sees
 npx vercel --prod
 ```
+
+Note that a `.env` file committed alongside the code will not reach Vercel.
+`.gitignore` and `.vercelignore` both exclude `.env`, which is the right
+behaviour, but it does mean the dashboard is the source of truth for these
+values.
 
 ## Render
 
@@ -483,6 +605,7 @@ Coverage by area:
 | `tests/test_apps_routes.py` | The full admin upload round trip and the download response headers |
 | `tests/test_ask.py` | Question submission, anonymous vs signed-in identity, the one-off reply token, admin replying, and rate limiting |
 | `tests/test_admin_password.py` | Every refusal path, CSRF and auth enforcement, the throttle, a successful change followed by signing in with the new password, and other sessions being signed out |
+| `tests/test_database_url.py` | Postgres URL normalisation onto the psycopg2 driver, explicit drivers left alone, non-Postgres URLs untouched, and that the engine actually constructs |
 
 ---
 
