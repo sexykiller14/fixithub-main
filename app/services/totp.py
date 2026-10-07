@@ -123,9 +123,12 @@ def provisioning_uri(secret: str, account: str = "admin") -> str:
 
 
 def _path() -> Path:
-    # DATA_DIR, not a setting: the 2FA secret belongs beside the password hash
-    # in the same directory, and a configurable path would risk splitting them.
-    return Path(DATA_DIR) / "admin_2fa.json"
+    default_path = Path(DATA_DIR) / "admin_2fa.json"
+    if default_path.is_file():
+        return default_path
+    if bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")):
+        return Path("/tmp/admin_2fa.json")
+    return default_path
 
 
 def is_enrolled() -> bool:

@@ -12,24 +12,28 @@ import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONTENT_DIR = BASE_DIR / "content"
 DATA_DIR = BASE_DIR / "data"
 WIZARDS_DIR = DATA_DIR / "wizards"
 SCRIPTS_DIR = BASE_DIR / "scripts_download"
-# Uploaded application binaries. This is the only directory the app writes
-# arbitrary files into, so it is kept separate from the text scripts and is
-# gitignored. On a host with a persistent volume, point FIXITHUB_APPS_DIR at
-# that volume so uploads survive a redeploy.
-APPS_DIR = Path(os.environ.get("FIXITHUB_APPS_DIR", str(BASE_DIR / "apps_download"))).resolve()
-# Screenshots live inside the apps directory so that pointing FIXITHUB_APPS_DIR
-# at a persistent volume, as the README instructs, also preserves the images.
-# It is a subdirectory rather than a sibling for that reason alone.
+
+# On serverless platforms (e.g. Vercel), the root filesystem is read-only.
+# Mutable files (uploads, admin hash, SQLite database) fall back to /tmp if not configured.
+_default_apps_dir = Path("/tmp/apps_download") if IS_SERVERLESS else BASE_DIR / "apps_download"
+APPS_DIR = Path(os.environ.get("FIXITHUB_APPS_DIR", str(_default_apps_dir))).resolve()
 IMAGES_DIR = APPS_DIR / "screenshots"
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
-ADMIN_HASH_FILE = DATA_DIR / "admin.json"
+if (DATA_DIR / "admin.json").is_file():
+    ADMIN_HASH_FILE = DATA_DIR / "admin.json"
+elif IS_SERVERLESS:
+    ADMIN_HASH_FILE = Path("/tmp/admin.json")
+else:
+    ADMIN_HASH_FILE = DATA_DIR / "admin.json"
 
 # Cookie holding the signed-in reader's opaque session token. Distinct from the
 # admin cookie on purpose: a reader account must never satisfy an admin check.
@@ -318,6 +322,17 @@ DEVICE_MANAGER_CODES: list[dict] = [
 ]
 
 
+def _resolve_database_url() -> str:
+    raw = os.environ.get("FIXITHUB_DATABASE_URL", "").strip()
+    if raw:
+        if raw.startswith("postgres://"):
+            return "postgresql://" + raw[len("postgres://"):]
+        return raw
+    if IS_SERVERLESS:
+        return f"sqlite:///{Path('/tmp/fixithub.db').as_posix()}"
+    return f"sqlite:///{(DATA_DIR / 'fixithub.db').as_posix()}"
+
+
 @dataclass
 class Settings:
     """Runtime settings resolved from the environment."""
@@ -340,9 +355,7 @@ class Settings:
         default_factory=lambda: os.environ.get("FIXITHUB_ADMIN_PASSWORD", "")
     )
     database_url: str = field(
-        default_factory=lambda: os.environ.get(
-            "FIXITHUB_DATABASE_URL", f"sqlite:///{(DATA_DIR / 'fixithub.db').as_posix()}"
-        )
+        default_factory=_resolve_database_url
     )
     debug: bool = field(
         default_factory=lambda: os.environ.get("FIXITHUB_DEBUG", "0") == "1"

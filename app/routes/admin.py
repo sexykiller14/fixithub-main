@@ -1818,32 +1818,50 @@ def admin_article_save(
     else:
         path = str(CONTENT_DIR / f"{clean_slug}.md")
 
-    # Back up the existing file before overwriting it.
-    if original_path:
-        shutil.copy2(original_path, original_path + ".bak")
+    # Back up the existing file before overwriting it if the filesystem allows.
+    reloaded = None
+    try:
+        if original_path:
+            shutil.copy2(original_path, original_path + ".bak")
 
-    with open(path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(markdown_text)
+        with open(path, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(markdown_text)
 
-    # Reload from disk so the stored values match the file exactly.
-    reloaded = load_article_file(Path(path))
-    if reloaded is None:
-        return _forbidden(request, db, "The article could not be written. Check the folder permissions.")
+        # Reload from disk so the stored values match the file exactly.
+        reloaded = load_article_file(Path(path))
+    except OSError:
+        # On serverless environments (e.g. Vercel), the filesystem is read-only.
+        # Fall through to updating the database directly.
+        reloaded = None
 
     if existing is None:
         existing = Article(slug=clean_slug)
         db.add(existing)
-    existing.title = reloaded.title
-    existing.category = reloaded.category
-    existing.tags = reloaded.tags
-    existing.difficulty = reloaded.difficulty
-    existing.os_version = reloaded.os_version
-    existing.is_featured = reloaded.featured
-    existing.summary = summary.strip() or rendered.summary
-    existing.body = reloaded.body
-    existing.reading_time = rendered.reading_time
-    existing.source_path = reloaded.source_path
-    existing.status = "draft" if reloaded.draft else "published"
+
+    if reloaded is not None:
+        existing.title = reloaded.title
+        existing.category = reloaded.category
+        existing.tags = reloaded.tags
+        existing.difficulty = reloaded.difficulty
+        existing.os_version = reloaded.os_version
+        existing.is_featured = reloaded.featured
+        existing.summary = summary.strip() or rendered.summary
+        existing.body = reloaded.body
+        existing.reading_time = rendered.reading_time
+        existing.source_path = reloaded.source_path
+        existing.status = "draft" if reloaded.draft else "published"
+    else:
+        existing.title = title.strip()
+        existing.category = category.strip()
+        existing.tags = [t.strip() for t in tags.split(",") if t.strip()]
+        existing.difficulty = difficulty.strip() or "easy"
+        existing.os_version = os_version.strip() or "Windows 10/11"
+        existing.is_featured = is_featured
+        existing.summary = summary.strip() or rendered.summary
+        existing.body = body.strip()
+        existing.reading_time = rendered.reading_time
+        existing.source_path = original_path or path
+        existing.status = "draft" if is_draft else "published"
     audit.record(
         db,
         "article.save",

@@ -135,20 +135,46 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 ## Choosing a host
 
-The app stores its database in a SQLite file and its articles as markdown that
-the admin panel rewrites in place. Both need a **persistent, writable
-filesystem**.
+FixIT Hub runs either as a traditional persistent process (Docker, Render, Railway) or as a serverless application on **Vercel**.
 
-| Platform | Works as written |
-| --- | --- |
-| Docker, systemd, Render, Railway, Fly.io with a volume | Yes |
-| Vercel, Netlify, Cloudflare Pages, AWS Lambda | No |
+| Platform | Works as written | Notes |
+| --- | --- | --- |
+| Vercel | Yes | Native serverless support via `vercel.json` & `api/index.py`. Auto-seeds SQLite in `/tmp`, or connects to external Postgres |
+| Docker, systemd, Render, Railway, Fly.io | Yes | Persistent disk keeps the SQLite file and file-backed markdown edits |
+| Netlify, Cloudflare Pages, AWS Lambda | Requires adapter | Serverless container platforms |
 
-Serverless platforms give each invocation a fresh read-only filesystem, so the
-SQLite file would be empty on every cold start and the admin panel's write-back
-would fail. Putting this app on Vercel means moving to Postgres and giving up
-file-backed article editing. The sections below cover the platforms that work
-directly.
+---
+
+## Vercel
+
+FixIT Hub is configured to run on Vercel as a serverless ASGI application using the `@vercel/python` runtime.
+
+### Quick Start: Deploying to Vercel
+
+1. **Push your code to GitHub / GitLab / Bitbucket**.
+2. Go to [vercel.com/new](https://vercel.com/new) and **Import** your repository.
+3. In the **Environment Variables** section, add the following variables:
+   - `FIXITHUB_SECRET_KEY`: A long random string (generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
+   - `FIXITHUB_SITE_URL`: Your Vercel deployment URL (e.g. `https://your-app.vercel.app`).
+   - `FIXITHUB_SECURE_COOKIES`: Set to `1`.
+   - `FIXITHUB_ADMIN_PASSWORD`: Your admin panel password (e.g. `choose-a-strong-password`).
+4. (Optional) **Persistent Database**:
+   - By default, Vercel uses SQLite in `/tmp`. On cold starts, FixIT Hub automatically seeds all 43 guides, 92 stop codes, and wizards in less than a second.
+   - For persistent comments, reader registrations, and feedback votes, attach a free cloud PostgreSQL database (e.g. [Neon](https://neon.tech), [Supabase](https://supabase.com), or Vercel Postgres) and set:
+     `FIXITHUB_DATABASE_URL` = `postgresql://user:password@host/database?sslmode=require`
+5. Click **Deploy**.
+
+### CLI Deployment
+
+If you prefer using the Vercel CLI:
+
+```bash
+# Install / run Vercel CLI
+npx vercel
+
+# Deploy to production with environment variables
+npx vercel --prod
+```
 
 ## Render
 

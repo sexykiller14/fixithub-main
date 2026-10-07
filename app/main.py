@@ -93,6 +93,9 @@ async def lifespan(_app: FastAPI):
         log.warning("%s WARNING: %s", SITE_NAME, message)
 
     create_all()
+    from .db import seed_if_empty
+
+    seed_if_empty()
     log.info("%s started (debug=%s)", SITE_NAME, settings.debug)
     yield
     log.info("%s stopped", SITE_NAME)

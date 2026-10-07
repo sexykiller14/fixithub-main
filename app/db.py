@@ -201,7 +201,7 @@ class ArticleSearch:
         sql = (
             "SELECT id, 0.0 AS rank FROM articles "
             "WHERE (lower(title) LIKE :like OR lower(summary) LIKE :like "
-            "OR lower(tags) LIKE :like OR lower(body) LIKE :like "
+            "OR lower(cast(tags as text)) LIKE :like OR lower(body) LIKE :like "
             "OR lower(category) LIKE :like)"
         )
         params: dict = {"like": like}
@@ -232,3 +232,45 @@ class ArticleSearch:
 
 
 search = ArticleSearch()
+
+
+def seed_if_empty() -> None:
+    """Populate articles and stop codes if the database is empty (e.g. cold start on Vercel)."""
+    from sqlalchemy import func, select
+    from .models import Article
+    from .services.content import load_all_articles, render_article
+    from .services.stopcodes import load_stop_codes_file, sync_stop_codes
+
+    try:
+        with session_scope() as db:
+            count = db.scalar(select(func.count(Article.id))) or 0
+            if count > 0:
+                return
+
+            log.info("Database is empty; automatically seeding content...")
+            sources = load_all_articles()
+            for source in sources:
+                rendered = render_article(source.body)
+                article = Article(
+                    slug=source.slug,
+                    title=source.title,
+                    category=source.category,
+                    tags=source.tags,
+                    difficulty=source.difficulty,
+                    os_version=source.os_version,
+                    summary=source.summary,
+                    body=source.body,
+                    reading_time=rendered.reading_time,
+                    source_path=source.source_path,
+                    is_featured=source.featured,
+                    status="draft" if source.draft else "published",
+                )
+                db.add(article)
+
+            seeds = load_stop_codes_file()
+            sync_stop_codes(db, seeds)
+
+        search.rebuild()
+        log.info("Automatic database seeding finished (%d articles).", len(sources))
+    except Exception:
+        log.exception("Automatic database seeding encountered an error")
