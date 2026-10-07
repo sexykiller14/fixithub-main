@@ -111,14 +111,17 @@ def test_the_uri_quotes_the_account_name():
 
 
 # --------------------------------------------------------------------------
-# Storage, against a temporary data directory
+# Storage, in the database
 # --------------------------------------------------------------------------
+#
+# The enrolment is a database row rather than a file, so these tests share the
+# suite's session-scoped database. An autouse fixture empties the row between
+# them, and no fixture points at a temporary data directory any more.
 
 
 @pytest.fixture
-def enrolled(tmp_path, monkeypatch):
-    """An enrolled secret with recovery codes, in a temporary directory."""
-    monkeypatch.setattr(totp, "DATA_DIR", tmp_path)
+def enrolled():
+    """An enrolled secret with recovery codes."""
     secret = totp.generate_secret()
     codes = totp.generate_recovery_codes(5)
     totp.save(secret, codes)
@@ -129,18 +132,44 @@ def test_save_then_is_enrolled(enrolled):
     assert totp.is_enrolled()
 
 
-def test_nothing_is_enrolled_on_a_clean_install(tmp_path, monkeypatch):
-    monkeypatch.setattr(totp, "DATA_DIR", tmp_path)
+def test_nothing_is_enrolled_on_a_clean_install():
     assert not totp.is_enrolled()
 
 
-def test_recovery_codes_are_stored_hashed_not_in_the_clear(enrolled, tmp_path):
-    """A readable copy on disk would defeat the point of a recovery code."""
+def test_the_enrolment_survives_a_new_process(enrolled):
+    """The reason the secret is a row and not a file.
+
+    On Vercel the filesystem is read-only and is discarded on every deploy, so a
+    file-based enrolment appeared to succeed and then stopped validating after
+    the next cold start. Reading it back through a fresh session, the way a new
+    function instance would, is what proves that is fixed.
+    """
+    from app.db import SessionLocal
+    from app.models import AdminTwoFactor
+
+    _secret, _codes = enrolled
+    with SessionLocal() as probe:
+        row = probe.get(AdminTwoFactor, 1)
+
+    assert row is not None, "the enrolment was not written to the database"
+    assert row.secret
+    assert row.recovery_hashes, "recovery codes were not stored"
+
+
+def test_recovery_codes_are_stored_hashed_not_in_the_clear(enrolled):
+    """A readable copy would defeat the point of a recovery code."""
     _secret, codes = enrolled
-    on_disk = (tmp_path / "admin_2fa.json").read_text(encoding="utf-8")
+    from app.db import SessionLocal
+    from app.models import AdminTwoFactor
+
+    with SessionLocal() as probe:
+        row = probe.get(AdminTwoFactor, 1)
+
+    stored = list(row.recovery_hashes)
     for code in codes:
-        assert code not in on_disk, f"{code} was stored in the clear"
-    assert "recovery_hashes" in on_disk
+        assert code not in stored, f"{code} was stored in the clear"
+        assert code not in str(stored), f"{code} appears in the clear in the row"
+    assert len(stored) == len(codes)
 
 
 def test_a_recovery_code_is_accepted_once_and_only_once(enrolled):

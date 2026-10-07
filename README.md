@@ -174,7 +174,12 @@ a demo.
 | `FIXITHUB_ADMIN_PASSWORD` | Yes | Admin panel password. Set it here because the on-disk hash file does not survive a redeploy. |
 | `FIXITHUB_DATABASE_URL` | Optional | Overrides everything else. Omit it entirely if you use the Supabase/Neon Marketplace integration, which sets `POSTGRES_URL` for you. See [Postgres on Vercel](#postgres-on-vercel). |
 | `FIXITHUB_TRUST_PROXY` | Yes | `1`. Vercel's edge forwards the real client in `X-Forwarded-For`, but `security.py` ignores that header unless this is set. Leaving it off makes every visitor share a single rate-limit bucket, so the site-wide limit of 10 tool requests per minute applies to all users at once and the admin login lockout triggers on other people's failed attempts. |
-| `FIXITHUB_DISABLE_2FA` | Recommended | `1`. The TOTP secret is a file, and Vercel's filesystem is wiped on redeploy, so admin two-factor enrolment cannot persist. See [Serverless limitations](#serverless-limitations). |
+| `FIXITHUB_STORAGE_URL` | For `/apps` | `https://<project-ref>.supabase.co`. Without it, uploads go to `/tmp` and 404 after a deploy. See [Supabase Storage](#supabase-storage). |
+| `FIXITHUB_STORAGE_KEY` | For `/apps` | The **service-role** key. Not the anon key. |
+| `FIXITHUB_DISABLE_2FA` | No | Leave unset. Admin two-factor now lives in the database and persists across deploys. Set it to `1` only as an escape hatch if the enrolment is lost and every recovery code is spent. |
+| `FIXITHUB_GITHUB_TOKEN` | Optional | Fine-grained token, `Contents: read and write` on this repo only, for the [content mirror](#content-mirror). |
+| `FIXITHUB_GITHUB_REPO` | With the token | `owner/name`. |
+| `FIXITHUB_GITHUB_BRANCH` | Optional | Defaults to `main`. Point it at a branch Vercel does not watch to stop edits triggering rebuilds. |
 
 ### Postgres on Vercel
 
@@ -251,20 +256,71 @@ authenticates the server but requires shipping Supabase's root certificate.
 
 ### Serverless limitations
 
-Moving the database to Postgres does not move the filesystem. Vercel's
-filesystem is read-only and is discarded on every deploy, so these features are
-broken there regardless of which database you use:
+Vercel's filesystem is read-only and is discarded on every deploy, so anything
+that used to be a file is now either in Postgres or in Supabase Storage:
 
-| Feature | Why |
+| Feature | Where it lives now |
 | --- | --- |
-| Admin two-factor authentication | The TOTP secret lives in `data/admin_2fa.json`, which `.vercelignore` excludes and `app/services/totp.py` redirects to `/tmp`. Enrolment appears to succeed and then stops validating after the next cold start. Set `FIXITHUB_DISABLE_2FA=1`. |
-| `/apps` tool uploads | Binary and screenshot bytes go to `/tmp`. The `app_downloads` metadata rows persist in Postgres, so the site will list tools whose download 404s. |
-| Admin article and stop-code editing | Saving writes back to `content/*.md`, which is read-only. The database row is updated and the file write fails. |
-| Admin backup and restore | Already degrades safely: `_sqlite_db_path()` returns `None` on a non-SQLite URL and the routes report that instead of writing to a garbage path. |
+| Admin two-factor authentication | `admin_two_factor`, one row. Survives a deploy and is shared by every function instance. An existing `data/admin_2fa.json` is imported on first read. |
+| `/apps` tool uploads | Supabase Storage, behind `app/services/storage.py`. With no storage configured the same code writes to `apps_download/`, so Docker and Render are unaffected. |
+| Admin article editing | The database row is the record; the markdown is mirrored to GitHub. See [Content mirror](#content-mirror). |
+| Admin backup and restore | Still SQLite-only. `_sqlite_db_path()` returns `None` on a non-SQLite URL and the routes say so rather than writing to a garbage path. On Postgres, use `pg_dump`. |
 
-For a deployment that needs those four, use a host with a persistent disk
-(Docker, Render with a disk, Railway with a volume) rather than a serverless
-one.
+#### Supabase Storage
+
+Uploads are stored through `app/services/storage.py`, which picks a backend from
+the environment. Both are always available and the app needs no code change to
+switch:
+
+| Variable | Notes |
+| --- | --- |
+| `FIXITHUB_STORAGE_URL` | `https://<project-ref>.supabase.co` |
+| `FIXITHUB_STORAGE_KEY` | The **service-role** key, not the anon key. Uploads and downloads are proxied through the app, never handed out as public URLs. |
+| `FIXITHUB_STORAGE_BUCKET` | Optional, default `fixithub-apps`. Must be **private**. |
+
+Binaries land under `apps/` in the bucket and screenshots under `screenshots/`,
+matching the two directories on disk.
+
+One consequence worth knowing: the tool detail page verifies an upload's SHA-256
+on every view. On disk that meant re-reading the file. For remote storage the
+digest is read back from the metadata recorded at upload, so the check stays a
+small request — otherwise every page view would pull a 50 MB installer through a
+lambda.
+
+#### Content mirror
+
+Admin article edits are written to Postgres, then the matching markdown file is
+committed to GitHub through the Contents API. This keeps the repository in step
+with the database, which it otherwise drifts from on a serverless host.
+
+It is a mirror, not the source of truth. The save is committed to the database
+first and the push happens afterwards; if GitHub is unreachable the article is
+still saved and the failure is recorded in the audit log. Nothing about the site
+being available depends on `api.github.com` being up.
+
+| Variable | Notes |
+| --- | --- |
+| `FIXITHUB_GITHUB_TOKEN` | Fine-grained token, `Contents: read and write` on this repository only. No other scopes. |
+| `FIXITHUB_GITHUB_REPO` | `owner/name`. |
+| `FIXITHUB_GITHUB_BRANCH` | Optional, default `main`. |
+
+Set an expiry on the token and put a reminder in your calendar. An expired token
+stops mirroring silently — the site keeps working, the repository quietly stops
+tracking the admin panel.
+
+**Each commit triggers a Vercel rebuild.** Saving an article is therefore not
+instant, and frequent edits burn build minutes. If that becomes a problem, set
+`FIXITHUB_GITHUB_BRANCH` to a branch Vercel is not watching: the mirror still
+records history, and nothing deploys.
+
+Note that the markdown in the repository is the *seed* used by
+`seed_if_empty()` on an empty database. Once your database has rows that seed
+never runs again, so the mirror is a backup and a change log rather than
+something the running site reads back.
+
+Because pushing means holding a repo-write token, `/admin` becomes a path to
+that token. Give the admin password real strength before enabling this.
+
 
 ### PostgreSQL-specific behaviour worth knowing
 

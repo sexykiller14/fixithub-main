@@ -12,11 +12,18 @@ needs a real encoder, so this module returns the URI and the admin's browser
 turns it into a QR image - or they type the secret in by hand, which is why the
 setup page always shows it.
 
-The secret is stored beside the password hash in data/. It is base32, not
-encrypted: there is no crypto library in this project's dependencies and
-adding one for a single admin's TOTP secret would be a large new surface. The
-file is written with owner-only permissions and is gitignored, the same
-treatment data/admin.json already gets.
+The secret lives in the database, in a single row, rather than in a file. It was
+data/admin_2fa.json, which broke on serverless hosts: the filesystem there is
+read-only and is discarded on every deploy, so enrolment appeared to succeed and
+then stopped validating after the next cold start. An existing file is imported
+into the database the first time it is read, so upgrading does not silently drop
+an enrolment.
+
+The secret is base32, not encrypted: there is no crypto library in this
+project's dependencies and adding one for a single admin's TOTP secret would be
+a large new surface. A TOTP secret is a shared HMAC key rather than a password,
+and what protects the database is the same thing that protects the password hash
+in it.
 """
 
 from __future__ import annotations
@@ -123,13 +130,30 @@ def provisioning_uri(secret: str, account: str = "admin") -> str:
 # --------------------------------------------------------------------------
 
 
-def _path() -> Path:
-    default_path = Path(DATA_DIR) / "admin_2fa.json"
-    if default_path.is_file():
-        return default_path
+def _legacy_path() -> Path | None:
+    """The pre-database file, if one exists. Read once, then ignored.
+
+    Only consulted so an existing enrolment survives the upgrade. On Vercel the
+    file is a /tmp leftover that was never durable anyway, so there is nothing
+    to import and this returns None.
+    """
+    candidate = Path(DATA_DIR) / "admin_2fa.json"
+    if candidate.is_file():
+        return candidate
     if bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")):
-        return Path("/tmp/admin_2fa.json")
-    return default_path
+        tmp = Path("/tmp/admin_2fa.json")
+        if tmp.is_file():
+            return tmp
+    return None
+
+
+def _row():
+    from ..models import AdminTwoFactor
+
+    return AdminTwoFactor
+
+
+SINGLETON_ID = 1
 
 
 def is_enrolled() -> bool:
@@ -138,52 +162,126 @@ def is_enrolled() -> bool:
 
 
 def _load() -> dict:
-    path = _path()
-    if not path.is_file():
+    """The enrolment as a dict, in the shape the callers already expect.
+
+    Returns {} when there is no enrolment, and also when the stored row is
+    somehow unreadable, so a bad record can never lock the admin out of their
+    own panel.
+    """
+    from ..db import SessionLocal
+    from sqlalchemy import select
+
+    model = _row()
+    try:
+        with SessionLocal() as db:
+            row = db.get(model, SINGLETON_ID)
+            if row is not None and row.secret:
+                return {
+                    "secret": row.secret,
+                    "recovery_hashes": list(row.recovery_hashes or []),
+                    "enabled_at": row.enabled_at or 0.0,
+                }
+    except Exception:  # noqa: BLE001 - any failure means "no enrolment"
+        return {}
+    return _migrate_legacy_file()
+
+
+def _migrate_legacy_file() -> dict:
+    """Import data/admin_2fa.json into the database the first time it is read.
+
+    Without this, upgrading would silently drop an existing enrolment. That is
+    not a lockout - the admin would simply stop being asked for a code - but it
+    is a silent weakening of the panel, which is the kind of change that should
+    not happen without being asked for.
+    """
+    from ..db import session_scope
+
+    legacy = _legacy_path()
+    if legacy is None:
         return {}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(legacy.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        # A corrupt file is treated as "not enrolled" rather than an error, so
-        # a bad write cannot lock the admin out of their own panel.
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict) or not data.get("secret"):
+        return {}
+
+    payload = {
+        "secret": str(data["secret"]),
+        "recovery_hashes": list(data.get("recovery_hashes") or []),
+        "enabled_at": float(data.get("enabled_at") or time.time()),
+    }
+    try:
+        with session_scope() as db:
+            row = db.get(_row(), SINGLETON_ID)
+            if row is None:
+                row = _row()(id=SINGLETON_ID)
+                db.add(row)
+            row.secret = payload["secret"]
+            row.recovery_hashes = payload["recovery_hashes"]
+            row.enabled_at = payload["enabled_at"]
+    except Exception:  # noqa: BLE001 - a failed import must not break login
+        return {}
+
+    # Only remove the file once the row is committed, so a crash mid-migration
+    # leaves the original recoverable rather than losing the enrolment.
+    try:
+        legacy.unlink()
+    except OSError:
+        pass
+    return payload
 
 
 def save(secret: str, recovery_codes: list[str]) -> None:
     """Store the secret and the hashed recovery codes."""
-    path = _path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "secret": secret,
+    from ..db import session_scope
+
+    with session_scope() as db:
+        model = _row()
+        row = db.get(model, SINGLETON_ID)
+        if row is None:
+            row = model(id=SINGLETON_ID)
+            db.add(row)
+        row.secret = secret
         # Recovery codes are stored hashed. They are single-use bearer
-        # credentials, so a readable copy on disk would defeat the point.
-        "recovery_hashes": [_hash_code(code) for code in recovery_codes],
-        "enabled_at": time.time(),
-    }
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    _restrict(path)
+        # credentials, so a readable copy would defeat the point.
+        row.recovery_hashes = [_hash_code(code) for code in recovery_codes]
+        row.enabled_at = time.time()
 
 
-def _restrict(path: Path) -> None:
-    """Owner-only permissions where the platform supports it."""
-    import os
+def _write(data: dict) -> None:
+    """Persist a modified payload, leaving everything absent alone."""
+    from ..db import session_scope
 
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        # Windows has no POSIX mode bits that mean this. The file inherits the
-        # directory's ACL, which is the same guarantee admin.json gets.
-        pass
+    with session_scope() as db:
+        model = _row()
+        row = db.get(model, SINGLETON_ID)
+        if row is None:
+            row = model(id=SINGLETON_ID)
+            db.add(row)
+        row.secret = data.get("secret") or ""
+        row.recovery_hashes = list(data.get("recovery_hashes") or [])
+        row.enabled_at = float(data.get("enabled_at") or 0.0)
 
 
 def clear() -> None:
     """Remove the enrolment entirely."""
-    path = _path()
+    from ..db import session_scope
+
     try:
-        path.unlink()
-    except OSError:
+        with session_scope() as db:
+            row = db.get(_row(), SINGLETON_ID)
+            if row is not None:
+                row.secret = ""
+                row.recovery_hashes = []
+    except Exception:  # noqa: BLE001 - already clear is the desired end state
         pass
+    legacy = _legacy_path()
+    if legacy is not None:
+        try:
+            legacy.unlink()
+        except OSError:
+            pass
 
 
 def generate_recovery_codes(count: int = 10) -> list[str]:
@@ -235,9 +333,7 @@ def consume_recovery_code(submitted: str) -> bool:
     # Single use: the matched code is dropped whether or not others remain.
     remaining = [h for i, h in enumerate(hashes) if i != matched_index]
     data["recovery_hashes"] = remaining
-    path = _path()
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    _restrict(path)
+    _write(data)
     return True
 
 

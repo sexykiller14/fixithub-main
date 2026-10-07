@@ -525,19 +525,29 @@ class AppDownload(Base):
         return bool(self.screenshot_filename)
 
     def integrity_ok(self) -> bool | None:
-        """Compare the recorded checksum against the file on disk.
+        """Compare the recorded checksum against the stored file.
 
         Returns True when they match, False when they do not, and None when
         the file is missing or unreadable. Callers treat None as an error too:
         an app whose file has gone is not a working download.
-        """
-        from .services.apps import hash_file, stored_path
 
-        path = stored_path(self.filename)
-        if path is None:
+        Asked of the storage backend rather than the filesystem, because on a
+        serverless host there is no filesystem to ask. For remote storage the
+        digest comes back as upload metadata, so this stays a small request
+        instead of pulling a 50 MB installer through the function to draw a page.
+        """
+        from .services import storage
+
+        if not self.filename or not self.sha256:
             return None
-        current = hash_file(path)
-        if current is None or not self.sha256:
+        try:
+            found = storage.backend().stat(self.filename)
+        except storage.StorageError:
+            return None
+        if not found:
+            return None
+        current = found.get("sha256")
+        if not current:
             return None
         return current == self.sha256
 
@@ -666,3 +676,35 @@ class Announcement(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class AdminTwoFactor(Base):
+    """The admin's TOTP enrolment. One row, fixed id.
+
+    This was data/admin_2fa.json, which is a file rather than a row for a reason
+    that no longer holds: the secret only had to be readable by the process, and
+    the file kept it out of the database. On a serverless host the filesystem is
+    read-only and discarded on every deploy, so enrolment appeared to succeed and
+    then stopped validating after the next cold start.
+
+    A row is used instead, so the enrolment survives a deploy and is shared
+    across every function instance, which is what an eight-hour session cookie
+    signed by a stable secret key implies anyway.
+
+    Recovery codes are stored hashed. They are single-use bearer credentials, so
+    a readable copy would defeat the point; the secret is base32 rather than
+    encrypted because the project has no crypto library, and a TOTP secret is a
+    shared HMAC key rather than a password.
+    """
+
+    __tablename__ = "admin_two_factor"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    secret: Mapped[str] = mapped_column(String(64), default="")
+    recovery_hashes: Mapped[list] = mapped_column(JSON, default=list)
+    enabled_at: Mapped[float] = mapped_column(default=0.0)
+
+    # Only one admin account exists, so the row id is pinned rather than
+    # autoincremented. It makes "the enrolment" a lookup that cannot be fanned
+    # out into two competing secrets by a repeated enrolment.
+    __table_args__ = ()

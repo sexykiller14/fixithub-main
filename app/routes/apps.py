@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,13 @@ from ..db import get_db
 from ..deps import build_context, total_counts
 from ..models import AppDownload, Article
 from ..services.accounts import current_user
-from ..services.apps import image_content_type, stored_image_path, stored_path
+from ..services.apps import (
+    file_present,
+    image_content_type,
+    read_binary,
+    read_image,
+    stored_path,
+)
 from ..templates import render
 
 from .accounts import redirect_to_login
@@ -23,6 +29,18 @@ from .comments import TARGET_APP, comment_context
 log = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _local_path_for_image(filename: str):
+    """The on-disk path for a screenshot, or None when storage is remote.
+
+    Separate from the bytes fetch above because a local screenshot can be
+    streamed by path, and reading a 4 MB image into a lambda to serve it is
+    wasteful when the file is already sitting on disk.
+    """
+    from ..services.apps import stored_image_path
+
+    return stored_image_path(filename)
 
 CATEGORIES_FOR_APPS = {
     "hardware": "Hardware",
@@ -99,7 +117,7 @@ def app_detail(request: Request, slug: str, db: Session = Depends(get_db)):
         nav_open="apps",
         app=app,
         integrity=integrity,
-        file_present=stored_path(app.filename) is not None,
+        file_present=file_present(app.filename),
         related=related,
         reader=reader,
         download_locked=reader is None or not reader.is_verified,
@@ -129,22 +147,32 @@ def app_screenshot(request: Request, slug: str, db: Session = Depends(get_db)):
 
         raise HTTPException(status_code=404, detail="Not found")
 
-    path = stored_image_path(app.screenshot_filename)
-    if path is None:
+    data: bytes | None = read_image(app.screenshot_filename)
+    if data is None:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail="Not found")
 
-    return FileResponse(
-        path=path,
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        # The image is data, not a document. sandbox stops it being treated
+        # as one even if a future upload somehow carried markup.
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cache-Control": "public, max-age=3600",
+    }
+    # Local files are streamed from disk rather than read into memory; only
+    # remote storage has to buffer, because there is no path to hand over.
+    local = _local_path_for_image(app.screenshot_filename)
+    if local is not None:
+        return FileResponse(
+            path=local,
+            media_type=image_content_type(app.screenshot_filename),
+            headers=headers,
+        )
+    return Response(
+        content=data,
         media_type=image_content_type(app.screenshot_filename),
-        headers={
-            "X-Content-Type-Options": "nosniff",
-            # The image is data, not a document. sandbox stops it being treated
-            # as one even if a future upload somehow carried markup.
-            "Content-Security-Policy": "default-src 'none'; sandbox",
-            "Cache-Control": "public, max-age=3600",
-        },
+        headers=headers,
     )
 
 
@@ -174,12 +202,15 @@ def app_download(request: Request, slug: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Download not found")
 
     path = stored_path(app.filename)
+    data: bytes | None = None
     if path is None:
-        from fastapi import HTTPException
+        # No local path. Either the file is in remote storage, or it is not
+        # there at all, and those are told apart by actually reading it.
+        data = read_binary(app.filename)
+        if data is None:
+            from fastapi import HTTPException
 
-        raise HTTPException(
-            status_code=404, detail="File missing"
-        )
+            raise HTTPException(status_code=404, detail="File missing")
 
     # The whole point of recording a hash is to notice when the file no longer
     # matches, so refuse rather than serve something we cannot vouch for.
@@ -198,15 +229,22 @@ def app_download(request: Request, slug: str, db: Session = Depends(get_db)):
     # Sent as an attachment with an opaque content type so the browser saves it.
     # A Content-Disposition of attachment is what stops any chance of the file
     # being rendered or executed in the context of this site.
-    return FileResponse(
-        path=path,
+    headers = {
+        "Content-Disposition": f'attachment; filename="{app.filename}"',
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cache-Control": "public, max-age=3600",
+        "X-Checksum-Sha256": app.sha256,
+    }
+    if path is not None:
+        return FileResponse(
+            path=path,
+            media_type="application/octet-stream",
+            filename=app.filename,
+            headers=headers,
+        )
+    return Response(
+        content=data or b"",
         media_type="application/octet-stream",
-        filename=app.filename,
-        headers={
-            "Content-Disposition": f'attachment; filename="{app.filename}"',
-            "X-Content-Type-Options": "nosniff",
-            "Content-Security-Policy": "default-src 'none'; sandbox",
-            "Cache-Control": "public, max-age=3600",
-            "X-Checksum-Sha256": app.sha256,
-        },
+        headers=headers,
     )

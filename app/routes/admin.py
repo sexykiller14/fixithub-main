@@ -1874,14 +1874,76 @@ def admin_article_save(
         "article.save",
         target_type="article",
         target_id=clean_slug,
-        detail=f"title: {reloaded.title}",
+        # Not reloaded.title: reloaded is None whenever the markdown write
+        # failed, which on a serverless host is every save. Dereferencing it
+        # there raised AttributeError and turned a working save into a 500.
+        detail=f"title: {(reloaded.title if reloaded else title.strip())}",
         ip_hash=audit.hash_ip(client_ip(request)),
         commit=False,
     )
     db.commit()
 
     _index_after_write(db)
+    # After the commit and never before it. The database row is what the site
+    # serves, so the save is already durable; the mirror is a backup of it. A
+    # failure here is recorded and the admin still gets their redirect.
+    _mirror_article(db, clean_slug, markdown_text, path)
     return RedirectResponse(f"/admin/articles?saved={clean_slug}", status_code=303)
+
+
+def _mirror_article(db: Session, slug: str, markdown: str, local_path: str) -> None:
+    """Commit an article's markdown to GitHub, reporting the outcome.
+
+    Only the repository is written, never the local filesystem: on a serverless
+    host that write fails anyway, and the reason it is still attempted is so
+    the audit log records that the file could not be kept in sync.
+    """
+    from ..services import github
+
+    if not github.configured():
+        return
+
+    repo_path = _repo_content_path(local_path)
+    if not repo_path:
+        _record_mirror_failure(db, slug, "the article has no path in content/")
+        return
+
+    ok, detail = github.mirror_article(repo_path, markdown, slug)
+    audit.record(
+        db,
+        "content.mirror" if ok else "content.mirror_failed",
+        target_type="article",
+        target_id=slug,
+        detail=f"{repo_path}: {detail}",
+    )
+
+
+def _repo_content_path(local_path: str) -> str:
+    """The repo-relative path for an article, or "" when it has none.
+
+    Articles seeded from the repository carry a source_path inside content/. One
+    created in the admin panel does not, and a bare filename would be pushed to
+    the repository root, so those are refused rather than written somewhere
+    arbitrary.
+    """
+    if not local_path:
+        return ""
+    candidate = str(local_path).replace("\\", "/")
+    marker = "content/"
+    index = candidate.rfind(marker)
+    if index == -1:
+        return ""
+    return candidate[index:]
+
+
+def _record_mirror_failure(db: Session, slug: str, detail: str) -> None:
+    audit.record(
+        db,
+        "content.mirror_failed",
+        target_type="article",
+        target_id=slug,
+        detail=detail,
+    )
 
 
 @router.post("/admin/articles/{slug}/delete", name="admin_article_delete")

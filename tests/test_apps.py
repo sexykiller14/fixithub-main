@@ -12,14 +12,27 @@ import io
 
 import pytest
 
-from app.services import apps
+from app.services import apps, storage as storage_service
 
 
 @pytest.fixture(autouse=True)
 def storage(tmp_path, monkeypatch):
-    """Point the upload directory at a temporary path for every test."""
-    monkeypatch.setattr(apps, "APPS_DIR", tmp_path / "uploads")
-    return apps.APPS_DIR
+    """Point both storage backends at a temporary path for every test.
+
+    The backends are cached per process, so they are reset as well as
+    repointed: a cached LocalStorage would still hold the real APPS_DIR and the
+    test would write into the developer's own upload directory.
+    """
+    uploads = tmp_path / "uploads"
+    monkeypatch.setattr(
+        storage_service, "_binary_backend", storage_service.LocalStorage(uploads)
+    )
+    monkeypatch.setattr(
+        storage_service,
+        "_image_backend",
+        storage_service.LocalStorage(tmp_path / "images"),
+    )
+    return uploads
 
 
 def make_exe(payload: bytes = b"MZ" + b"\x00" * 200) -> bytes:
@@ -133,9 +146,10 @@ def test_stored_filename_comes_from_the_slug_not_the_client(storage):
 
 def _stored_files() -> list[str]:
     """Names of files in the upload directory, if it has been created yet."""
-    if not apps.APPS_DIR.exists():
+    root = storage_service.backend().root
+    if not root.exists():
         return []
-    return sorted(path.name for path in apps.APPS_DIR.iterdir())
+    return sorted(path.name for path in root.iterdir())
 
 
 def test_store_upload_rejects_a_renamed_script():

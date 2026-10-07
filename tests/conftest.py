@@ -178,6 +178,28 @@ def admin_client(client):
     return client
 
 
+@pytest.fixture(autouse=True)
+def clear_two_factor_enrolment():
+    """Empty the admin TOTP row before every test.
+
+    The enrolment moved from a file in a per-test temporary directory to a
+    single database row, and the prepared database is session-scoped. Without
+    this, one test's enrolment would satisfy the next one's assertion that
+    nothing is enrolled, and a test that disables two-factor would silently
+    change the state a later test depends on.
+    """
+    from app.db import session_scope
+    from app.models import AdminTwoFactor
+
+    with session_scope() as db:
+        row = db.get(AdminTwoFactor, 1)
+        if row is not None:
+            row.secret = ""
+            row.recovery_hashes = []
+            row.enabled_at = 0.0
+    yield
+
+
 def make_csrf(client) -> str:
     """Read a CSRF token out of the current admin session's page."""
     import re

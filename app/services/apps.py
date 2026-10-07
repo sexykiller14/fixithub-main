@@ -32,7 +32,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..config import APPS_DIR, IMAGES_DIR, SITE_URL
+from ..config import SITE_URL
+from . import storage
+from .storage import StorageError
 
 # Only these may be uploaded. The list is deliberately short: this site has no
 # legitimate need for .scr, .bat, .js, .html or .vbs.
@@ -81,7 +83,7 @@ class AppUploadError(Exception):
 class ValidatedUpload:
     slug: str
     filename: str
-    path: Path
+    path: Path | None
     size: int
     sha256: str
 
@@ -197,12 +199,6 @@ def check_image_magic(head: bytes, suffix: str) -> None:
         )
 
 
-def ensure_storage() -> Path:
-    """Create the upload directory if it does not exist yet."""
-    APPS_DIR.mkdir(parents=True, exist_ok=True)
-    return APPS_DIR
-
-
 def store_upload(
     slug: str,
     client_filename: str,
@@ -229,28 +225,41 @@ def store_upload(
     check_magic(data[:8], suffix)
 
     digest = hashlib.sha256(data).hexdigest()
-    directory = ensure_storage()
-    target = directory / filename
-
-    # Write to a temporary name and move it into place, so a download can never
-    # observe a half-written file.
-    temporary = directory / f".{filename}.partial"
+    store = storage.backend()
+    # Validation is complete, so only now does anything reach storage. A file
+    # refused above never creates an object, which matters when the backend is a
+    # shared bucket rather than a directory that gets cleaned up later.
     try:
-        temporary.write_bytes(data)
-        temporary.replace(target)
-    except OSError as exc:
-        temporary.unlink(missing_ok=True)
+        store.put(filename, data)
+    except StorageError as exc:
         raise AppUploadError(
-            "The file could not be written to disk. Check that the apps "
-            f"directory is writable. ({type(exc).__name__})"
+            _write_failure(filename, store.name, "binary", exc)
         ) from exc
 
     return ValidatedUpload(
         slug=slug,
         filename=filename,
-        path=target,
+        path=store.local_path(filename),
         size=len(data),
         sha256=digest,
+    )
+
+
+def _write_failure(filename: str, backend_name: str, subject: str, exc: Exception) -> str:
+    """Turn a storage failure into something the admin can act on.
+
+    `subject` names the thing being stored, so the same message works for a
+    binary and a screenshot without either being patched into the other.
+    """
+    if backend_name == "supabase":
+        return (
+            f"The {subject} could not be saved to the storage bucket. Check "
+            "that the bucket exists, is private, and that "
+            f"FIXITHUB_STORAGE_KEY is the service-role key. ({type(exc).__name__})"
+        )
+    return (
+        f"The {subject} could not be written to disk. Check that the {subject} "
+        f"directory is writable. ({type(exc).__name__})"
     )
 
 
@@ -280,62 +289,51 @@ def store_image(
     check_image_magic(data[:16], suffix)
 
     digest = hashlib.sha256(data).hexdigest()
-    directory = ensure_image_storage()
-    target = directory / filename
-
-    # Same temporary-name dance as the binary, so a partial write is never
-    # observable by a request that arrives mid-upload.
-    temporary = directory / f".{filename}.partial"
+    store = storage.image_backend()
     try:
-        temporary.write_bytes(data)
-        temporary.replace(target)
-    except OSError as exc:
-        temporary.unlink(missing_ok=True)
+        store.put(filename, data)
+    except StorageError as exc:
         raise AppUploadError(
-            "The screenshot could not be written to disk. Check that the "
-            f"images directory is writable. ({type(exc).__name__})"
+            _write_failure(filename, store.name, "screenshot", exc)
         ) from exc
 
     return ValidatedUpload(
         slug=slug,
         filename=filename,
-        path=target,
+        path=store.local_path(filename),
         size=len(data),
         sha256=digest,
     )
 
 
-def ensure_image_storage() -> Path:
-    """Create the screenshots directory if it does not exist yet."""
-    IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-    return IMAGES_DIR
-
-
 def remove_stored_image(filename: str) -> None:
-    """Delete a stored screenshot, ignoring a file that is already gone."""
+    """Delete a stored screenshot, ignoring one that is already gone."""
     if not filename:
         return
-    if "/" in filename or "\\" in filename or filename in {".", ".."}:
-        return
-    (ensure_image_storage() / filename).unlink(missing_ok=True)
+    try:
+        storage.image_backend().delete(filename)
+    except StorageError:
+        pass
 
 
 def stored_image_path(filename: str) -> Path | None:
     """Resolve a stored screenshot name to a path inside the images directory.
 
     Returns None unless the resolved path really is inside IMAGES_DIR, so a
-    name that escaped validation still cannot be served.
+    name that escaped validation still cannot be served. None is also the answer
+    when storage is remote: there is no path, and the caller reads the bytes
+    through read_image instead.
     """
     if not filename or "/" in filename or "\\" in filename:
         return None
-    candidate = (ensure_image_storage() / filename).resolve()
-    try:
-        candidate.relative_to(IMAGES_DIR.resolve())
-    except ValueError:
+    return storage.image_backend().local_path(filename)
+
+
+def read_image(filename: str) -> bytes | None:
+    """The screenshot's bytes, or None when it is not there."""
+    if not filename or "/" in filename or "\\" in filename:
         return None
-    if not candidate.is_file():
-        return None
-    return candidate
+    return storage.image_backend().get(filename)
 
 
 # A real, declared content type per suffix. Served rather than guessed from the
@@ -354,14 +352,13 @@ def image_content_type(filename: str) -> str:
 
 
 def remove_stored(filename: str) -> None:
-    """Delete a stored binary, ignoring a file that is already gone."""
+    """Delete a stored binary, ignoring one that is already gone."""
     if not filename:
         return
-    # Only ever touch a plain filename inside the upload directory. Anything
-    # with a separator in it is refused rather than resolved.
-    if "/" in filename or "\\" in filename or filename in {".", ".."}:
-        return
-    (ensure_storage() / filename).unlink(missing_ok=True)
+    try:
+        storage.backend().delete(filename)
+    except StorageError:
+        pass
 
 
 def hash_file(path: Path) -> str | None:
@@ -380,18 +377,30 @@ def stored_path(filename: str) -> Path | None:
     """Resolve a stored filename to a path inside the upload directory.
 
     Returns None unless the resolved path really is inside APPS_DIR, so a
-    filename that escaped validation still cannot be served.
+    filename that escaped validation still cannot be served. None is also the
+    answer when storage is remote, where the caller reads bytes instead.
     """
     if not filename or "/" in filename or "\\" in filename:
         return None
-    candidate = (ensure_storage() / filename).resolve()
-    try:
-        candidate.relative_to(APPS_DIR.resolve())
-    except ValueError:
+    return storage.backend().local_path(filename)
+
+
+def read_binary(filename: str) -> bytes | None:
+    """The binary's bytes, or None when it is not there."""
+    if not filename or "/" in filename or "\\" in filename:
         return None
-    if not candidate.is_file():
-        return None
-    return candidate
+    return storage.backend().get(filename)
+
+
+def file_present(filename: str) -> bool:
+    """Whether the stored file exists, without reading it.
+
+    Cheaper than stat() for remote storage, which only needs one small list
+    request rather than the object's size and metadata.
+    """
+    if not filename or "/" in filename or "\\" in filename:
+        return False
+    return storage.backend().stat(filename) is not None
 
 
 def format_size(size: int) -> str:
