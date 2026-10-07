@@ -1241,3 +1241,213 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   Mobile & touch enhancements
+   ========================================================================== */
+
+/* Larger touch targets on small screens */
+@media (max-width: 639px) {
+  /* Minimum 44x44px touch targets (Apple/Google guidelines) */
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  select,
+  .nav-link,
+  .mobile-nav-link,
+  .admin-button-primary,
+  .admin-button-secondary,
+  .admin-button-danger,
+  .ask-fab,
+  .ask-chip,
+  .ask-send,
+  .ask-close,
+  .admin-nav-link,
+  .admin-dropdown-item,
+  .footer-link,
+  a[href] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Form inputs - easier to tap */
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 0.75rem 1rem;
+  }
+
+  /* Larger clickable areas for wizard options */
+  .wizard-step form button[type="submit"] {
+    padding: 1rem;
+  }
+
+  /* Article content - slightly larger text on mobile */
+  .prose-article {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+
+  .prose-article p {
+    margin-bottom: 1em;
+  }
+
+  /* Better spacing for cards on mobile */
+  .admin-stat,
+  .admin-panel,
+  .callout,
+  .ad-slot {
+    border-radius: 0.5rem;
+  }
+
+  /* Stack footer grid on mobile */
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Search input full width on mobile */
+  #nav-search,
+  #mobile-search {
+    width: 100% !important;
+  }
+
+  /* Better button spacing in feedback forms */
+  .feedback-form button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Tablet improvements */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .prose-article {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+}
+
+/* Landscape phone adjustments */
+@media (max-width: 896px) and (orientation: landscape) {
+  .ask-panel {
+    max-height: calc(100vh - 5rem);
+    max-height: calc(100dvh - 5rem);
+  }
+  
+  .admin-topbar {
+    height: 3.5rem;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .prose-article code,
+  .prose-article pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+}
+
+/* Print styles */
+@media print {
+  .nav-link,
+  .mobile-nav-link,
+  .admin-sidebar,
+  .admin-topbar,
+  .ask-widget,
+  .ad-slot,
+  .copy-button,
+  .footer-link,
+  button,
+  input[type="search"],
+  #theme-toggle,
+  #menu-button,
+  .admin-button-primary,
+  .admin-button-secondary,
+  .admin-button-danger {
+    display: none !important;
+  }
+  
+  .prose-article {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+  }
+  
+  .prose-article pre {
+    background: #f5f5f5 !important;
+    color: #333 !important;
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+  
+  .prose-article a {
+    text-decoration: underline;
+    color: #000 !important;
+  }
+  
+  .prose-article a::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}
+
+/* Focus visible improvements for keyboard navigation */
+:focus-visible {
+  outline: 2px solid rgb(27 110 245);
+  outline-offset: 2px;
+}
+
+/* Ensure interactive elements don't get too small */
+@media (max-width: 380px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .prose-article {
+    font-size: 0.95rem;
+  }
+}
+
+/* Touch-friendly hover states - only show hover on devices that support it */
+@media (hover: none) and (pointer: coarse) {
+  .nav-link:hover,
+  .mobile-nav-link:hover,
+  .admin-nav-link:hover,
+  .admin-button-primary:hover,
+  .admin-button-secondary:hover,
+  .admin-button-danger:hover,
+  .ask-fab:hover,
+  .ask-chip:hover,
+  .ask-send:hover,
+  .ask-close:hover,
+  .admin-dropdown-item:hover,
+  .admin-stat-link:hover {
+    /* Disable hover effects on touch devices */
+    background-color: inherit;
+    color: inherit;
+  }
+  
+  /* Active state for touch feedback */
+  .nav-link:active,
+  .mobile-nav-link:active,
+  .admin-nav-link:active,
+  .admin-button-primary:active,
+  .admin-button-secondary:active,
+  .admin-button-danger:active,
+  .ask-fab:active,
+  .ask-chip:active,
+  .ask-send:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+}
