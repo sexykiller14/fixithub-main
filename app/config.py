@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import secrets
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -21,8 +22,8 @@ WIZARDS_DIR = DATA_DIR / "wizards"
 SCRIPTS_DIR = BASE_DIR / "scripts_download"
 
 # On serverless platforms (e.g. Vercel), the root filesystem is read-only.
-# Mutable files (uploads, admin hash, SQLite database) fall back to /tmp if not configured.
-_default_apps_dir = Path("/tmp/apps_download") if IS_SERVERLESS else BASE_DIR / "apps_download"
+# Mutable files (uploads, admin hash, SQLite database) fall back to the system temp directory.
+_default_apps_dir = Path(tempfile.gettempdir()) / "apps_download" if IS_SERVERLESS else BASE_DIR / "apps_download"
 APPS_DIR = Path(os.environ.get("FIXITHUB_APPS_DIR", str(_default_apps_dir))).resolve()
 IMAGES_DIR = APPS_DIR / "screenshots"
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -31,7 +32,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 if (DATA_DIR / "admin.json").is_file():
     ADMIN_HASH_FILE = DATA_DIR / "admin.json"
 elif IS_SERVERLESS:
-    ADMIN_HASH_FILE = Path("/tmp/admin.json")
+    ADMIN_HASH_FILE = Path(tempfile.gettempdir()) / "admin.json"
 else:
     ADMIN_HASH_FILE = DATA_DIR / "admin.json"
 
@@ -329,7 +330,8 @@ def _resolve_database_url() -> str:
             return "postgresql://" + raw[len("postgres://"):]
         return raw
     if IS_SERVERLESS:
-        return f"sqlite:///{Path('/tmp/fixithub.db').as_posix()}"
+        temp_db = Path(tempfile.gettempdir()) / "fixithub.db"
+        return f"sqlite:///{temp_db.as_posix()}"
     return f"sqlite:///{(DATA_DIR / 'fixithub.db').as_posix()}"
 
 
