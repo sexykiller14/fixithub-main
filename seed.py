@@ -122,6 +122,13 @@ def set_admin_password(password: str | None) -> int:
 def report() -> int:
     from sqlalchemy import func, select
 
+    # A database that has never been seeded has no tables, and counting rows
+    # against a missing table raised OperationalError: no such table: articles.
+    # --check is the command someone runs first when a deploy looks empty, so
+    # it has to answer "nothing loaded yet" rather than a stack trace. create_all
+    # is the same idempotent call the app makes on boot.
+    create_all()
+
     with session_scope() as db:
         articles = db.scalar(select(func.count(Article.id))) or 0
         codes = db.scalar(select(func.count(StopCode.id))) or 0
