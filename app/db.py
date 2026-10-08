@@ -98,6 +98,35 @@ def _existing_columns(conn, table_name: str) -> set[str]:
         return set()
 
 
+def _default_literal(column, dialect) -> str:
+    """Render a column's Python-side default as a SQL DEFAULT clause.
+
+    Booleans need the dialect's own spelling. SQLite accepts 1 and 0 in a
+    DEFAULT for a BOOLEAN column, but Postgres rejects it outright - "column is
+    of type boolean but default expression is of type integer" - so every
+    Boolean column this repair tried to add failed there. Since this is the
+    routine that keeps an existing database working after a model gains a
+    field, that failure left a Postgres deploy unable to start.
+    """
+    if column.default is None or not getattr(column.default, "is_scalar", False):
+        return ""
+    rendered = column.default.arg
+    if isinstance(rendered, bool):
+        literal = "true" if rendered else "false"
+        # SQLite has no boolean type, so it stores these as 1/0. Emitting
+        # true/false there is still accepted as an alias, but 1/0 keeps the
+        # stored value identical to what create_all would have written.
+        if dialect.name == "sqlite":
+            return f" DEFAULT {1 if rendered else 0}"
+        return f" DEFAULT {literal}"
+    if isinstance(rendered, (int, float)):
+        return f" DEFAULT {rendered}"
+    if isinstance(rendered, str):
+        escaped = rendered.replace("'", "''")
+        return f" DEFAULT '{escaped}'"
+    return ""
+
+
 def _add_missing_columns() -> None:
     """ALTER TABLE ... ADD COLUMN for every column a model declares and the
     table lacks.
@@ -117,16 +146,7 @@ def _add_missing_columns() -> None:
                 ddl = column.type.compile(dialect=conn.dialect)
                 # A NOT NULL column can only be added with a default, otherwise
                 # every existing row would violate it.
-                default = ""
-                if column.default is not None and getattr(column.default, "is_scalar", False):
-                    rendered = column.default.arg
-                    if isinstance(rendered, bool):
-                        default = f" DEFAULT {1 if rendered else 0}"
-                    elif isinstance(rendered, (int, float)):
-                        default = f" DEFAULT {rendered}"
-                    elif isinstance(rendered, str):
-                        escaped = rendered.replace("'", "''")
-                        default = f" DEFAULT '{escaped}'"
+                default = _default_literal(column, conn.dialect)
                 log.info(
                     "Adding missing column %s.%s", table.name, column.name
                 )

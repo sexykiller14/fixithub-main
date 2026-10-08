@@ -18,9 +18,10 @@ than a model table that other files share.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import Column, Integer, Table, Text, text
+from sqlalchemy import Boolean, Column, Integer, Table, Text, text
+from sqlalchemy.dialects import postgresql, sqlite
 
-from app.db import _add_missing_columns, _existing_columns, engine
+from app.db import _add_missing_columns, _default_literal, _existing_columns, engine
 from app.models import Base
 
 
@@ -104,6 +105,40 @@ def test_the_repair_leaves_existing_columns_alone(scratch_table):
         }
 
     assert after_types == before_types
+
+
+def test_a_boolean_default_is_spelled_for_the_dialect():
+    """A Boolean default must be 1/0 on SQLite and true/false on Postgres.
+
+    The repair used to emit DEFAULT 1 for every dialect. SQLite accepts that
+    for a BOOLEAN column; Postgres rejects it with "column is of type boolean
+    but default expression is of type integer", so adding any missing Boolean
+    column on a Postgres deploy raised and the app could not start.
+    """
+    for value in (True, False):
+        column = Column("flag", Boolean, default=value)
+
+        assert _default_literal(column, sqlite.dialect()) == f" DEFAULT {1 if value else 0}"
+        assert _default_literal(column, postgresql.dialect()) == f" DEFAULT {'true' if value else 'false'}"
+
+
+def test_the_generated_statement_is_valid_postgres():
+    """The clause has to compose into DDL Postgres actually accepts."""
+    column = Column("flag", Boolean, default=True)
+    ddl = column.type.compile(dialect=postgresql.dialect())
+    statement = f'ALTER TABLE "probe" ADD COLUMN "flag" {ddl}{_default_literal(column, postgresql.dialect())}'
+
+    assert statement == 'ALTER TABLE "probe" ADD COLUMN "flag" BOOLEAN DEFAULT true'
+
+
+def test_non_boolean_defaults_are_unchanged():
+    """The fix is scoped to booleans; other types must behave as before."""
+    assert _default_literal(Column("n", Integer, default=7), postgresql.dialect()) == " DEFAULT 7"
+    assert (
+        _default_literal(Column("s", Text, default="it's"), postgresql.dialect())
+        == " DEFAULT 'it''s'"
+    )
+    assert _default_literal(Column("x", Text), postgresql.dialect()) == ""
 
 
 def test_the_repair_is_idempotent(scratch_table):
