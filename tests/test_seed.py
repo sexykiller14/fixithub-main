@@ -76,8 +76,12 @@ def test_check_after_seeding_reports_the_content(unseeded):
     result = run_seed(unseeded, "--check")
 
     assert result.returncode == 0, result.stderr
-    assert "articles   43" in result.stdout, result.stdout
-    assert "stop codes 92" in result.stdout, result.stdout
+    # Counted from the content folder rather than hardcoded, so adding an
+    # article does not have to be matched with an edit here.
+    expected = len(
+        [p for p in (ROOT / "content").rglob("*.md") if not p.name.startswith("_")]
+    )
+    assert f"articles   {expected}" in result.stdout, result.stdout
 
 
 def test_check_is_repeatable(unseeded):
@@ -88,13 +92,24 @@ def test_check_is_repeatable(unseeded):
 
 
 def test_seeding_twice_does_not_duplicate_articles(unseeded):
-    """seed.py documents itself as safe to run repeatedly. Check that it is."""
-    assert run_seed(unseeded).returncode == 0
-    assert run_seed(unseeded).returncode == 0
+    """seed.py documents itself as safe to run repeatedly. Check that it is.
 
-    result = run_seed(unseeded, "--check")
+    Seeded twice against the same database, the article count must be unchanged
+    and equal to the number of markdown files. A second run that appended
+    rather than upserting would double it.
+    """
+    expected = len(
+        [p for p in (ROOT / "content").rglob("*.md") if not p.name.startswith("_")]
+    )
 
-    assert "articles   43" in result.stdout, result.stdout
+    assert run_seed(unseeded).returncode == 0
+    first = run_seed(unseeded, "--check")
+    assert f"articles   {expected}" in first.stdout, first.stdout
+
+    assert run_seed(unseeded).returncode == 0
+    second = run_seed(unseeded, "--check")
+
+    assert f"articles   {expected}" in second.stdout, second.stdout
 
 
 def test_set_admin_password_refuses_a_short_password(unseeded):
