@@ -134,7 +134,7 @@ netsh interface ipv4 set dnsservers name="Wi-Fi" source=dhcp
 ## Use our tools to check
 
 - [DNS lookup](/tools/dns) resolves a hostname and shows the returned records
-- [HTTP status check](/tools/http) confirms a site actually responds
+- [HTTP status check](/tools/status) confirms a site actually responds
 - [Latency test](/tools/latency) shows whether DNS resolution is unusually slow
 
 ## Related

@@ -277,6 +277,36 @@ def test_every_script_related_slug_resolves(client):
             assert client.get(f"/articles/{slug}").status_code == 200
 
 
+def test_internal_links_in_articles_resolve(client):
+    """Every site-absolute link in the markdown has to be a real route.
+
+    Content links are hand-written and nothing validates them, so a typo ships
+    as a live 404 to any reader who follows it. fix-dns-problems-windows.md
+    pointed at /tools/http, which no route serves; the tool is /tools/status.
+    """
+    import re
+
+    from app.config import CONTENT_DIR
+
+    checked = 0
+    for path in sorted(CONTENT_DIR.rglob("*.md")):
+        if path.name.startswith("_"):
+            continue
+        body = path.read_text(encoding="utf-8")
+        for target in re.findall(r"\]\((/[^)#\s]+)", body):
+            # Only paths the app itself serves. Anchors and query strings are
+            # dropped so the check is about the route, not the fragment.
+            route = target.split("#", 1)[0].split("?", 1)[0].rstrip("/") or "/"
+            assert route.startswith("/"), f"{path.name}: non-absolute link {target}"
+            response = client.get(route, follow_redirects=True)
+            assert response.status_code < 400, (
+                f"{path.name} links to {target}, which returned "
+                f"{response.status_code}"
+            )
+            checked += 1
+    assert checked > 20, "the scan found suspiciously few links to check"
+
+
 def test_disk_script_documents_every_watched_attribute():
     """The script decodes raw SMART attributes itself, so the explanations in
     the report have to cover the attributes it reads. Otherwise a user sees a
