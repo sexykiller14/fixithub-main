@@ -227,8 +227,12 @@ async def port_check(hostname: str, port_value) -> ToolResult:
     """Check one allowlisted TCP port on a validated public host."""
     from .ssrf import resolve_public_ip
 
-    host = resolve_public_ip(validate_hostname(hostname))
+    # Port first. The allow-list is a local dict lookup, so this costs nothing
+    # and needs no network - but resolving the host does, and doing that first
+    # meant a DNS failure masked the real problem: the visitor was told "could
+    # not resolve" instead of "that port is not on the allowed list".
     port = validate_port(port_value)
+    host = resolve_public_ip(validate_hostname(hostname))
     timeout = _clean_timeout(settings.socket_timeout)
 
     state, elapsed = await _tcp_connect(host.hostname, host.ip, port, timeout)
@@ -411,8 +415,10 @@ async def tcp_latency(hostname: str, port_value=443, attempts: int = 4) -> ToolR
     """Measure TCP connect latency to a validated public host."""
     from .ssrf import resolve_public_ip
 
-    host = resolve_public_ip(validate_hostname(hostname))
+    # Port before DNS, for the same reason as port_check: rejecting a port is a
+    # local allow-list lookup and must not be preempted by a resolution failure.
     port = validate_port(port_value)
+    host = resolve_public_ip(validate_hostname(hostname))
     count = max(2, min(int(attempts), 8))
     timeout = _clean_timeout(settings.socket_timeout)
 

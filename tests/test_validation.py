@@ -406,6 +406,57 @@ def test_port_tool_rejects_disallowed_port(client):
     assert "not on the allowed list" in response.text
 
 
+def test_disallowed_port_is_reported_before_any_dns_lookup(monkeypatch):
+    """The allow-list check must not depend on resolving the hostname.
+
+    ALLOWED_PORTS is a plain dict, so rejecting a port is a local operation
+    that needs no network. port_check used to resolve the host first, so on a
+    host with no working DNS the visitor was told "Could not resolve" and never
+    learned the port was the actual problem. That also made the assertion above
+    depend on the machine having internet access.
+    """
+    import asyncio
+
+    from app.services import nettools
+    from app.services.ssrf import ValidationError
+
+    def unreachable(_hostname):
+        raise ValidationError("Could not resolve nope.invalid. Check the spelling.")
+
+    monkeypatch.setattr("app.services.ssrf.resolve_public_ip", unreachable)
+
+    async def run():
+        with pytest.raises(ValidationError) as caught:
+            await nettools.port_check("nope.invalid", "1080")
+        return str(caught.value)
+
+    message = asyncio.run(run())
+    assert "not on the allowed list" in message
+    assert "resolve" not in message
+
+
+def test_disallowed_latency_port_is_reported_before_any_dns_lookup(monkeypatch):
+    """Same ordering bug in the latency tool."""
+    import asyncio
+
+    from app.services import nettools
+    from app.services.ssrf import ValidationError
+
+    def unreachable(_hostname):
+        raise ValidationError("Could not resolve nope.invalid. Check the spelling.")
+
+    monkeypatch.setattr("app.services.ssrf.resolve_public_ip", unreachable)
+
+    async def run():
+        with pytest.raises(ValidationError) as caught:
+            await nettools.tcp_latency("nope.invalid", "1080", 2)
+        return str(caught.value)
+
+    message = asyncio.run(run())
+    assert "not on the allowed list" in message
+    assert "resolve" not in message
+
+
 def test_status_tool_rejects_http(client):
     response = client.post("/tools/status", data={"url": "http://example.com"}, follow_redirects=True)
     assert response.status_code in (200, 422)
