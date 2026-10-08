@@ -290,6 +290,68 @@ def test_article_save_creates_and_edits(client, db):
     assert client.get(f"/articles/{slug}").status_code == 404
 
 
+def test_article_save_survives_a_read_only_filesystem(client, monkeypatch):
+    """Saving an article must work when the markdown file cannot be written.
+
+    On Vercel the root filesystem is read-only, so the write and the reload both
+    fail and the route falls through to the database-only branch. That branch
+    referenced two names that were never defined, so every article save on a
+    serverless host died with a NameError - a 500 that took the whole admin
+    panel's content editing down, not just one save.
+    """
+    import app.routes.admin as admin_routes
+
+    assert login(client)
+    dashboard = client.get("/admin/articles")
+    token = re.search(r'name="csrf" value="([^"]+)"', dashboard.text).group(1)
+
+    def read_only(*_args, **_kwargs):
+        raise OSError("EROFS: read-only file system")
+
+    # Both the write and the reload fail, exactly as they do on Vercel.
+    monkeypatch.setattr("builtins.open", read_only)
+    monkeypatch.setattr(admin_routes, "load_article_file", read_only)
+
+    slug = "pytest-readonly-save"
+    body = "## A heading\n\nEnough real content to pass the fifty character minimum.\n"
+
+    response = client.post(
+        "/admin/articles/save",
+        data={
+            "slug": slug,
+            "title": "Saved without a writable disk",
+            "category": "windows",
+            "difficulty": "easy",
+            "summary": "Written straight to the database",
+            "featured": "on",
+            "body": body,
+            "csrf": token,
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303, "a read-only filesystem must not fail the save"
+    page = client.get(f"/articles/{slug}")
+    assert page.status_code == 200
+    assert "Saved without a writable disk" in page.text
+    # The values the broken branch never assigned still have to be persisted.
+    assert "Written straight to the database" in page.text
+
+    # The featured flag is a form field, so the saved row must record it.
+    from app.db import session_scope
+    from app.models import Article
+    from sqlalchemy import select
+
+    with session_scope() as db:
+        row = db.scalar(select(Article).where(Article.slug == slug))
+        assert row is not None, "the article was not written to the database"
+        assert row.title == "Saved without a writable disk"
+        assert row.is_featured is True
+        assert row.status == "published"
+
+    client.post(f"/admin/articles/{slug}/delete", data={"csrf": token}, follow_redirects=False)
+
+
 def test_article_save_rejects_dangerous_slug(client):
     """A slug cannot be used to escape the content directory."""
     assert login(client)

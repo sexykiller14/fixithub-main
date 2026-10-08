@@ -1863,12 +1863,18 @@ def admin_article_save(
         existing.tags = [t.strip() for t in tags.split(",") if t.strip()]
         existing.difficulty = difficulty.strip() or "easy"
         existing.os_version = os_version.strip() or "Windows 10/11"
-        existing.is_featured = is_featured
+        # `featured` is the form field. This used to read an undefined
+        # `is_featured`, so the whole save raised NameError on any host where
+        # the markdown write had failed - which on a serverless platform is
+        # every save.
+        existing.is_featured = featured == "on"
         existing.summary = summary.strip() or rendered.summary
         existing.body = body.strip()
         existing.reading_time = rendered.reading_time
         existing.source_path = original_path or path
-        existing.status = "draft" if is_draft else "published"
+        # This form has no draft control, so an admin save is always a publish.
+        # Reading an undefined `is_draft` here raised the same NameError.
+        existing.status = "published"
     audit.record(
         db,
         "article.save",
