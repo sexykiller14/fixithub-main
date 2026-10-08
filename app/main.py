@@ -62,6 +62,14 @@ AD_CSP_ADDITIONS = (
     " https://tpc.googlesyndication.com"
 )
 AD_IMG_SRC = " https://www.googlesyndication.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com"
+
+# Starlette renamed the 422 constant to reflect that the status is about
+# content rather than an unprocessable entity, and deprecated the old name.
+# Resolved once, with a fallback, so the app works on either release and does
+# not emit a deprecation warning on every rejected request.
+_HTTP_422 = getattr(
+    status, "HTTP_422_UNPROCESSABLE_CONTENT", None
+) or status.HTTP_422_UNPROCESSABLE_ENTITY
 AD_FRAME_SRC = " https://googleads.g.doubleclick.net https://tpc.googlesyndication.com"
 
 
@@ -274,7 +282,7 @@ def install_handlers(app: FastAPI) -> None:
             message = message.split("value_error. ", 1)[-1]
         if request.url.path.startswith(("/tools/api", "/api")):
             return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=_HTTP_422,
                 content={"ok": False, "error": str(message)},
             )
         context = {
@@ -292,7 +300,7 @@ def install_handlers(app: FastAPI) -> None:
         }
         return HTMLResponse(
             render_error("error.html", context),
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=_HTTP_422,
         )
 
     @app.exception_handler(Exception)
