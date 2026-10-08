@@ -116,6 +116,98 @@ def test_the_recorded_checksum_matches_the_file_after_an_edit(admin_client):
     )
 
 
+def _form_value(edit_page: str, field: str) -> str:
+    """The value the edit form would submit for one input, or '' if absent."""
+    match = re.search(rf'name="{field}"[^>]*value="([^"]*)"', edit_page)
+    return match.group(1) if match else ""
+
+
+def _form_textarea(edit_page: str, field: str) -> str:
+    match = re.search(rf'name="{field}"[^>]*>(.*?)</textarea>', edit_page, re.S)
+    return match.group(1).strip() if match else ""
+
+
+@pytest.mark.usefixtures("admin_client")
+def test_the_edit_form_prefills_every_field_it_can_save(admin_client):
+    """Loading the edit form and submitting it unchanged must change nothing.
+
+    The form context is built from AppDownload.to_dict(), which omitted purpose,
+    vendor_url and category. The template renders those from the dict, so the
+    form came back with them empty even though the database held real values.
+    An admin who opened a record to fix a typo in the title and hit Save would
+    have silently wiped the tool's description and vendor link, and the next
+    visitor would see a download page with nothing explaining what it is for.
+    """
+    csrf = make_csrf(admin_client)
+    assert _upload(admin_client, csrf).status_code == 303
+
+    edit = admin_client.get("/admin/apps/diskinfo/edit")
+    assert edit.status_code == 200
+    page = edit.text
+
+    assert _form_value(page, "purpose") == "", "purpose is a textarea, not an input"
+    assert _form_textarea(page, "purpose") == FIELDS["purpose"], (
+        "the edit form did not prefill purpose, so re-saving would erase it"
+    )
+    assert _form_textarea(page, "summary") == FIELDS["summary"]
+    assert _form_textarea(page, "warnings_text") == FIELDS["warnings_text"]
+    assert _form_value(page, "vendor_url") == FIELDS["vendor_url"], (
+        "the edit form did not prefill vendor_url, so re-saving would erase it"
+    )
+    assert _form_value(page, "title") == FIELDS["title"]
+    assert _form_value(page, "version") == FIELDS["version"]
+    assert _form_value(page, "vendor") == FIELDS["vendor"]
+    assert f'value="{FIELDS["category"]}" selected' in page.replace("\n", " ").replace(
+        "  ", " "
+    ) or re.search(
+        rf'<option value="{re.escape(FIELDS["category"])}"\s+selected', page
+    ), "the category select did not mark the stored category as selected"
+
+
+@pytest.mark.usefixtures("admin_client")
+def test_resubmitting_the_edit_form_unchanged_preserves_every_field(admin_client):
+    """The end-to-end version: a no-op edit must not lose anything."""
+    csrf = make_csrf(admin_client)
+    assert _upload(admin_client, csrf).status_code == 303
+
+    before = _form_fields(admin_client, "diskinfo")
+
+    saved = admin_client.post(
+        "/admin/apps/save",
+        data={**before, "slug": "diskinfo", "csrf": csrf, "is_published": "1"},
+        follow_redirects=False,
+    )
+    assert saved.status_code == 303, saved.text
+
+    after = _form_fields(admin_client, "diskinfo")
+    assert after == before, "re-saving the edit form unchanged altered the record"
+
+
+def _form_fields(client, slug: str) -> dict:
+    """Every editable field, read back out of the edit form as a browser would."""
+    page = client.get(f"/admin/apps/{slug}/edit").text
+    return {
+        "title": _form_value(page, "title"),
+        "version": _form_value(page, "version"),
+        "vendor": _form_value(page, "vendor"),
+        "vendor_url": _form_value(page, "vendor_url"),
+        "summary": _form_textarea(page, "summary"),
+        "purpose": _form_textarea(page, "purpose"),
+        "warnings_text": _form_textarea(page, "warnings_text"),
+        "category": _selected_option(page, "category"),
+    }
+
+
+def _selected_option(page: str, select_name: str) -> str:
+    block = re.search(
+        rf'<select[^>]*name="{select_name}"[^>]*>(.*?)</select>', page, re.S
+    )
+    if block is None:
+        return ""
+    chosen = re.search(r'<option value="([^"]*)"[^>]*selected', block.group(1))
+    return chosen.group(1) if chosen else ""
+
+
 def _sha_on_disk(client, stored_name):
     """Hash a file in the upload directory the app was configured to use."""
     from app.services.apps import hash_file, stored_path

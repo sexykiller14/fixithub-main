@@ -552,6 +552,14 @@ class AppDownload(Base):
         return current == self.sha256
 
     def to_dict(self) -> dict:
+        """Every field the admin edit form binds to.
+
+        This doubles as the form context in admin_app_edit, so anything omitted
+        here renders blank in the form. An admin who opens a record to change
+        one field and saves would then submit the blanks and silently wipe the
+        rest - which is how purpose, vendor_url and category were being lost.
+        Keep it in step with the form in admin_app_form.html.
+        """
         return {
             "slug": self.slug,
             "title": self.title,
@@ -561,6 +569,9 @@ class AppDownload(Base):
             "sha256": self.sha256,
             "version": self.version,
             "vendor": self.vendor,
+            "vendor_url": self.vendor_url,
+            "purpose": self.purpose,
+            "category": self.category,
         }
 
 
