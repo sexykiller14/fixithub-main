@@ -219,7 +219,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.set_admin_password is not None:
         password = args.set_admin_password or None
-        set_admin_password(password)
+        # Propagate the failure. set_admin_password returns non-zero when the
+        # passwords did not match or were too short, and main used to discard
+        # it and exit 0, so a caller chaining on the exit status saw success
+        # for a password change that never happened.
+        return set_admin_password(password)
 
     return 0
 
