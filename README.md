@@ -1,415 +1,267 @@
 # FixIT Hub
 
-A technical support knowledge base for Windows 10 and 11. It helps people
-diagnose and fix PC problems themselves instead of opening a support ticket.
+**Diagnose and fix PC problems yourself.**
 
-Everything is server-rendered with FastAPI and Jinja2, the knowledge base lives
-in SQLite, and the only JavaScript is a small progressive-enhancement file.
+A server-rendered technical support knowledge base for Windows 10 and 11. A visitor
+identifies a fault, learns what is causing it, and works through a fix without
+opening a support ticket.
+
+| | |
+| --- | --- |
+| Guides | 43 markdown troubleshooting articles across 5 categories |
+| Stop codes | 92 BSOD bugchecks, searchable by name, hex or decimal |
+| Wizards | 8 JSON-driven decision trees with back/restart |
+| Network tools | 5 server-side tools, all behind SSRF validation |
+| Scripts | 5 read-only `.bat` / `.ps1` diagnostics, shown in full before download |
+| Admin | Full panel: moderation, SEO overrides, ads, audit log, backup/restore, TOTP 2FA |
+| Runtime | No frontend framework, no client-side JavaScript requirement |
 
 ---
 
-## What it does
+## Table of contents
+
+- [Features](#features)
+  - [Knowledge base](#knowledge-base)
+  - [BSOD diagnosis](#bsod-diagnosis)
+  - [Guided troubleshooting](#guided-troubleshooting)
+  - [Hardware, drivers and scripts](#hardware-drivers-and-scripts)
+  - [Network tools](#network-tools)
+  - [Reader accounts and community](#reader-accounts-and-community)
+  - [Admin panel](#admin-panel)
+  - [Operations and SEO](#operations-and-seo)
+- [Tech stack](#tech-stack)
+- [Requirements](#requirements)
+- [Installation](#installation)
+  - [Local setup](#local-setup)
+  - [Docker](#docker)
+- [Usage](#usage)
+  - [Seeding content](#seeding-content)
+  - [Configuration](#configuration)
+  - [JSON APIs](#json-apis)
+  - [Authoring content](#authoring-content)
+  - [Running the tests](#running-the-tests)
+  - [Browser audits](#browser-audits)
+  - [Deployment](#deployment)
+- [Project structure](#project-structure)
+- [Security model](#security-model)
+- [Accessibility and SEO](#accessibility-and-seo)
+- [License](#license)
+
+---
+
+## Features
+
+Everything is server-rendered with Jinja2. There is no client-side framework and
+no page requires JavaScript to work — `site.js` and `ask-widget.js` are
+progressive enhancement only.
+
+### Knowledge base
 
 | Feature | Route | Notes |
 | --- | --- | --- |
-| Home page with search | `/` | Category cards, popular fixes, recently added |
-| Full-text search | `/search` | Searches articles and stop codes together |
-| Article library | `/articles`, `/category/<slug>` | 43 markdown guides, filterable |
-| BSOD stop code lookup | `/bsod`, `/bsod/<NAME>` | 92 codes, by name, hex or decimal |
-| Minidump analyzer | `/bsod/analyze` | Reads the bugcheck code from a .dmp in memory |
-| Troubleshooting wizards | `/wizards` | 8 JSON decision trees with progress and Back |
-| Network tools | `/tools/*` | DNS, public IP, port, HTTP status, latency |
-| Driver help | `/drivers` | Vendor pages and Device Manager error codes |
-| Hardware diagnostics | `/hardware` | RAM, storage, temperatures, PSU, beeps, battery |
-| Diagnostic scripts | `/scripts` | Read-only scripts with every command explained |
-| Downloadable tools | `/apps` | Admin-uploaded binaries as a screenshot card grid, each with a verified SHA-256 |
-| Reader accounts | `/signup`, `/login`, `/account` | Optional, for commenting and gated downloads |
-| Privacy notice | `/privacy` | What is stored, why, and how to have it deleted |
-| Admin panel | `/admin` | Password protected article and stop code editing |
-| SEO | `/sitemap.xml`, `/robots.txt` | Generated from the live database |
-| Health probe | `/healthz`, `/health` | Used by Docker and load balancers |
+| Home page | `/` | Category cards, popular fixes, recent guides, popular stop codes |
+| Full-text search | `/search` | Guides and stop codes in one result set, with typeahead at `/api/search/suggest` |
+| Article library | `/articles` | 43 guides, filterable by category, difficulty and free text |
+| Category pages | `/category/<slug>` | `hardware`, `network`, `windows`, `drivers`, `bsod` |
+| Article detail | `/articles/<slug>` | Rendered markdown, table of contents, copy buttons, helpful/not-helpful vote |
+| About / Privacy | `/about`, `/privacy` | What the site stores, why, and how to have it deleted |
+
+### BSOD diagnosis
+
+| Feature | Route | Notes |
+| --- | --- | --- |
+| Stop code index | `/bsod` | All 92 codes with meaning, causes and repair steps |
+| Stop code lookup | `/bsod/lookup` | Resolves a name, `0x1A` or a decimal to a single code |
+| Stop code detail | `/bsod/<NAME>` | Repair guide plus related guides |
+| Minidump analyzer | `/bsod/analyze` | Parses the bugcheck code straight out of an uploaded `.dmp` |
+| Dump limits endpoint | `/api/dump/validate` | Reports the size cap and accepted signatures, so the UI never hard-codes them |
+| Stop code feedback | `POST /bsod/<name>/feedback` | Helpful / not helpful votes, stored per stop code |
+
+### Guided troubleshooting
+
+| Feature | Route | Notes |
+| --- | --- | --- |
+| Wizard index | `/wizards` | 8 symptom-driven decision trees |
+| Wizard step | `/wizards/<id>` | Progress, per-step options, terminal step pointing at the relevant guide |
+| Back / restart | `/wizards/<id>/back`, `/wizards/<id>/restart` | Traversal state lives in the signed session cookie |
+
+Trees are plain JSON in `data/wizards/`, so a new wizard is a new file, not a code
+change.
+
+### Hardware, drivers and scripts
+
+| Feature | Route | Notes |
+| --- | --- | --- |
+| Hardware topics | `/hardware` | RAM, storage, temperatures, PSU, beep codes, battery, SSD/RAM upgrades, sleep faults |
+| Hardware topic | `/hardware/<slug>` | Blurb, linked article, and any matching diagnostic script |
+| Driver help | `/drivers`, `/drivers/<vendor>` | NVIDIA, AMD, Intel, Realtek, Lenovo, MSI, ASUS, Microsoft, DDU |
+| Device Manager codes | `/drivers` | Yellow-bang explanations with concrete fixes and difficulty ratings |
+| Diagnostic scripts | `/scripts`, `/scripts/<slug>` | 5 read-only scripts, each rendered in full with every command explained |
+
+### Network tools
+
+All five execute server-side. Every target is resolved and validated before a
+connection is attempted.
+
+| Tool | Page | JSON API |
+| --- | --- | --- |
+| DNS lookup | `/tools/dns` | `POST /api/dns` |
+| Public IP | `/tools/ip` | — (server-rendered only) |
+| Port check | `/tools/port` | `POST /api/port` |
+| HTTP status | `/tools/status` | `POST /api/status` |
+| TCP latency | `/tools/latency` | `POST /api/latency` |
+
+Port checks are restricted to a fixed allowlist of 30 common ports
+(`ALLOWED_PORTS` in `app/config.py`). Anything else is rejected outright.
+
+### Reader accounts and community
+
+Disabled by default. Enable with `FIXITHUB_ALLOW_REGISTRATION=1`.
+
+| Feature | Route | Notes |
+| --- | --- | --- |
+| Sign up / log in / out | `/signup`, `/login`, `/logout` | Optional — needed for comments and gated downloads |
+| Email verification | `/verify/<token>` | SMTP is optional; an admin can confirm an address by hand |
+| Account area | `/account` | Profile, plus real deletion of the account and its comments |
+| Moderated comments | `POST /comments` | `pending` → `approved` / `rejected`; never rendered as markdown |
+| "Ask us anything" | `POST /api/ask`, `GET /api/ask/<id>` | Anonymous question, answered by a human from `/admin/questions` |
+
+A reader account carries no admin privilege. The admin panel is guarded by a
+separate cookie (`fixithub_admin`) and a separate password from the reader cookie
+(`fixithub_user`).
+
+### Admin panel
+
+Password-protected, optional TOTP two-factor, and covered by an audit log of every
+state-changing action.
+
+| Feature | Route |
+| --- | --- |
+| Login, optional 2FA step | `/admin`, `/admin/login`, `/admin/login/2fa` |
+| Dashboard with counters and trends | `/admin/dashboard` |
+| Guide CRUD with markdown preview | `/admin/articles`, `/admin/articles/new`, `/admin/articles/<slug>/edit` |
+| Per-article analytics | `/admin/articles/<slug>/analytics` |
+| Stop code CRUD | `/admin/stop-codes` |
+| Binary and screenshot uploads | `/admin/apps`, `/admin/apps/new`, `/admin/apps/<slug>/edit` |
+| Comment moderation queue | `/admin/comments` |
+| Question answering | `/admin/questions` |
+| Reader account deletion | `POST /admin/users/<id>/delete` |
+| Site announcement banner | `/admin/announcement` |
+| AdSense settings, units and `ads.txt` | `/admin/ads` |
+| Per-page SEO overrides and site defaults | `/admin/seo` |
+| Link inventory | `/admin/links` |
+| Email send log | `/admin/emails` |
+| Audit log of admin writes | `/admin/audit` |
+| SQLite backup and restore | `/admin/backup`, `/admin/restore` |
+| TOTP enrolment and recovery codes | `/admin/two-factor` |
+| Admin password change | `/admin/change-password` |
+
+### Operations and SEO
+
+| Feature | Route |
+| --- | --- |
+| Health probes | `/healthz`, `/health` |
+| XML sitemap | `/sitemap.xml` |
+| Robots policy | `/robots.txt` |
+| Served `ads.txt` | `/ads.txt` |
+
+Static assets are served from `/static`. The interactive OpenAPI docs are disabled
+(`docs_url=None`, `redoc_url=None`, `openapi_url=None`), so the only JSON surface
+is the `/api/*` set listed above.
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+| --- | --- |
+| Web framework | FastAPI (`>=0.115.0`) on Starlette |
+| ASGI server | Uvicorn (`>=0.30.0`, `uvicorn[standard]`) |
+| Templating | Jinja2 (`>=3.1.4`), server-side rendering only |
+| ORM | SQLAlchemy 2.x (`>=2.0.30`), declarative `Mapped` / `mapped_column` |
+| Database | SQLite by default (WAL, foreign keys on); PostgreSQL via `psycopg2-binary` |
+| Search | SQLite FTS5 with `bm25` ranking, automatic `LIKE` fallback |
+| Markdown | `markdown-it-py` (`>=3.0.0`) + `PyYAML` frontmatter |
+| HTML sanitising | Hand-written allowlist sanitiser in `app/services/markdown.py` |
+| Password hashing | `bcrypt` (`>=4.1.3`) at cost 12 |
+| Signed sessions | `itsdangerous` (`>=2.2.0`) via Starlette `SessionMiddleware` |
+| DNS | `dnspython` (`>=2.6.1`) |
+| HTTP client | `httpx` (`>=0.27.0`) |
+| Minidump parsing | `minidump==0.0.24`, with a manual `struct` parser as fallback |
+| Forms and uploads | `python-multipart` |
+| TOTP | Implemented in `app/services/totp.py` on `hmac` / `hashlib` / `struct` — no `pyotp` |
+| Object storage | Supabase Storage REST API via `httpx` (optional), otherwise local disk |
+| Styling | Tailwind CSS via CDN plus `app/static/css/site.css` |
+| JavaScript | `app/static/js/site.js`, `app/static/js/ask-widget.js` — enhancement only |
+| Testing | `pytest` (`>=8.0.0`), 25 test modules, fully offline |
+| Browser audits | Node, `lighthouse` + `puppeteer-core` (dev only) |
+| Packaging | Multi-stage non-root `Dockerfile`, `docker-compose.yml`, `render.yaml`, Vercel entrypoint at `api/index.py` |
+
+No subprocess is spawned anywhere in the codebase.
 
 ---
 
 ## Requirements
 
-- Python 3.11 or newer (developed on 3.12)
-- No database server needed: SQLite is a file
+- **Python 3.11 or newer** — developed on 3.12; the container image is `python:3.12-slim`
+- **No database server.** SQLite is a single file.
+- **Node.js is optional** and only needed for the browser audit scripts.
 
 ---
 
-## Quick start
+## Installation
+
+### Local setup
 
 ```bash
-# 1. Create a virtual environment
+# 1. Create and activate a virtual environment
 python -m venv .venv
 
-# 2. Activate it
-# Windows PowerShell:
+# Windows PowerShell
 .venv\Scripts\Activate.ps1
-# macOS and Linux:
+# macOS / Linux
 source .venv/bin/activate
 
-# 3. Install dependencies
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 4. Load the knowledge base and set an admin password
+# 3. Load the knowledge base and set an admin password
 python seed.py --set-admin-password "choose-a-password"
 
-# 5. Run the server
+# 4. Run the server
 uvicorn app.main:app --reload
 ```
 
-Open <http://127.0.0.1:8000>.
+Open <http://127.0.0.1:8000>. The admin panel is at `/admin`.
 
-### The one-line run command
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-On Windows, if you prefer not to activate the environment:
+On Windows, without activating the environment:
 
 ```bash
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
----
-
-## Running the seed script
-
-`seed.py` loads the knowledge base into SQLite. It is an upsert, so running it
-repeatedly is safe.
+Bind to all interfaces:
 
 ```bash
-python seed.py                              # load articles and stop codes
-python seed.py --reset                      # drop everything first
-python seed.py --rebuild-search             # rebuild the full-text index
-python seed.py --check                      # report what is in the database
-python seed.py --no-content                 # stop codes only
-python seed.py --set-admin-password "pw"    # hash and store a password
-python seed.py --set-admin-password         # prompts for the password
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Stop codes come from `data/bsod_codes.json` and articles from `content/*.md`, so
-you can edit either and re-run the script. `--reset` destroys view counts and
-feedback, so avoid it in production.
+The `lifespan` hook creates the schema and, on an empty database, auto-seeds all
+content — so a fresh clone runs without a manual step.
 
----
-
-## Configuration
-
-Every setting is an environment variable. The defaults work for local
-development.
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `FIXITHUB_SECRET_KEY` | random per process | Signs sessions and CSRF tokens. **Set this in production**, or sessions reset on every restart. |
-| `FIXITHUB_ADMIN_PASSWORD` | unset | Admin password, hashed on the fly. Convenient for Docker. |
-| `FIXITHUB_ADMIN_PASSWORD_HASH` | unset | A bcrypt hash. Takes priority over the saved file. |
-| `FIXITHUB_DATABASE_URL` | `sqlite:///data/fixithub.db` | Any SQLAlchemy URL. |
-| `FIXITHUB_ALLOW_REGISTRATION` | `0` | Set to `1` to accept reader sign-ups. Off by default, because turning it on means accepting comments from strangers. |
-| `FIXITHUB_SMTP_HOST` | unset | Verification mail server. Unset means accounts need confirming by hand. |
-| `FIXITHUB_SMTP_PORT` | `587` | `465` uses implicit TLS, anything else tries STARTTLS. |
-| `FIXITHUB_SMTP_USER` / `FIXITHUB_SMTP_PASSWORD` | unset | SMTP credentials. |
-| `FIXITHUB_SMTP_FROM` | unset | Envelope sender for verification mail. |
-| `FIXITHUB_APPS_DIR` | `apps_download/` | Where admin-uploaded binaries are stored, in a `screenshots/` subdirectory alongside them. Point this at your persistent volume in production, or uploads are lost on redeploy. |
-| `FIXITHUB_SITE_URL` | `http://localhost:8000` | Used for canonical URLs and the sitemap. |
-| `FIXITHUB_DEBUG` | `0` | Set to `1` for tracebacks and verbose logging. |
-| `FIXITHUB_SECURE_COOKIES` | `0` | Set to `1` when served over HTTPS. |
-| `FIXITHUB_TRUST_PROXY` | `0` | Set to `1` **only** behind a proxy you control, so `X-Forwarded-For` is trusted for rate limiting. |
-| `FIXITHUB_RATE_LIMIT_MAX` | `10` | Tool requests per window, per IP. |
-| `FIXITHUB_RATE_LIMIT_WINDOW` | `60` | Window length in seconds. |
-
-Example for production:
-
-```bash
-export FIXITHUB_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
-export FIXITHUB_SITE_URL="https://fixithub.example.com"
-export FIXITHUB_SECURE_COOKIES=1
-export FIXITHUB_ADMIN_PASSWORD="a-long-password"
-uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
----
-
-## Choosing a host
-
-FixIT Hub runs either as a traditional persistent process (Docker, Render, Railway) or as a serverless application on **Vercel**.
-
-| Platform | Works as written | Notes |
-| --- | --- | --- |
-| Vercel | Yes | Serverless ASGI via `api/index.py`. Auto-seeds SQLite in `/tmp`, or connects to external Postgres. No persistent disk, so admin file writes are lost — see [Serverless limitations](#serverless-limitations) |
-| Docker, systemd, Render, Railway, Fly.io | Yes | Persistent disk keeps the SQLite file and file-backed markdown edits |
-| Netlify, Cloudflare Pages, AWS Lambda | Requires adapter | Serverless container platforms |
-
----
-
-## Vercel
-
-FixIT Hub is configured to run on Vercel as a serverless ASGI application using the `@vercel/python` runtime.
-
-### Quick Start: Deploying to Vercel
-
-1. **Push your code to GitHub / GitLab / Bitbucket**.
-2. Go to [vercel.com/new](https://vercel.com/new) and **Import** your repository.
-3. In the **Environment Variables** section, add the variables listed in
-   [Vercel environment variables](#vercel-environment-variables) below. Apply
-   them to Production and Preview at minimum.
-4. Click **Deploy**.
-
-Without a database configured, Vercel runs SQLite in `/tmp` and FixIT Hub
-auto-seeds all 43 guides and 92 stop codes on cold start in under a second. That
-is fine for a read-only site but loses every comment, reader account and
-feedback vote on each deploy, so attach a Postgres database for anything beyond
-a demo.
-
-### Vercel environment variables
-
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `FIXITHUB_SECRET_KEY` | Yes | 48 random bytes. Generate with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Without it sessions are signed with a per-process key, so every cold start signs everyone out. |
-| `FIXITHUB_SITE_URL` | Yes | Your deployed origin. Drives canonical URLs and the sitemap. |
-| `FIXITHUB_SECURE_COOKIES` | Yes | `1`. Also flips the app into production mode, which is what makes the missing secret key a hard boot failure rather than a warning. |
-| `FIXITHUB_ADMIN_PASSWORD` | Yes | Admin panel password. Set it here because the on-disk hash file does not survive a redeploy. |
-| `FIXITHUB_DATABASE_URL` | Optional | Overrides everything else. Omit it entirely if you use the Supabase/Neon Marketplace integration, which sets `POSTGRES_URL` for you. See [Postgres on Vercel](#postgres-on-vercel). |
-| `FIXITHUB_TRUST_PROXY` | Yes | `1`. Vercel's edge forwards the real client in `X-Forwarded-For`, but `security.py` ignores that header unless this is set. Leaving it off makes every visitor share a single rate-limit bucket, so the site-wide limit of 10 tool requests per minute applies to all users at once and the admin login lockout triggers on other people's failed attempts. |
-| `FIXITHUB_STORAGE_URL` | For `/apps` | `https://<project-ref>.supabase.co`. Without it, uploads go to `/tmp` and 404 after a deploy. See [Supabase Storage](#supabase-storage). |
-| `FIXITHUB_STORAGE_KEY` | For `/apps` | The **service-role** key. Not the anon key. |
-| `FIXITHUB_DISABLE_2FA` | No | Leave unset. Admin two-factor now lives in the database and persists across deploys. Set it to `1` only as an escape hatch if the enrolment is lost and every recovery code is spent. |
-| `FIXITHUB_GITHUB_TOKEN` | Optional | Fine-grained token, `Contents: read and write` on this repo only, for the [content mirror](#content-mirror). |
-| `FIXITHUB_GITHUB_REPO` | With the token | `owner/name`. |
-| `FIXITHUB_GITHUB_BRANCH` | Optional | Defaults to `main`. Point it at a branch Vercel does not watch to stop edits triggering rebuilds. |
-
-### Postgres on Vercel
-
-`psycopg2-binary` is already in `requirements.txt`, and `_resolve_database_url`
-in `app/config.py` accepts the connection string from `FIXITHUB_DATABASE_URL`,
-from the `POSTGRES_URL` that managed-provider integrations inject, or from
-`DATABASE_URL` as a fallback — in that order of preference. `sslmode=require` is
-added automatically when a managed URL does not already specify one.
-
-Note that `postgresql://` and `postgres://` are rewritten to
-`postgresql+psycopg2://` before the engine is built. SQLAlchemy picks the driver
-for a bare `postgresql://` itself, and from 2.1 onwards that resolves to psycopg
-3 — a different distribution from the `psycopg2-binary` in `requirements.txt` —
-so the engine would fail to construct and the function would never boot. A URL
-that already names a driver is left alone, so installing psycopg 3 and saying so
-explicitly still works.
-
-When using **Supabase**, there are two ways in.
-
-#### Option A: the Vercel Marketplace integration
-
-In the Vercel dashboard: **Storage → Create → Supabase**. The integration
-creates a Supabase project, wires up billing through Vercel, and synchronises a
-set of environment variables into your Vercel project automatically.
-
-FixIT Hub reads `POSTGRES_URL`, which is the one it injects that carries a usable
-connection string, so no manual copying is required. Two siblings that the
-integration *also* sets are deliberately ignored, because either one would
-produce a broken connection:
-
-| Variable | Ignored because |
-| --- | --- |
-| `POSTGRES_URL_NON_POOLING` | A direct connection to an IPv6-only host. It times out from Vercel function egress. |
-| `POSTGRES_PRISMA_URL` | Carries Prisma's `?pgbouncer=true&connection_limit=1` query, which means nothing to SQLAlchemy. |
-
-`DATABASE_URL` is accepted as a fallback after `POSTGRES_URL`, since that is the
-convention for most managed Postgres providers. `FIXITHUB_DATABASE_URL` overrides
-both, so you never have to edit the integration's dashboard entry to change the
-database.
-
-Two things to know about the Marketplace: it is in public alpha, and per Supabase's
-own documentation it does **not** create separate variables for preview builds —
-preview deployments receive the production connection string, so anything
-written during a preview goes to the live database.
-
-#### Option B: paste the connection string yourself
-
-Use the **Connection pooler** string from *Project Settings → Database →
-Connection string → URI*, not the direct connection:
-
-```
-postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
-```
-
-Two details in that string are load-bearing:
-
-- **Port 6543 (transaction mode) rather than 5432.** SQLAlchemy's default pool
-  holds 5 connections plus 10 overflow *per warm function instance*, so a dozen
-  concurrent Lambdas want ~180 connections. The transaction-mode pooler
-  collapses that client-side queue into a small fixed number of real database
-  connections. With 5432 (session mode) or a direct connection you will hit
-  `too many clients already` at random.
-- **The pooler host, not `db.<project-ref>.supabase.co`.** Supabase direct
-  connections are IPv6-only, and Vercel function egress is frequently IPv4-only,
-  so a direct connection times out.
-
-Percent-encode the database password if it contains `@ : / ? #`. Supabase
-generates passwords with those characters often, and an unencoded `@` breaks the
-URL parse in a way that surfaces as an unhelpful connection error.
-
-`sslmode=require` encrypts the traffic without pinning the server certificate
-chain. That is the pragmatic choice for a web app; `verify-full` additionally
-authenticates the server but requires shipping Supabase's root certificate.
-
-### Serverless limitations
-
-Vercel's filesystem is read-only and is discarded on every deploy, so anything
-that used to be a file is now either in Postgres or in Supabase Storage:
-
-| Feature | Where it lives now |
-| --- | --- |
-| Admin two-factor authentication | `admin_two_factor`, one row. Survives a deploy and is shared by every function instance. An existing `data/admin_2fa.json` is imported on first read. |
-| `/apps` tool uploads | Supabase Storage, behind `app/services/storage.py`. With no storage configured the same code writes to `apps_download/`, so Docker and Render are unaffected. |
-| Admin article editing | The database row is the record; the markdown is mirrored to GitHub. See [Content mirror](#content-mirror). |
-| Admin backup and restore | Still SQLite-only. `_sqlite_db_path()` returns `None` on a non-SQLite URL and the routes say so rather than writing to a garbage path. On Postgres, use `pg_dump`. |
-
-#### Supabase Storage
-
-Uploads are stored through `app/services/storage.py`, which picks a backend from
-the environment. Both are always available and the app needs no code change to
-switch:
-
-| Variable | Notes |
-| --- | --- |
-| `FIXITHUB_STORAGE_URL` | `https://<project-ref>.supabase.co` |
-| `FIXITHUB_STORAGE_KEY` | The **service-role** key, not the anon key. Uploads and downloads are proxied through the app, never handed out as public URLs. |
-| `FIXITHUB_STORAGE_BUCKET` | Optional, default `fixithub-apps`. Must be **private**. |
-
-Binaries land under `apps/` in the bucket and screenshots under `screenshots/`,
-matching the two directories on disk.
-
-One consequence worth knowing: the tool detail page verifies an upload's SHA-256
-on every view. On disk that meant re-reading the file. For remote storage the
-digest is read back from the metadata recorded at upload, so the check stays a
-small request — otherwise every page view would pull a 50 MB installer through a
-lambda.
-
-#### Content mirror
-
-Admin article edits are written to Postgres, then the matching markdown file is
-committed to GitHub through the Contents API. This keeps the repository in step
-with the database, which it otherwise drifts from on a serverless host.
-
-It is a mirror, not the source of truth. The save is committed to the database
-first and the push happens afterwards; if GitHub is unreachable the article is
-still saved and the failure is recorded in the audit log. Nothing about the site
-being available depends on `api.github.com` being up.
-
-| Variable | Notes |
-| --- | --- |
-| `FIXITHUB_GITHUB_TOKEN` | Fine-grained token, `Contents: read and write` on this repository only. No other scopes. |
-| `FIXITHUB_GITHUB_REPO` | `owner/name`. |
-| `FIXITHUB_GITHUB_BRANCH` | Optional, default `main`. |
-
-Set an expiry on the token and put a reminder in your calendar. An expired token
-stops mirroring silently — the site keeps working, the repository quietly stops
-tracking the admin panel.
-
-**Each commit triggers a Vercel rebuild.** Saving an article is therefore not
-instant, and frequent edits burn build minutes. If that becomes a problem, set
-`FIXITHUB_GITHUB_BRANCH` to a branch Vercel is not watching: the mirror still
-records history, and nothing deploys.
-
-Note that the markdown in the repository is the *seed* used by
-`seed_if_empty()` on an empty database. Once your database has rows that seed
-never runs again, so the mirror is a backup and a change log rather than
-something the running site reads back.
-
-Because pushing means holding a repo-write token, `/admin` becomes a path to
-that token. Give the admin password real strength before enabling this.
-
-
-### PostgreSQL-specific behaviour worth knowing
-
-Search is unranked. `fts_available()` in `app/db.py` probes for SQLite FTS5. The
-probe throws on PostgreSQL, is caught, and returns `False`, so search falls back
-to the `LIKE` scan in `_like_query`. Results are correct but unranked, there is
-no prefix matching, and `body` is scanned on every query. At 43 articles that is
-acceptable.
-
-Additive schema changes apply to both backends. `create_all` only creates whole
-tables, so a column added to a model afterwards is invisible to a database that
-already exists. `_add_missing_columns` fills that gap with `ALTER TABLE ... ADD
-COLUMN`, reading the live column set through SQLAlchemy's inspector so the same
-loop runs against PostgreSQL. It only ever adds; nothing is dropped, renamed or
-retyped. The project ships no migration tool, so this is the whole of it.
-
-### CLI Deployment
-
-If you prefer using the Vercel CLI, link the directory to an existing project
-first so the environment variables above are picked up rather than prompted for
-on every run:
-
-```bash
-npx vercel link
-npx vercel env pull .env.local     # optional: confirms what the project sees
-npx vercel --prod
-```
-
-Note that a `.env` file committed alongside the code will not reach Vercel.
-`.gitignore` and `.vercelignore` both exclude `.env`, which is the right
-behaviour, but it does mean the dashboard is the source of truth for these
-values.
-
-## Render
-
-`render.yaml` is a ready-to-use blueprint. In the Render dashboard choose New >
-Blueprint and point it at your repository.
-
-1. Set `FIXITHUB_SITE_URL` to your deployed origin
-2. Set `FIXITHUB_ADMIN_PASSWORD` in Environment. `FIXITHUB_SECRET_KEY` is
-   generated for you
-3. Deploy, then seed once over SSH:
-
-```bash
-render ssh fixithub -- python seed.py --rebuild-search
-```
-
-The blueprint attaches a 1 GB disk at `/app/data`, which is where the database
-lives. Without it the database is discarded on every deploy.
-
-> [!IMPORTANT]
-> The free plan has no persistent disk, so the database is lost on each deploy
-> and your admin password with it. Use a paid plan, or accept that the site
-> comes back empty after every restart.
-
-## Railway
-
-```bash
-railway init
-railway up
-railway volume add --mount-path /app/data   # required, see below
-railway variables set \
-  FIXITHUB_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" \
-  FIXITHUB_SITE_URL="https://your-app.up.railway.app" \
-  FIXITHUB_SECURE_COOKIES=1 \
-  FIXITHUB_TRUST_PROXY=1 \
-  FIXITHUB_ADMIN_PASSWORD="a-long-password"
-```
-
-Railway needs the volume added before the first deploy, otherwise the app starts
-against an ephemeral disk. Seed once with `railway run python seed.py --rebuild-search`.
-
----
-
-## Docker
+### Docker
 
 ```bash
 # Build and run
 docker compose up --build
 
-# Then seed the database and set a password
+# Then seed and set a password
 docker compose exec app python seed.py --set-admin-password "your-password"
 ```
 
-The compose file mounts a named volume for `/app/data`, so the database and the
-admin password hash survive a rebuild. It declares a healthcheck against
-`/healthz`, so `docker compose ps` shows when the app is ready.
-
-Plain Docker without compose:
+`docker-compose.yml` requires `FIXITHUB_SECRET_KEY` in the environment or a `.env`
+file, mounts named volumes for `/app/data` and `/app/apps_download`, and declares
+a healthcheck against `/healthz`. Plain Docker:
 
 ```bash
 docker build -t fixithub .
@@ -417,16 +269,315 @@ docker run -d --name fixithub -p 8000:8000 \
   -e FIXITHUB_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" \
   -e FIXITHUB_ADMIN_PASSWORD="a-long-password" \
   -v fixithub-data:/app/data \
+  -v fixithub-apps:/app/apps_download \
   fixithub
 ```
 
-The container runs as a non-root user.
+The image is multi-stage — dependencies are built into a virtualenv in the builder
+and copied into the runtime, so the runtime needs no compiler — and the container
+runs as a non-root `fixithub` user.
 
 ---
 
-## Deploying without Docker
+## Usage
 
-### systemd
+### Seeding content
+
+`seed.py` upserts the markdown guides and stop codes, so running it repeatedly is
+safe.
+
+```bash
+python seed.py                              # load guides and stop codes
+python seed.py --reset                      # drop every table first
+python seed.py --rebuild-search             # rebuild the FTS5 index
+python seed.py --check                      # report what is in the database
+python seed.py --no-content                 # stop codes only
+python seed.py --set-admin-password "pw"    # hash and store a password
+python seed.py --set-admin-password         # prompts instead
+```
+
+Guides come from `content/*.md`; stop codes come from `data/bsod_codes.json`. Edit
+either and re-run the script. `--reset` destroys view counts and feedback, so
+avoid it in production. If `FIXITHUB_ADMIN_PASSWORD_HASH` is set in the
+environment, the script warns that it takes priority over the file it just wrote.
+
+### Configuration
+
+Every setting is an environment variable. Defaults are fine for local development.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `FIXITHUB_SECRET_KEY` | random per process | Signs sessions and CSRF tokens. **Set this in production** — unset in production mode is a hard boot failure, not a warning. |
+| `FIXITHUB_ENV` | unset | Set to `production` to treat the process as a real deployment. Secure cookies also imply production. |
+| `FIXITHUB_ADMIN_PASSWORD` | unset | Admin password, hashed on the fly. Convenient for Docker. Only used when `data/admin.json` does not exist. |
+| `FIXITHUB_ADMIN_PASSWORD_HASH` | unset | A bcrypt hash. Takes priority over the saved file. |
+| `FIXITHUB_DISABLE_2FA` | `0` | `1` is the escape hatch if TOTP enrolment is lost and every recovery code is spent. |
+| `FIXITHUB_DATABASE_URL` | `sqlite:///data/fixithub.db` | Any SQLAlchemy URL. Falls back to `POSTGRES_URL`, then `DATABASE_URL`. |
+| `FIXITHUB_ALLOW_REGISTRATION` | `0` | `1` accepts reader sign-ups. Off by default, because turning it on means accepting content from strangers. |
+| `FIXITHUB_SMTP_HOST` | unset | Verification mail server. Unset means accounts are confirmed by hand. |
+| `FIXITHUB_SMTP_PORT` | `587` | `465` uses implicit TLS, anything else attempts STARTTLS. |
+| `FIXITHUB_SMTP_USER` / `FIXITHUB_SMTP_PASSWORD` | unset | SMTP credentials. |
+| `FIXITHUB_SMTP_FROM` | unset | Envelope sender for verification mail. |
+| `FIXITHUB_APPS_DIR` | `apps_download/` | Where admin-uploaded binaries live, with a `screenshots/` subdirectory beside them. Point this at a persistent volume in production. |
+| `FIXITHUB_STORAGE_URL` | unset | `https://<project-ref>.supabase.co`. Enables the Supabase Storage backend for `/apps`. |
+| `FIXITHUB_STORAGE_KEY` | unset | Supabase **service-role** key, not the anon key. |
+| `FIXITHUB_STORAGE_BUCKET` | `fixithub-apps` | Must be a private bucket. |
+| `FIXITHUB_SITE_URL` | `http://localhost:8000` | Canonical URLs and the sitemap. |
+| `FIXITHUB_DEBUG` | `0` | `1` enables tracebacks and debug logging. |
+| `FIXITHUB_SECURE_COOKIES` | `0` | `1` when served over HTTPS. Also enables HSTS and production mode. |
+| `FIXITHUB_TRUST_PROXY` | `0` | `1` **only** behind a proxy you control, so `X-Forwarded-For` can be trusted for rate limiting. |
+| `FIXITHUB_RATE_LIMIT_MAX` | `10` | Tool requests per window, per IP. |
+| `FIXITHUB_RATE_LIMIT_WINDOW` | `60` | Window length in seconds. |
+| `FIXITHUB_GITHUB_TOKEN` | unset | Fine-grained token (`Contents: read and write`) for the content mirror. |
+| `FIXITHUB_GITHUB_REPO` | unset | `owner/name`, required with the token. |
+| `FIXITHUB_GITHUB_BRANCH` | `main` | Mirror target branch. |
+
+Fixed limits, not configurable: 5 MB minidump cap, 50 MB binary cap, 4 MB
+screenshot cap, 500-character question limit, 200-character search query limit,
+100-character suggestion query limit.
+
+Example production environment:
+
+```bash
+export FIXITHUB_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+export FIXITHUB_SITE_URL="https://fixithub.example.com"
+export FIXITHUB_SECURE_COOKIES=1
+export FIXITHUB_TRUST_PROXY=1
+export FIXITHUB_ADMIN_PASSWORD="a-long-password"
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+### JSON APIs
+
+The four network-tool endpoints share one response shape —
+`{"ok": bool, "data": ..., "error": str}` — where `ok: false` returns HTTP 502 for
+an upstream failure and 422 for rejected input. Each accepts a JSON or form body
+and is rate limited like the HTML pages. `/api/search/suggest`, `/api/ask` and
+`/api/dump/validate` return their own shapes.
+
+```bash
+# Typeahead suggestions
+curl "http://127.0.0.1:8000/api/search/suggest?q=blue+screen"
+
+# DNS lookup
+curl -X POST http://127.0.0.1:8000/api/dns \
+  -H 'Content-Type: application/json' \
+  -d '{"host": "example.com", "record_type": "A"}'
+
+# Port check (allowlisted ports only)
+curl -X POST http://127.0.0.1:8000/api/port \
+  -H 'Content-Type: application/json' \
+  -d '{"host": "example.com", "port": 443}'
+
+# HTTP status
+curl -X POST http://127.0.0.1:8000/api/status \
+  -H 'Content-Type: application/json' \
+  -d '{"url": "https://example.com"}'
+
+# TCP latency
+curl -X POST http://127.0.0.1:8000/api/latency \
+  -H 'Content-Type: application/json' \
+  -d '{"host": "example.com", "port": 443}'
+
+# Ask a question. The reply token is returned once; keep it to poll for an answer.
+curl -X POST http://127.0.0.1:8000/api/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "My PC blue screens with CRITICAL_PROCESS_DIED. What should I check?"}'
+
+curl "http://127.0.0.1:8000/api/ask/<id>?token=<token>"
+
+# Minidump upload limits and accepted signatures
+curl http://127.0.0.1:8000/api/dump/validate
+
+# Analyze a minidump (POST the file to the analyzer form)
+curl -F "dump_file=@C:/Windows/Minidump/091120-14478-01.dmp" \
+  http://127.0.0.1:8000/bsod/analyze
+
+# Health check -> "ok", or 503 "unhealthy"
+curl http://127.0.0.1:8000/healthz
+```
+
+### Authoring content
+
+Guides are markdown files in `content/`. Editing one and re-running
+`python seed.py` is the entire workflow.
+
+```markdown
+---
+title: Fix high CPU and GPU temperatures
+category: hardware          # hardware | network | windows | drivers | bsod
+tags: [temperature, fan, thermal paste]
+difficulty: moderate        # easy | moderate | hard | advanced
+os_version: Windows 10/11
+featured: true
+---
+
+Opening paragraph, used as the summary when the frontmatter does not set one.
+
+## A heading becomes a table of contents entry
+
+Commands go in fenced blocks, which get a copy button:
+
+```text
+DISM /Online /Cleanup-Image /RestoreHealth
+```
+
+Warnings are callouts with a marker:
+
+> [!WARNING]
+> This step erases your data.
+```
+
+The renderer recognises `> [!WARNING]`, `> [!DANGER]`, `> [!TIP]`, `> [!NOTE]` and
+`> [!IMPORTANT]` inside blockquotes. Editing an article in `/admin` writes the
+markdown back to `content/`, rebuilds the search index and keeps a `.bak` copy.
+
+Stop codes live in `data/bsod_codes.json`. Wizards are JSON decision trees in
+`data/wizards/`; each step offers options, and a terminal step points at the
+relevant guide.
+
+### Running the tests
+
+```bash
+pytest -q
+```
+
+Everything runs offline against a temporary SQLite database, a temporary admin hash
+file and a temporary upload directory, so a test run never touches your own data.
+`conftest.py` also resets every rate limiter and the login lockout between tests.
+
+| Area | Covered by |
+| --- | --- |
+| Stop codes, minidump signatures, parsing | `test_bsod.py` |
+| SSRF refusal of private and reserved ranges, allowlists, request pinning, TLS SNI | `test_validation.py` |
+| Sliding window behaviour, thread safety, HTTP limits, login throttling | `test_rate_limit.py` |
+| Admin login, CSRF, hashing, article and stop code CRUD, path traversal defence | `test_admin.py` |
+| Markdown sanitising, frontmatter, page status codes, SEO and security headers | `test_pages.py` |
+| bcrypt hashing, cached admin hash, login lockout, IP sanitising | `test_security.py` |
+| Registration, email validation, password rules, session revocation, account deletion, the reader/admin boundary | `test_accounts.py` |
+| Comment moderation, escaping, the gated download | `test_comments.py` |
+| Upload validation: extensions, magic bytes, filenames, checksums | `test_apps.py` |
+| Admin upload round trip and download headers | `test_apps_routes.py` |
+| Question submission, identity, the one-off reply token, admin replies, rate limiting | `test_ask.py` |
+| Admin password change paths, throttle, session invalidation | `test_admin_password.py` |
+| Postgres URL normalisation and engine construction | `test_database_url.py` |
+| Adversarial checks on CSRF, path traversal and access controls | `test_security_recheck.py` |
+| TOTP against the RFC's own published vectors | `test_totp.py` |
+| Admin two-factor: enrol, wrong code, missing step, single-use recovery codes | `test_two_factor.py` |
+| Admin dashboard, pagination, shared shell | `test_admin_dashboard.py`, `test_admin_pagination.py`, `test_admin_shell.py` |
+| Ads: no admin-supplied HTML, script only when enabled, never on admin or error pages | `test_ads.py` |
+| Admin audit log | `test_audit_log.py` |
+| Backup and restore of a real archive | `test_restore.py` |
+| Additive schema repair on SQLite and Postgres | `test_schema_drift.py` |
+| GitHub content mirror, including save succeeding when the push fails | `test_content_mirror.py` |
+| Editing an uploaded app without clearing its stored file metadata | `test_app_edit_roundtrip.py` |
+
+### Browser audits
+
+Optional Node tooling for looking at what a visitor actually sees. Start the server
+first, then:
+
+```bash
+npm install
+npm run audit:shots       # screenshots at three viewports into .screenshots/
+npm run audit:measure     # find what overflows the viewport
+npm run audit:lighthouse  # headline scores into .lighthouse/
+```
+
+All three scripts target `http://127.0.0.1:8000` and expect a local Chrome install.
+This exists only to drive Lighthouse and headless Chrome; the site itself is Python.
+
+### Deployment
+
+| Platform | Works as written | Notes |
+| --- | --- | --- |
+| Docker, systemd, Render, Railway, Fly.io | Yes | A persistent disk keeps SQLite and file-backed markdown edits |
+| Vercel | Yes | Serverless ASGI via `api/index.py`. SQLite falls back to `/tmp`, or point at external Postgres |
+| Netlify, Cloudflare Pages, AWS Lambda | Needs an adapter | Serverless container platforms |
+
+**PostgreSQL.** `_resolve_database_url` in `app/config.py` reads, in order of
+preference, `FIXITHUB_DATABASE_URL`, `POSTGRES_URL`, then `DATABASE_URL`, so the
+Supabase and Neon Vercel Marketplace integrations work without manual copying.
+Bare `postgresql://` and `postgres://` URLs are rewritten to
+`postgresql+psycopg2://`, matching the driver in `requirements.txt`, and
+`sslmode=require` is added when a managed URL omits it.
+
+Two PostgreSQL-specific behaviours are worth knowing:
+
+- **Search is unranked.** `fts_available()` probes for SQLite FTS5, throws on
+  PostgreSQL, is caught and returns `False`, so search falls back to the `LIKE`
+  scan. Results are correct but unranked, with no prefix matching. Fine at this
+  content size.
+- **Schema changes are additive only.** There is no migration tool. `create_all`
+  creates whole tables and `_add_missing_columns` fills gaps with
+  `ALTER TABLE ... ADD COLUMN` through SQLAlchemy's inspector, so the same loop
+  runs on both backends. Nothing is dropped, renamed or retyped.
+
+For Supabase, use the **connection pooler** string on port `6543` rather than a
+direct connection: the pooler collapses SQLAlchemy's per-instance pool into a
+small fixed number of real connections, and Supabase direct connections are
+IPv6-only while Vercel function egress is often IPv4-only.
+
+**Vercel.** Import the repository at <https://vercel.com/new> and set the variables
+above. `api/index.py` is the serverless entrypoint: it exports the FastAPI `app`
+instance and installs a small pure-ASGI middleware that restores the original
+request path if the platform rewrites it. Without a database configured, Vercel
+runs SQLite in `/tmp` and the app auto-seeds all content on cold start — fine for a
+read-only demo, but comments, reader accounts and feedback are lost on every
+deploy. Anything file-backed behaves as follows:
+
+| Feature | Where it lives on a serverless host |
+| --- | --- |
+| Admin two-factor | The `admin_two_factor` table. An existing `data/admin_2fa.json` is imported on first read. |
+| `/apps` uploads | Supabase Storage via `app/services/storage.py`. With no storage configured the same code writes to `apps_download/`, so Docker and Render are unaffected. |
+| Admin article editing | The database row is the record; the markdown is mirrored to GitHub through the Contents API. |
+| Admin backup / restore | SQLite only. `_sqlite_db_path()` returns `None` on a non-SQLite URL and the routes say so. On Postgres, use `pg_dump`. |
+
+The **content mirror** is a mirror, not a source of truth: the save is committed to
+the database first and the push happens afterwards, so an unreachable GitHub leaves
+the article saved and records the failure in the audit log. Each commit triggers a
+Vercel rebuild, so point `FIXITHUB_GITHUB_BRANCH` at a branch Vercel does not watch
+if frequent edits are a problem. Because the push requires a repo-write token,
+give the admin password real strength before enabling it.
+
+CLI deployment:
+
+```bash
+npx vercel link
+npx vercel env pull .env.local     # optional: confirm what the project sees
+npx vercel --prod
+```
+
+A committed `.env` file will not reach Vercel — both `.gitignore` and
+`.vercelignore` exclude it. The dashboard is the source of truth for these values.
+
+**Render.** `render.yaml` is a ready-made blueprint with a 1 GB disk at
+`/app/data`. In the dashboard choose New > Blueprint, point it at the repository,
+set `FIXITHUB_SITE_URL` and `FIXITHUB_ADMIN_PASSWORD`, then seed once over SSH:
+
+```bash
+render ssh fixithub -- python seed.py --rebuild-search
+```
+
+The free plan has no persistent disk, so the database and your admin password are
+lost on every deploy.
+
+**Railway.**
+
+```bash
+railway init
+railway up
+railway volume add --mount-path /app/data   # required before the first deploy
+railway variables set \
+  FIXITHUB_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" \
+  FIXITHUB_SITE_URL="https://your-app.up.railway.app" \
+  FIXITHUB_SECURE_COOKIES=1 \
+  FIXITHUB_TRUST_PROXY=1 \
+  FIXITHUB_ADMIN_PASSWORD="a-long-password"
+railway run python seed.py --rebuild-search
+```
+
+**systemd and nginx.**
 
 ```ini
 # /etc/systemd/system/fixithub.service
@@ -447,12 +598,6 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-```bash
-sudo systemctl enable --now fixithub
-```
-
-### nginx in front
-
 ```nginx
 server {
     listen 443 ssl http2;
@@ -461,8 +606,8 @@ server {
     ssl_certificate     /etc/letsencrypt/live/fixithub.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/fixithub.example.com/privkey.pem;
 
-    # The minidump analyzer accepts uploads up to 5 MB.
-    client_max_body_size 6m;
+    # Uploads: 5 MB minidumps, 50 MB binaries, 4 MB screenshots.
+    client_max_body_size 52m;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -471,366 +616,186 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
-
-server {
-    listen 80;
-    server_name fixithub.example.com;
-    return 301 https://$host$request_uri;
-}
 ```
 
-> If you use a reverse proxy, set `FIXITHUB_TRUST_PROXY=1` so rate limiting counts
-> the real client rather than the proxy's address. Only do this when the proxy
-> is the only path to the app, or a client could spoof the header.
-
-### Notes for multiple workers
-
-The rate limiter keeps state in each process, so with `--workers 4` a client can
-effectively make 40 requests per minute. Either run a single worker, or replace
-`app/rate_limit.py` with a Redis-backed limiter before scaling out.
+**Multiple workers.** The rate limiter and the login throttle keep their counters
+inside the process, so `--workers 4` multiplies every limit by four. Either run a
+single worker or replace `app/rate_limit.py` with a shared store before scaling
+out. The `Dockerfile`, `docker-compose.yml` and `render.yaml` all pin
+`--workers 1` for this reason.
 
 ---
 
-## Reader accounts
-
-Registration is **off by default**. Turn it on with `FIXITHUB_ALLOW_REGISTRATION=1`.
-
-An account lets a reader comment and download the uploaded tools. It carries no
-other privilege: the admin panel is guarded by a separate cookie and a separate
-password, and a test asserts that a signed-in reader cannot reach it.
-
-Three design decisions are worth knowing about.
-
-**Sessions live in the database, not the cookie.** The cookie holds an opaque
-random token; only its SHA-256 is stored. That is what lets logging out, and an
-admin deleting a reader, both genuinely end access, which a self-contained
-cookie cannot do. Signing in again also invalidates any earlier session.
-
-**Comments are moderated.** A new comment is `pending` and is visible only to its
-author and in the admin queue at `/admin/comments`. With open registration, an
-unmoderated comment box becomes a spam relay, and that cost lands on readers
-rather than on the spammer.
-
-**Comment bodies never reach the markdown renderer.** They are plain text,
-escaped by Jinja. There is no path from a comment to injected markup on an
-article page.
-
-Set `FIXITHUB_SMTP_*` to send verification mail through any SMTP server, using
-the standard library rather than a new dependency. With no SMTP configured the
-site still works: accounts are created, commenting works, and the admin confirms
-addresses by hand.
-
----
-
-## The "Ask us anything" widget
-
-A floating button in the bottom-right of every page opens a small panel. The
-visitor writes a question, and an admin answers it from `/admin/questions` or
-straight from the dashboard. All of the widget's text, its endpoint and its
-character limit are in one `CONFIG` object at the top of
-`app/static/js/ask-widget.js`, so the wording can be changed without touching the
-logic. Set `endpoint: ''` to turn the request off and get a local thank-you
-message with no backend involved.
-
-The accent colour is a CSS variable: change `--ask-accent` in
-`app/static/css/site.css` and the whole widget follows.
-
-Four decisions are worth knowing about.
-
-**Questions are answered by a person, not a model.** `POST /api/ask` stores the
-question and returns. There is deliberately no automatic answer, because an open
-unauthenticated endpoint that reaches a language model is a relay for whatever
-that model will say about your site.
-
-**The sender is anonymous unless they already had an account.** The widget asks
-for no personal detail and there is no field inviting one. If the visitor was
-signed in, the route reads their email from the session cookie rather than the
-request body, so a caller cannot attach an address they do not own.
-
-**Reading a reply needs the token from submission.** Submission returns a random
-token once; only its SHA-256 is stored. `GET /api/ask/{id}?token=...` answers
-404 rather than 403 for a wrong token, because a 403 would confirm that an id
-exists and let anyone walk the queue. The trade-off is that only the sender's
-browser holds the key, so clearing site data means a later answer will not reach
-them. The admin still sees it.
-
-**Polling only runs while the panel is open.** It checks once on open, then every
-`CONFIG.pollIntervalMs` while the panel stays open, and stops for good once the
-question is answered or the token stops working. A closed tab costs nothing.
-
-Readers can delete their own account and every comment they wrote from
-`/account`. That is a real deletion, not an anonymisation, and `/privacy`
-describes exactly what is held and for how long.
-
----
-
-## Changing the admin password
-
-`/admin/change-password` takes the current password, a new one and a
-confirmation. The new password is hashed with the same bcrypt cost the rest of
-the site uses and written to `data/admin.json`.
-
-The new password must be at least **10 characters**, which is the same rule
-reader accounts get, and no longer than **72 bytes**, because bcrypt reads only
-the first 72. Length is the requirement rather than a mix of character types,
-for the reason already documented in `validate_password`: composition rules push
-people toward `Password1!`, which is barely better than a dictionary word.
-
-Changing the password **signs out every other admin session**. Admin sessions
-are signed cookies with no database row, so `admin.json` also records when the
-password last changed and every cookie carries that timestamp. A cookie whose
-timestamp no longer matches is rejected. The admin who made the change is
-immediately issued a fresh cookie, so they stay signed in.
-
-Two environment settings override the saved file, and the page accounts for
-both rather than pretending a change took effect:
-
-- `FIXITHUB_ADMIN_PASSWORD_HASH` is checked first, so it wins over anything
-  written here. The form is replaced with an explanation when it is set.
-- `FIXITHUB_ADMIN_PASSWORD` is only used when `admin.json` does not exist.
-
-Attempts are throttled at 5 per 5 minutes, separately from the login throttle,
-because each attempt costs a bcrypt verify.
-
-## Ads and AdSense
-
-The admin panel has an **Ads** page at `/admin/ads`.
-
-**What is stored.** One row of settings in `ad_settings`: master on/off, the
-publisher id, whether Auto Ads is on, and the contents of `ads.txt`. Any number
-of ad units in `ad_units`: label, slot id, format, placement, which pages they
-appear on, which devices they appear on, and a per-unit enable switch.
-
-**What is rendered.** The AdSense script ships in the `<head>` once per page,
-only when ads are enabled and a valid publisher id is set. Each unit renders as
-a `<div>` containing an `<ins class="adsbygoogle">` tag, with a `min-height`
-placeholder so Google's iframe does not push other content down when it loads.
-Push scripts are deferred until the slot is near the viewport via
-IntersectionObserver. The sidebar placement lands in the article aside, and the
-inside-content placement is injected after the Nth paragraph of an article
-body. Below-fold slots get the same treatment.
-
-**Where they appear.** Nothing is ever injected onto `/admin`, `/login`,
-`/signup`, `/account`, `/logout`, `/verify` or any error page. The show-on rule
-is checked per unit at render time, so a unit switched off or a page that
-wasn't listed never renders.
-
-**What is never stored.** Admin markup is never pasted, saved or echoed back.
-The admin chooses structured fields (format, placement, slot id), and the site
-assembles the tag server-side. The only JavaScript that exists is the AdSense
-script you set up in your AdSense account plus a small IntersectionObserver
-wrapper that defers the activation push. Nothing admin-supplied is ever run.
-
-**The CSP.** When ads are enabled, the Content-Security-Policy extends
-`script-src` with the AdSense script domains, `img-src` with the Google
-syndication domains, and `frame-src` to the Google syndication domains. When
-ads are switched off, the policy returns to strict `default-src 'self'`.
-
-**ads.txt.** Anything you put in the settings textarea is served at `/ads.txt`
-exactly as entered. Google fetches this file to verify which sellers are
-allowed to serve your inventory, so it needs to contain at least the one line
-for your own publisher id. It is served from the application, so it overrides
-any static file you previously had at `public/ads.txt`; do not create both.
-
-**Compliance notes** appear in the admin UI itself: never click your own ads,
-follow AdSense placement policies, and if your visitors are in the EU or UK you
-need a certified consent-management message before ads are loaded.
-
-## Running the tests
-
-```bash
-pytest -q
-```
-
-All offline. They use a temporary SQLite database, a temporary admin hash file
-and a temporary upload directory, so running them never touches your own data.
-
-Coverage by area:
-
-| File | What it covers |
-| --- | --- |
-| `tests/test_bsod.py` | Stop code lookup by name, hex, decimal and name variants; minidump signature, size and parse validation |
-| `tests/test_validation.py` | SSRF refusal of private and reserved ranges, URL and port allowlists, request pinning, TLS SNI |
-| `tests/test_rate_limit.py` | Sliding window behaviour, thread safety, the 10-per-minute HTTP limit, login throttling |
-| `tests/test_admin.py` | Login, CSRF enforcement, password hashing, article and stop code CRUD, path traversal defence |
-| `tests/test_pages.py` | Markdown sanitising, frontmatter, every page returning 200, SEO and security headers |
-| `tests/test_security.py` | bcrypt hashing, the cached admin-hash path, login lockout, IP sanitising |
-| `tests/test_accounts.py` | Registration, email validation, password rules, token hashing, session revocation, account deletion, the closed-registration gate, and the reader/admin privilege boundary |
-| `tests/test_comments.py` | Comment moderation states, comment escaping, the gated download, and the vendor escape hatch |
-| `tests/test_apps.py` | Upload validation: extension allowlist, magic bytes, filename sanitising, checksums |
-| `tests/test_apps_routes.py` | The full admin upload round trip and the download response headers |
-| `tests/test_ask.py` | Question submission, anonymous vs signed-in identity, the one-off reply token, admin replying, and rate limiting |
-| `tests/test_admin_password.py` | Every refusal path, CSRF and auth enforcement, the throttle, a successful change followed by signing in with the new password, and other sessions being signed out |
-| `tests/test_database_url.py` | Postgres URL normalisation onto the psycopg2 driver, explicit drivers left alone, non-Postgres URLs untouched, and that the engine actually constructs |
-
----
-
-## Project layout
+## Project structure
 
 ```
 .
 ├── app/
-│   ├── main.py            # application factory, middleware, error handlers
-│   ├── config.py          # settings and the category and vendor tables
-│   ├── db.py              # engine, sessions, FTS5 search with a LIKE fallback
-│   ├── models.py          # Article, StopCode, Feedback, SearchQuery, DumpUpload,
-│   │                      #   AppDownload, Comment, User, Question
-│   ├── security.py        # bcrypt, signed cookies, CSRF, client IP
-│   ├── rate_limit.py      # sliding window limiter
-│   ├── templates.py       # Jinja environment
-│   ├── deps.py            # shared template context
+│   ├── main.py            # application factory, middleware, error handlers, health probes
+│   ├── config.py          # settings, category/vendor tables, port allowlist, DB URL resolution
+│   ├── db.py              # engine, sessions, FTS5 search with LIKE fallback, additive migrations
+│   ├── models.py          # SQLAlchemy models
+│   ├── security.py        # bcrypt, signed cookies, CSRF, client IP, admin login lockout
+│   ├── rate_limit.py      # in-process sliding window limiter
+│   ├── templates.py       # Jinja2 environment and render helpers
+│   ├── deps.py            # shared template context and list queries
 │   ├── routes/            # one module per area of the site
+│   │   ├── pages.py         # home, categories, about, privacy
+│   │   ├── search.py        # search page and suggestions
+│   │   ├── articles.py      # article library, detail, feedback
+│   │   ├── bsod.py          # stop codes, lookup, minidump analyzer
+│   │   ├── wizards.py       # decision-tree traversal
+│   │   ├── tools.py         # the five network tools and their JSON APIs
+│   │   ├── drivers.py       # vendor pages, Device Manager codes
+│   │   ├── scripts.py       # diagnostic script pages and downloads
+│   │   ├── hardware.py      # hardware topic index
+│   │   ├── apps.py          # public tool pages, screenshots, downloads
+│   │   ├── accounts.py      # signup, login, verification, account deletion
+│   │   ├── comments.py      # comment submission
+│   │   ├── ask.py           # "Ask us anything" endpoints
+│   │   ├── admin.py         # the whole admin panel
+│   │   └── seo.py           # sitemap.xml, robots.txt, ads.txt
 │   ├── services/          # domain logic, no HTTP
-│   │   ├── markdown.py    # rendering, sanitising, table of contents
-│   │   ├── content.py     # markdown files and frontmatter
-│   │   ├── stopcodes.py   # stop code lookup
-│   │   ├── wizards.py     # decision trees
-│   │   ├── ssrf.py        # input validation and address filtering
-│   │   ├── nettools.py    # the five network tools
-│   │   ├── minidump.py    # dump parsing
-│   │   ├── search.py      # full-text search and feedback
-│   │   ├── apps.py        # upload validation, checksums, storage
+│   │   ├── markdown.py      # rendering, allowlist sanitising, TOC, callouts
+│   │   ├── content.py       # markdown files and YAML frontmatter
+│   │   ├── stopcodes.py     # stop code normalisation, sync, resolution
+│   │   ├── wizards.py       # JSON decision trees
+│   │   ├── ssrf.py          # input validation and address filtering
+│   │   ├── nettools.py      # DNS, public IP, port, HTTP status, latency
+│   │   ├── minidump.py      # dump signature checks and bugcheck extraction
+│   │   ├── search.py        # full-text search over guides and stop codes
+│   │   ├── apps.py          # upload validation, magic bytes, checksums
+│   │   ├── storage.py       # local disk or Supabase Storage backend
+│   │   ├── accounts.py      # validation, tokens, sessions, verification email
+│   │   ├── ads.py           # AdSense settings and tag rendering
+│   │   ├── audit.py         # admin audit log
+│   │   ├── totp.py          # RFC 6238 TOTP
+│   │   ├── github.py        # content mirror to GitHub
 │   │   └── scripts_catalog.py
-│   ├── templates/         # Jinja templates
-│   └── static/            # CSS, JavaScript, favicon
+│   ├── templates/         # 66 Jinja templates, including the admin shell
+│   └── static/            # css/site.css, js/site.js, js/ask-widget.js, favicon.svg
 ├── content/               # 43 markdown guides
 ├── data/
 │   ├── bsod_codes.json    # 92 stop codes
 │   ├── wizards/           # 8 decision trees
-│   └── admin.json         # bcrypt hash, created by seed.py
-├── scripts_download/      # the downloadable .bat and .ps1 files
-├── apps_download/         # admin-uploaded binaries, not in git
-├── tests/
-├── seed.py
+│   └── admin.json         # bcrypt hash, created by seed.py (gitignored)
+├── scripts_download/      # the 5 downloadable .bat and .ps1 files
+├── apps_download/         # admin-uploaded binaries and screenshots (gitignored, created at runtime)
+├── scripts/               # Node browser-audit tooling (dev only)
+├── tests/                 # 25 pytest modules plus conftest.py
+├── api/index.py           # Vercel serverless entrypoint
+├── seed.py                # content seeding and admin password CLI
 ├── requirements.txt
 ├── Dockerfile
-└── docker-compose.yml
+├── docker-compose.yml
+├── render.yaml
+├── vercel.json
+└── pytest.ini
 ```
 
----
+Database tables, all defined in `app/models.py`:
 
-## How content works
-
-Articles are markdown files in `content/`. Editing a file and re-running
-`python seed.py` is the whole workflow.
-
-```markdown
----
-title: Fix high CPU and GPU temperatures
-category: hardware          # hardware | network | windows | drivers | bsod
-tags: [temperature, fan, thermal paste]
-difficulty: moderate        # easy | moderate | hard | advanced
-os_version: Windows 10/11
-featured: true
----
-
-Opening paragraph, used as the summary if none is set in the frontmatter.
-
-## A heading becomes a table of contents entry
-
-Commands go in fenced blocks, which get a copy button:
-
-```text
-DISM /Online /Cleanup-Image /RestoreHealth
-```
-
-Warnings are blockquotes with a marker:
-
-> [!WARNING]
-> This step erases your data.
-```
-
-Two custom blocks are recognised inside callouts: `> [!WARNING]`,
-`> [!DANGER]`, `> [!TIP]`, `> [!NOTE]` and `> [!IMPORTANT]`.
-
-Editing an article in `/admin` writes the markdown file back to `content/` and
-rebuilds the search index, so the files stay the source of truth.
+| Table | Purpose |
+| --- | --- |
+| `articles`, `article_views` | Guides and their per-day view counters |
+| `stop_codes` | BSOD bugcheck reference |
+| `feedback`, `search_queries` | Helpful votes and popular search tracking |
+| `dump_uploads` | Minidump analysis metadata (never the file bytes) |
+| `app_downloads` | Uploaded tool metadata and recorded checksums |
+| `users`, `auth_tokens` | Reader accounts and hashed verification/reset/session tokens |
+| `comments` | Moderated reader comments |
+| `questions` | "Ask us anything" questions and the admin's reply |
+| `ad_settings`, `ad_units` | AdSense configuration |
+| `seo_overrides`, `site_seo_settings` | Per-page and site-wide SEO metadata |
+| `announcements`, `email_log`, `admin_audit_log`, `admin_two_factor` | Site banner, mail log, admin audit trail, TOTP enrolment |
 
 ---
 
-## Safety notes
+## Security model
 
-This is a site about fixing computers. A few decisions are worth knowing about.
+This is a site about fixing computers, so a few decisions are worth knowing.
 
-### Nothing runs on your machine
+### Nothing is executed
 
-No code on this server executes anything on a visitor's PC, and nothing the app
-serves is ever run on this server either. Uploads are stored as files and
-hashed, never extracted, executed or inspected beyond their first few header
-bytes.
+No code on this server runs anything on a visitor's PC, and nothing the app serves
+runs on this server either. The diagnostic scripts are plain text, shown in full on
+their page before download. Uploads are stored and hashed — never extracted,
+executed, or inspected beyond their first few header bytes.
 
-Tool screenshots are the one place this needs qualifying. They are images an
-admin attaches so a visitor can recognise a tool before downloading, and this
-site never decodes or rewrites them: only the file header is read to confirm
-the type. They are served with `nosniff` and a locked-down CSP, and SVG is
-refused on upload, because a browser would run an SVG as a document rather than
-display it as a picture. Even so, a visitor's browser does decode these pixels,
-so it is worth knowing that a screenshot is the only uploaded content here that
-something downstream actually interprets.
+The downloadable tools are the exception: they are program binaries an admin
+uploads. Every upload records a SHA-256 at upload time, the hash is re-checked on
+every view, a mismatch disables the download rather than serving the file, and each
+page states the publisher, version and checksum so a visitor can verify what they
+received. **Uploads are not scanned by antivirus software.** Only upload a binary
+you have checked yourself, and prefer a vendor's own signed download where one
+exists.
 
-The [diagnostic scripts](/scripts) are plain text, shown in full on their page
-before download with every command explained. Those remain the safest thing
-this site hands you.
+Screenshots are images an admin attaches so a visitor can recognise a tool. The site
+never decodes or rewrites them, only reads the file header to confirm the type. They
+are gated behind the same published check as the binaries, served with
+`X-Content-Type-Options: nosniff` and
+`Content-Security-Policy: default-src 'none'; sandbox`, and SVG is refused on
+upload, because a browser would run an SVG as a document rather than display it.
 
-The [downloadable tools](/apps) are different: they are program binaries an
-admin uploads. You cannot read their source. To keep that as safe as it can be,
-every upload records a SHA-256 at upload time, that hash is re-checked on each
-download, a mismatch disables the download rather than serving the file, and
-each page states the publisher, version and checksum so a visitor can verify
-what they received.
+### Minidumps are never stored
 
-**Uploads are not scanned by antivirus software.** Nothing in the pipeline
-inspects an upload's contents. Only upload a binary you have checked yourself,
-and prefer a vendor's own signed download where one exists.
+The analyzer reads the file in memory, parses the bugcheck header, and discards the
+bytes. Uploads are size-capped at 5 MB, and the `PMDMP`, `PAGEDU`, `PAGE` and
+`FULL` signatures are checked before any parser sees the data. Only upload metadata
+is recorded.
 
-> [!WARNING]
-> Windows will warn you before running anything from this site, because these
-> files are unsigned and the publisher is not a name Windows recognises. That
-> warning is expected and is not evidence of a problem. Conversely, a file that
-> asks you to disable Defender is always a problem.
+### The network tools cannot scan your network
 
-### Minidump uploads are never stored
+- Hostnames are resolved and every returned address is checked against the private,
+  loopback, link-local, carrier-grade, multicast and reserved ranges. A hostname
+  resolving to `127.0.0.1` or `169.254.169.254` is refused outright, including when
+  one address in a set is public and another is not.
+- Requests then connect to the already-validated IP, with the original `Host` header
+  and TLS SNI preserved, which closes the DNS rebinding window between checking and
+  connecting.
+- Only `http` and `https` are accepted, redirects are not followed, environment proxy
+  variables are ignored, and the response body is never read into memory.
 
-The minidump analyzer reads the file in memory, parses the bugcheck header, and
-discards the bytes. Uploads are size-capped at 5 MB while streaming, and the
-`PMDMP`, `PAGEDU`, `PAGE` and `FULL` signatures are checked before any parser
-sees the data. A dump file is data, not a program, and nothing in it is executed.
-Only upload metadata is recorded, so abuse is visible in the admin panel.
+### Accounts, sessions and moderation
 
-This applies only to minidumps. Binaries an admin uploads through `/admin/apps`
-are stored on disk, because that is the entire point of the feature.
-
-### The network tools cannot be used to scan your network
-
-Each tool validates its target before use:
-
-- Hostnames are resolved, and every returned address is checked against the
-  private, loopback, link-local, carrier-grade, multicast and reserved ranges.
-  A hostname resolving to `127.0.0.1` or `169.254.169.254` is refused outright,
-  including when one address in a set is public and another is not.
-- Requests then connect to the already-validated IP, with the original `Host`
-  header and TLS SNI preserved. This closes the DNS rebinding window between
-  checking and connecting.
-- Only `http` and `https` URLs are accepted, redirects are not followed,
-  environment proxy variables are ignored, and the response body is never read
-  into memory.
-- Port checks are limited to a fixed allowlist of about 30 common ports.
-
-No subprocess is spawned anywhere in the codebase. DNS uses `dnspython`, HTTP
-uses `httpx`, and sockets use the standard library.
+- Reader sessions live in the database as hashed tokens, so logging out and an admin
+  deleting a reader both genuinely end access.
+- Passwords are bcrypt-hashed at cost 12. Admin and reader passwords both require at
+  least 10 characters. The admin cap is 72 bytes, because bcrypt reads only the
+  first 72; reader passwords are capped at 200 characters.
+- Only SHA-256 hashes of verification, reset, session and question tokens are
+  stored. The raw value is returned exactly once.
+- Comments and questions are plain text, escaped by Jinja. There is no path from a
+  reader's words to injected markup on an article page.
+- New comments are `pending` and visible only to their author and in the admin queue.
+- The admin panel is a separate cookie and a separate password. A test asserts that a
+  signed-in reader cannot reach it.
+- Admin 2FA is TOTP with single-use hashed recovery codes, implemented against
+  RFC 6238.
+- The admin audit log records every state-changing action, with IPs hashed.
 
 ### Content is sanitised
 
-Markdown is rendered and then passed through an allowlist sanitiser, so raw HTML
-in a content file cannot inject scripts, event handlers or `javascript:` URLs.
-Outbound links get `rel="noopener noreferrer nofollow"`.
+Markdown is rendered and then passed through an allowlist sanitiser, so raw HTML in a
+content file cannot inject scripts, event handlers or `javascript:` URLs. Outbound
+links get `rel="noopener noreferrer nofollow"`.
+
+### Headers
+
+Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`,
+`Cross-Origin-Opener-Policy: same-origin` and a `Content-Security-Policy` defaulting
+to `default-src 'self'`. HSTS is added only when secure cookies are enabled, so HTTP
+development is not locked out. When ads are on, the policy extends `script-src`,
+`img-src` and `frame-src` with the Google syndication domains; with ads off it
+returns to strict self-only.
 
 ### Warnings are deliberate
 
-Guides that involve registry edits, BIOS changes or opening a PC carry an
-explicit warning. The site's own advice is never to open a power supply, never
-to mix modular cables between power supplies, and never to change a storage
-controller mode after installing Windows.
+Guides involving registry edits, BIOS changes or opening a PC carry an explicit
+warning. The site's own advice is never to open a power supply, never to mix modular
+cables between power supplies, and never to change a storage controller mode after
+installing Windows.
 
 ---
 
@@ -838,19 +803,27 @@ controller mode after installing Windows.
 
 - Semantic landmarks, a skip link, labelled form controls, `aria-label` on icon
   buttons, `aria-current` on the active nav item, and a visible focus ring
-- Dark and light themes, applied before first paint so there is no flash, and
-  following the system preference until the visitor chooses
+- Dark and light themes applied before first paint so there is no flash, following the
+  system preference until the visitor chooses
 - `prefers-reduced-motion` respected
 - Per-page titles, meta descriptions, canonical URLs, Open Graph and Twitter card
-  tags, and JSON-LD `TechArticle` markup on articles and stop code pages
-- Generated `sitemap.xml` covering every article, stop code, wizard and script,
-  and a `robots.txt` that keeps `/admin` and API paths out of the index
+  tags, and JSON-LD `TechArticle` markup on article and stop code pages
+- Generated `sitemap.xml` covering every article, stop code, wizard and script, and a
+  `robots.txt` that keeps `/admin` and API paths out of the index
+- Per-page SEO overrides and site-wide defaults editable at `/admin/seo`
 - Mobile-first layout with no JavaScript required for any page to work
 
 ---
 
-## Licence
+## License
 
-Written as a reference project. Product names and vendor links are the property
-of their respective owners. FixIT Hub is not affiliated with Microsoft, NVIDIA,
-AMD, Intel, Realtek or any other vendor.
+This repository ships **no `LICENSE` file and states no formal license grant**. The
+only licensing note in the project is this one:
+
+> Written as a reference project. Product names and vendor links are the property of
+> their respective owners. FixIT Hub is not affiliated with Microsoft, NVIDIA, AMD,
+> Intel, Realtek or any other vendor.
+
+Treat the code as all rights reserved until the author adds a license. Vendor names,
+driver download links and troubleshooting advice referencing commercial products
+remain the property of their respective owners and are used for identification only.
