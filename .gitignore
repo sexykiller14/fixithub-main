@@ -30,7 +30,11 @@ content/**/*.bak
 # Uploaded binaries. These are large, change on every re-upload, and have no
 # business in git history. On a host with a persistent volume, point
 # FIXITHUB_APPS_DIR at that volume instead of committing them here.
-apps_download/
+#
+# The contents are ignored rather than the directory itself: git never descends
+# into an excluded directory, so a negation for a file inside one could never
+# take effect and the .gitkeep the Dockerfile needs to COPY stayed untracked.
+apps_download/*
 !apps_download/.gitkeep
 
 # Temporary files
